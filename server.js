@@ -22,4 +22,4 @@ app.get('/',function (req,res){
     res.write(message({name:'Hello'}));
 });
 
-app.listen(8080);
+app.listen(process.env.PORT || 3000);
