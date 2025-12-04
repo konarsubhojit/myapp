@@ -8,8 +8,10 @@ const logger = createLogger('OrdersRoute');
 
 router.get('/', async (req, res) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const parsedPage = parseInt(req.query.page, 10);
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
+    const limit = Number.isNaN(parsedLimit) ? 10 : parsedLimit;
     
     // Validate limit to be one of allowed values
     const allowedLimits = [10, 20, 50];

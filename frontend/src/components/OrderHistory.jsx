@@ -8,7 +8,8 @@ function OrderHistory() {
   const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     customerName: '',
@@ -29,6 +30,7 @@ function OrderHistory() {
       setError(err.message || 'Failed to fetch orders');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   }, []);
 
@@ -115,7 +117,7 @@ function OrderHistory() {
 
   const orderSources = ['instagram', 'facebook', 'whatsapp', 'call', 'offline'];
 
-  if (loading && orders.length === 0) {
+  if (initialLoading) {
     return (
       <div className="panel order-history-panel">
         <h2>Order History</h2>
@@ -186,7 +188,9 @@ function OrderHistory() {
         </div>
       </div>
 
-      {sortedOrders.length === 0 ? (
+      {loading && <p className="loading-text">Loading...</p>}
+
+      {!loading && sortedOrders.length === 0 ? (
         <p className="no-orders">No orders found</p>
       ) : (
         <div className="orders-table-container">
