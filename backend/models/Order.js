@@ -56,9 +56,9 @@ const orderSchema = new mongoose.Schema({
 // Generate unique order ID before saving
 orderSchema.pre('validate', async function(next) {
   if (!this.orderId) {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
-    this.orderId = `ORD-${timestamp}-${randomPart}`;
+    // Generate a random 6-digit number (100000-999999)
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    this.orderId = `ORD${randomNum}`;
   }
   next();
 });
