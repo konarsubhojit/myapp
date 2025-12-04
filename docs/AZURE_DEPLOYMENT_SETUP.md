@@ -14,7 +14,7 @@ Secrets are encrypted values that are used to store sensitive information. Navig
 
 | Secret Name | Description | Example Value |
 |-------------|-------------|---------------|
-| `MONGODB_URI` | MongoDB connection string for the database | `mongodb+srv://user:password@cluster.mongodb.net/orderapp` |
+| `MONGODB_URI` | MongoDB connection string for the database | `mongodb+srv://<username>:<password>@<cluster-url>/<database>` |
 
 ### GitHub Variables
 
