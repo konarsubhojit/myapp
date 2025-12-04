@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { createItem, deleteItem } from '../services/api';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 function ItemPanel({ items, onItemsChange }) {
+  const { formatPrice } = useCurrency();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [error, setError] = useState('');
@@ -88,7 +90,7 @@ function ItemPanel({ items, onItemsChange }) {
           <ul>
             {items.map((item) => (
               <li key={item._id}>
-                <span>{item.name} - ${item.price.toFixed(2)}</span>
+                <span>{item.name} - {formatPrice(item.price)}</span>
                 <button 
                   onClick={() => handleDelete(item._id)} 
                   className="delete-btn"

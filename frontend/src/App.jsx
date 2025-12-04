@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
+import OrderHistory from './components/OrderHistory'
+import SalesReport from './components/SalesReport'
+import CurrencySelector from './components/CurrencySelector'
+import { CurrencyProvider } from './contexts/CurrencyContext'
 import { getItems, getOrders } from './services/api'
 
-function App() {
+function AppContent() {
   const [items, setItems] = useState([])
   const [orders, setOrders] = useState([])
   const [activeTab, setActiveTab] = useState('orders')
@@ -45,6 +49,7 @@ function App() {
     <div className="app">
       <header>
         <h1>Order Management System</h1>
+        <CurrencySelector />
       </header>
 
       <nav className="tabs">
@@ -66,6 +71,12 @@ function App() {
         >
           Order History
         </button>
+        <button
+          className={activeTab === 'sales' ? 'active' : ''}
+          onClick={() => setActiveTab('sales')}
+        >
+          Sales Report
+        </button>
       </nav>
 
       <main>
@@ -84,39 +95,22 @@ function App() {
         )}
 
         {activeTab === 'history' && (
-          <div className="panel">
-            <h2>Order History</h2>
-            {orders.length === 0 ? (
-              <p>No orders yet</p>
-            ) : (
-              <div className="orders-list">
-                {orders.map((order) => (
-                  <div key={order._id} className="order-card">
-                    <div className="order-header">
-                      <span className="order-id">{order.orderId}</span>
-                      <span className="order-source">{order.orderFrom}</span>
-                    </div>
-                    <div className="order-details">
-                      <p><strong>Customer:</strong> {order.customerName}</p>
-                      <p><strong>Customer ID:</strong> {order.customerId}</p>
-                      <p><strong>Items:</strong></p>
-                      <ul>
-                        {order.items.map((item, idx) => (
-                          <li key={idx}>
-                            {item.name} x {item.quantity} = ${(item.price * item.quantity).toFixed(2)}
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="order-total"><strong>Total:</strong> ${order.totalPrice.toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <OrderHistory orders={orders} />
+        )}
+
+        {activeTab === 'sales' && (
+          <SalesReport orders={orders} />
         )}
       </main>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <CurrencyProvider>
+      <AppContent />
+    </CurrencyProvider>
   )
 }
 

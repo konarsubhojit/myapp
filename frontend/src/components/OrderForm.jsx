@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createOrder } from '../services/api';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const ORDER_SOURCES = [
   { value: 'instagram', label: 'Instagram' },
@@ -10,6 +11,7 @@ const ORDER_SOURCES = [
 ];
 
 function OrderForm({ items, onOrderCreated }) {
+  const { formatPrice } = useCurrency();
   const [orderFrom, setOrderFrom] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -28,14 +30,14 @@ function OrderForm({ items, onOrderCreated }) {
 
   const handleItemChange = (index, field, value) => {
     const updated = [...orderItems];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setOrderItems(updated);
   };
 
   const calculateTotal = () => {
     return orderItems.reduce((total, orderItem) => {
       const item = items.find((i) => i._id === orderItem.itemId);
-      if (item) {
+      if (item && orderItem.quantity > 0) {
         return total + item.price * orderItem.quantity;
       }
       return total;
@@ -84,6 +86,8 @@ function OrderForm({ items, onOrderCreated }) {
     }
   };
 
+  const estimatedTotal = calculateTotal();
+
   return (
     <div className="panel">
       <h2>Create Order</h2>
@@ -92,7 +96,7 @@ function OrderForm({ items, onOrderCreated }) {
         <div className="success-message">
           <h3>Order Created Successfully!</h3>
           <p><strong>Order ID:</strong> {createdOrder.orderId}</p>
-          <p><strong>Total Price:</strong> ${createdOrder.totalPrice.toFixed(2)}</p>
+          <p><strong>Total Price:</strong> {formatPrice(createdOrder.totalPrice)}</p>
         </div>
       )}
 
@@ -137,37 +141,43 @@ function OrderForm({ items, onOrderCreated }) {
 
         <div className="order-items-section">
           <h3>Order Items</h3>
-          {orderItems.map((orderItem, index) => (
-            <div key={index} className="order-item-row">
-              <select
-                value={orderItem.itemId}
-                onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
-              >
-                <option value="">Select item</option>
-                {items.map((item) => (
-                  <option key={item._id} value={item._id}>
-                    {item.name} - ${item.price.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min="1"
-                value={orderItem.quantity}
-                onChange={(e) =>
-                  handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 1)
-                }
-                placeholder="Qty"
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveItem(index)}
-                className="remove-btn"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+          {orderItems.map((orderItem, index) => {
+            const selectedItem = items.find(i => i._id === orderItem.itemId);
+            const lineTotal = selectedItem ? selectedItem.price * orderItem.quantity : 0;
+            
+            return (
+              <div key={index} className="order-item-row">
+                <select
+                  value={orderItem.itemId}
+                  onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
+                >
+                  <option value="">Select item</option>
+                  {items.map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.name} - {formatPrice(item.price)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={orderItem.quantity}
+                  onChange={(e) =>
+                    handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 1)
+                  }
+                  placeholder="Qty"
+                />
+                <span className="line-total">{formatPrice(lineTotal)}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(index)}
+                  className="remove-btn"
+                >
+                  Remove
+                </button>
+              </div>
+            );
+          })}
           <button type="button" onClick={handleAddItem} className="add-item-btn">
             + Add Item
           </button>
@@ -175,7 +185,7 @@ function OrderForm({ items, onOrderCreated }) {
 
         {orderItems.length > 0 && (
           <div className="total-preview">
-            <strong>Estimated Total: ${calculateTotal().toFixed(2)}</strong>
+            <strong>Estimated Total: {formatPrice(estimatedTotal)}</strong>
           </div>
         )}
 
