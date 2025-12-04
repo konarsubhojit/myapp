@@ -9,6 +9,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20.x'
 
@@ -36,8 +39,15 @@ jobs:
         run: |
           cd backend
           mkdir -p ../deploy-backend
+          # Copy core application files
           cp -r server.js models routes package.json package-lock.json ../deploy-backend/
-          cp .env.example ../deploy-backend/.env.example 2>/dev/null || true
+          # Copy environment example file if it exists
+          if [ -f .env.example ]; then
+            cp .env.example ../deploy-backend/.env.example
+            echo "Copied .env.example to deployment package"
+          else
+            echo "Note: .env.example not found, skipping"
+          fi
           cd ../deploy-backend
           zip -r ../backend-deploy.zip .
 
@@ -91,6 +101,9 @@ jobs:
     name: Create Combined Package
     runs-on: ubuntu-latest
     needs: [build-backend, build-frontend]
+    # Creates a combined package with backend at /backend and frontend at /frontend
+    # Configure Azure App Service to serve backend from backend/ directory
+    # and configure static file serving for frontend/ directory
     
     steps:
       - name: Download backend artifact
