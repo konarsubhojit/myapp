@@ -36,7 +36,7 @@ function OrderForm({ items, onOrderCreated }) {
 
   const calculateTotal = () => {
     return orderItems.reduce((total, orderItem) => {
-      const item = items.find((i) => i._id === orderItem.itemId);
+      const item = items.find((i) => String(i._id) === String(orderItem.itemId));
       const qty = parseInt(orderItem.quantity, 10);
       if (item && !isNaN(qty) && qty > 0) {
         return total + item.price * qty;
@@ -143,7 +143,7 @@ function OrderForm({ items, onOrderCreated }) {
         <div className="order-items-section">
           <h3>Order Items</h3>
           {orderItems.map((orderItem, index) => {
-            const selectedItem = items.find(i => i._id === orderItem.itemId);
+            const selectedItem = items.find(i => String(i._id) === String(orderItem.itemId));
             const qty = parseInt(orderItem.quantity, 10);
             const lineTotal = selectedItem && !isNaN(qty) && qty > 0 ? selectedItem.price * qty : 0;
             
