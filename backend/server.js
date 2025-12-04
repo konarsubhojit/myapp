@@ -3,6 +3,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { connectToDatabase } = require('./db/connection');
+const { runMigrations } = require('./db/migrate');
 
 const app = express();
 
@@ -25,13 +26,23 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/', limiter);
 
-// PostgreSQL connection - optimized for serverless (Vercel)
-connectToDatabase()
-  .then(() => console.log('[Server] PostgreSQL connection successful'))
-  .catch(err => {
-    console.error('[Server] PostgreSQL connection error:', err.message);
+// Run migrations and connect to PostgreSQL
+async function initializeDatabase() {
+  try {
+    // Run migrations first to ensure tables exist
+    await runMigrations();
+    console.log('[Server] Database migrations completed');
+    
+    // Then connect to the database
+    await connectToDatabase();
+    console.log('[Server] PostgreSQL connection successful');
+  } catch (err) {
+    console.error('[Server] Database initialization error:', err.message);
     console.error('[Server] Full error:', err);
-  });
+  }
+}
+
+initializeDatabase();
 
 // Routes
 const itemRoutes = require('./routes/items');
