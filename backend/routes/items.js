@@ -1,40 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const Item = require('../models/Item');
+const { createLogger } = require('../utils/logger');
 
-// Get all items
+const logger = createLogger('ItemsRoute');
+
 router.get('/', async (req, res) => {
   try {
     const items = await Item.find();
     res.json(items);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Failed to fetch items', error);
+    res.status(500).json({ message: 'Failed to fetch items' });
   }
 });
 
-// Create a new item
 router.post('/', async (req, res) => {
   try {
+    const { name, price } = req.body;
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ message: 'Item name is required' });
+    }
+
+    if (price === undefined || price === null || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+      return res.status(400).json({ message: 'Valid price is required' });
+    }
+
     const newItem = await Item.create({
-      name: req.body.name,
-      price: req.body.price
+      name: name.trim(),
+      price: parseFloat(price)
     });
+    
+    logger.info('Item created', { itemId: newItem._id, name: newItem.name });
     res.status(201).json(newItem);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    logger.error('Failed to create item', error);
+    res.status(500).json({ message: 'Failed to create item' });
   }
 });
 
-// Delete an item
 router.delete('/:id', async (req, res) => {
   try {
     const item = await Item.findByIdAndDelete(req.params.id);
     if (!item) {
       return res.status(404).json({ message: 'Item not found' });
     }
+    
+    logger.info('Item deleted', { itemId: req.params.id });
     res.json({ message: 'Item deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Failed to delete item', error);
+    res.status(500).json({ message: 'Failed to delete item' });
   }
 });
 
