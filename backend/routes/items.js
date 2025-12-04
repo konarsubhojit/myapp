@@ -23,13 +23,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Item name is required' });
     }
 
-    if (price === undefined || price === null || isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+    const parsedPrice = parseFloat(price);
+    if (price === undefined || price === null || isNaN(parsedPrice) || parsedPrice < 0) {
       return res.status(400).json({ message: 'Valid price is required' });
     }
 
     const newItem = await Item.create({
       name: name.trim(),
-      price: parseFloat(price)
+      price: parsedPrice
     });
     
     logger.info('Item created', { itemId: newItem._id, name: newItem.name });

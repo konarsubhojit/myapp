@@ -10,7 +10,21 @@ const LOG_LEVELS = {
   debug: 3
 };
 
-const currentLevel = process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+const VALID_LEVELS = Object.keys(LOG_LEVELS);
+
+/**
+ * Get the current log level from environment or default based on NODE_ENV
+ * @returns {string} Valid log level
+ */
+function getCurrentLevel() {
+  const envLevel = process.env.LOG_LEVEL;
+  if (envLevel && VALID_LEVELS.includes(envLevel)) {
+    return envLevel;
+  }
+  return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+}
+
+const currentLevel = getCurrentLevel();
 
 /**
  * Format log message with timestamp and level
@@ -36,7 +50,14 @@ function formatMessage(level, context, message, meta) {
  * @returns {boolean} Whether to log at this level
  */
 function shouldLog(level) {
-  return LOG_LEVELS[level] <= LOG_LEVELS[currentLevel];
+  const levelValue = LOG_LEVELS[level];
+  const currentLevelValue = LOG_LEVELS[currentLevel];
+  
+  if (levelValue === undefined || currentLevelValue === undefined) {
+    return false;
+  }
+  
+  return levelValue <= currentLevelValue;
 }
 
 /**
