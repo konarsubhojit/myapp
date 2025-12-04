@@ -1,6 +1,7 @@
 const { drizzle } = require('drizzle-orm/neon-http');
 const { neon } = require('@neondatabase/serverless');
 const { createLogger } = require('../utils/logger');
+const schema = require('./schema');
 
 const logger = createLogger('PostgreSQL');
 
@@ -31,7 +32,7 @@ function getDatabase() {
 
   try {
     const sql = neon(uri);
-    cached.db = drizzle({ client: sql });
+    cached.db = drizzle({ client: sql, schema });
     const duration = Date.now() - startTime;
     logger.info('Database connection established', { durationMs: duration });
     return cached.db;
