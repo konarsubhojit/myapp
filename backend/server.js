@@ -1,8 +1,8 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const { connectToDatabase } = require('./db/connection');
 
 const app = express();
 
@@ -18,10 +18,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/', limiter);
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/orderapp';
-
-mongoose.connect(MONGODB_URI)
+// MongoDB connection - optimized for serverless (Vercel)
+connectToDatabase()
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
