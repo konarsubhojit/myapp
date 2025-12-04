@@ -1,11 +1,11 @@
 {
-  "name": "myapp",
+  "name": "order-management-app",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Order management system with React frontend and Node.js backend",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "backend": "cd backend && npm start",
+    "frontend": "cd frontend && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install"
   },
   "repository": {
     "type": "git",
@@ -16,13 +16,5 @@
   "bugs": {
     "url": "https://github.com/konarsubhojit/myapp/issues"
   },
-  "homepage": "https://github.com/konarsubhojit/myapp#readme",
-  "dependencies": {
-    "express": "^4.16.3",
-    "md5": "^2.2.1",
-    "mongodb": "^3.1.1",
-    "mongodb-stitch-browser-sdk": "^4.0.9",
-    "pug": "^2.0.3",
-    "stitch": "^0.3.3"
-  }
+  "homepage": "https://github.com/konarsubhojit/myapp#readme"
 }
