@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 console.log('[Server] Starting application...');
 console.log('[Server] NODE_ENV:', process.env.NODE_ENV || 'not set');
 console.log('[Server] PORT:', PORT);
-console.log('[Server] DATABASE_URL defined:', !!process.env.DATABASE_URL);
+console.log('[Server] NEON_DATABASE_URL defined:', !!process.env.NEON_DATABASE_URL);
 
 // Rate limiting middleware
 const limiter = rateLimit({

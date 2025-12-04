@@ -29,13 +29,13 @@ function maskUri(uri) {
  * @returns {Object} Drizzle database instance
  */
 function getDatabase() {
-  const uri = process.env.DATABASE_URL;
-  const isUriFromEnv = !!process.env.DATABASE_URL;
+  const uri = process.env.NEON_DATABASE_URL;
+  const isUriFromEnv = !!process.env.NEON_DATABASE_URL;
 
   // Debug logging for connection diagnostics
   console.log('[PostgreSQL] Getting database connection...');
   console.log('[PostgreSQL] Environment:', process.env.NODE_ENV || 'not set');
-  console.log('[PostgreSQL] DATABASE_URL from env:', isUriFromEnv ? 'yes' : 'no');
+  console.log('[PostgreSQL] NEON_DATABASE_URL from env:', isUriFromEnv ? 'yes' : 'no');
   console.log('[PostgreSQL] Connection URI (masked):', maskUri(uri));
 
   if (cached.db) {
@@ -44,7 +44,7 @@ function getDatabase() {
   }
 
   if (!uri) {
-    throw new Error('DATABASE_URL environment variable is not set');
+    throw new Error('NEON_DATABASE_URL environment variable is not set');
   }
 
   console.log('[PostgreSQL] Creating new connection...');

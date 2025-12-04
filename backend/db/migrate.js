@@ -4,17 +4,17 @@
  * 
  * Usage: node db/migrate.js
  * 
- * Make sure DATABASE_URL is set in your environment before running.
+ * Make sure NEON_DATABASE_URL is set in your environment before running.
  */
 
 require('dotenv').config();
 const { neon } = require('@neondatabase/serverless');
 
 async function migrate() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env.NEON_DATABASE_URL;
   
   if (!databaseUrl) {
-    console.error('DATABASE_URL environment variable is not set');
+    console.error('NEON_DATABASE_URL environment variable is not set');
     process.exit(1);
   }
 

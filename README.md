@@ -89,11 +89,11 @@ Frontend will run on http://localhost:5173
 
 For Vercel deployment, set the following environment variables:
 
-- `DATABASE_URL` - Neon PostgreSQL connection string (pooled)
+- `NEON_DATABASE_URL` - Neon PostgreSQL connection string (pooled)
 
 Example:
 ```
-DATABASE_URL=postgresql://neondb_owner:xxxx@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=require
+NEON_DATABASE_URL=postgresql://neondb_owner:xxxx@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=require
 ```
 
 ## Project Structure
