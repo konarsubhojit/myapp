@@ -16,7 +16,7 @@ header {
 }
 
 header h1 {
-  color: #1a1a2e;
+  color: #667eea;
   margin: 0;
   font-size: 2.25rem;
   font-weight: 700;
@@ -479,7 +479,7 @@ button[type="submit"]:disabled {
   font-weight: 600;
 }
 
-/* Responsive design */
+/* Responsive design - matches --breakpoint-sm: 640px */
 @media (max-width: 640px) {
   .app {
     padding: 16px;
