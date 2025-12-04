@@ -36,18 +36,18 @@ jobs:
         run: npm ci
 
       - name: Create backend deployment package
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          PORT: ${{ vars.PORT }}
         run: |
           cd backend
           mkdir -p ../deploy-backend
           # Copy core application files
           cp -r server.js models routes package.json package-lock.json ../deploy-backend/
-          # Copy environment example file if it exists
-          if [ -f .env.example ]; then
-            cp .env.example ../deploy-backend/.env.example
-            echo "Copied .env.example to deployment package"
-          else
-            echo "Note: .env.example not found, skipping"
-          fi
+          # Create .env file from secrets and variables
+          echo "MONGODB_URI=${MONGODB_URI}" > ../deploy-backend/.env
+          echo "PORT=${PORT:-5000}" >> ../deploy-backend/.env
+          echo "Created .env file from workflow secrets and variables"
           cd ../deploy-backend
           zip -r ../backend-deploy.zip .
 
