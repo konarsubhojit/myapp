@@ -1,0 +1,119 @@
+name: Build and Package for Azure App Service
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Create backend deployment package
+        run: |
+          cd backend
+          mkdir -p ../deploy-backend
+          cp -r server.js models routes package.json package-lock.json ../deploy-backend/
+          cp .env.example ../deploy-backend/.env.example 2>/dev/null || true
+          cd ../deploy-backend
+          zip -r ../backend-deploy.zip .
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-deploy
+          path: backend-deploy.zip
+          retention-days: 30
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Create frontend deployment package
+        run: |
+          cd frontend/dist
+          zip -r ../../frontend-deploy.zip .
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-deploy
+          path: frontend-deploy.zip
+          retention-days: 30
+
+  package:
+    name: Create Combined Package
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    
+    steps:
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-deploy
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-deploy
+
+      - name: Create combined package
+        run: |
+          mkdir -p combined-deploy
+          unzip backend-deploy.zip -d combined-deploy/backend
+          unzip frontend-deploy.zip -d combined-deploy/frontend
+          cd combined-deploy
+          zip -r ../app-deploy.zip .
+
+      - name: Upload combined artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-deploy
+          path: app-deploy.zip
+          retention-days: 30
