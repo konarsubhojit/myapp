@@ -1,66 +1,123 @@
-const mongoose = require('mongoose');
+const { eq, desc } = require('drizzle-orm');
+const { getDatabase } = require('../db/connection');
+const { orders, orderItems } = require('../db/schema');
 
-const orderItemSchema = new mongoose.Schema({
-  item: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Item',
-    required: true
+/**
+ * Generate a unique order ID
+ * @returns {string} Order ID in format ORD######
+ */
+function generateOrderId() {
+  const randomNum = Math.floor(100000 + Math.random() * 900000);
+  return `ORD${randomNum}`;
+}
+
+/**
+ * Order model with methods for database operations
+ */
+const Order = {
+  /**
+   * Get all orders sorted by creation date (newest first)
+   * @returns {Promise<Array>} Array of orders with their items
+   */
+  async find() {
+    const db = getDatabase();
+    const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
+    
+    // Fetch items for each order
+    const ordersWithItems = await Promise.all(
+      ordersResult.map(async (order) => {
+        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+        return {
+          ...order,
+          _id: order.id,
+          totalPrice: parseFloat(order.totalPrice),
+          items: itemsResult.map(item => ({
+            ...item,
+            _id: item.id,
+            item: item.itemId,
+            price: parseFloat(item.price)
+          }))
+        };
+      })
+    );
+    
+    return ordersWithItems;
   },
-  name: {
-    type: String,
-    required: true
+
+  /**
+   * Find an order by ID
+   * @param {number|string} id Order ID
+   * @returns {Promise<Object|null>} Order with items or null if not found
+   */
+  async findById(id) {
+    const db = getDatabase();
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    
+    const ordersResult = await db.select().from(orders).where(eq(orders.id, numericId));
+    if (ordersResult.length === 0) return null;
+    
+    const order = ordersResult[0];
+    const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+    
+    return {
+      ...order,
+      _id: order.id,
+      totalPrice: parseFloat(order.totalPrice),
+      items: itemsResult.map(item => ({
+        ...item,
+        _id: item.id,
+        item: item.itemId,
+        price: parseFloat(item.price)
+      }))
+    };
   },
-  price: {
-    type: Number,
-    required: true
-  },
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1
+
+  /**
+   * Create a new order with items
+   * @param {Object} data Order data
+   * @returns {Promise<Object>} Created order with items
+   */
+  async create(data) {
+    const db = getDatabase();
+    
+    // Generate unique order ID
+    const orderId = generateOrderId();
+    
+    // Insert the order
+    const orderResult = await db.insert(orders).values({
+      orderId: orderId,
+      orderFrom: data.orderFrom,
+      customerName: data.customerName.trim(),
+      customerId: data.customerId.trim(),
+      totalPrice: data.totalPrice.toString()
+    }).returning();
+    
+    const newOrder = orderResult[0];
+    
+    // Insert order items
+    const orderItemsData = data.items.map(item => ({
+      orderId: newOrder.id,
+      itemId: item.item,
+      name: item.name,
+      price: item.price.toString(),
+      quantity: item.quantity
+    }));
+    
+    const itemsResult = await db.insert(orderItems).values(orderItemsData).returning();
+    
+    return {
+      ...newOrder,
+      _id: newOrder.id,
+      totalPrice: parseFloat(newOrder.totalPrice),
+      items: itemsResult.map(item => ({
+        ...item,
+        _id: item.id,
+        item: item.itemId,
+        price: parseFloat(item.price)
+      }))
+    };
   }
-});
+};
 
-const orderSchema = new mongoose.Schema({
-  orderId: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  orderFrom: {
-    type: String,
-    required: true,
-    enum: ['instagram', 'facebook', 'whatsapp', 'call', 'offline']
-  },
-  customerName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  customerId: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  items: [orderItemSchema],
-  totalPrice: {
-    type: Number,
-    required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-// Generate unique order ID before saving
-orderSchema.pre('validate', async function(next) {
-  if (!this.orderId) {
-    // Generate a random 6-digit number (100000-999999)
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    this.orderId = `ORD${randomNum}`;
-  }
-  next();
-});
-
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = Order;

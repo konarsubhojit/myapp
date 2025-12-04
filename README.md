@@ -1,6 +1,6 @@
 # Order Management System
 
-A full-stack application for managing orders with React frontend and Node.js/MongoDB backend.
+A full-stack application for managing orders with React frontend and Node.js/PostgreSQL backend.
 
 ## Features
 
@@ -13,12 +13,13 @@ A full-stack application for managing orders with React frontend and Node.js/Mon
 
 - **Frontend**: React (Vite)
 - **Backend**: Node.js, Express
-- **Database**: MongoDB
+- **Database**: Neon PostgreSQL (with Drizzle ORM)
+- **Deployment**: Vercel
 
 ## Prerequisites
 
 - Node.js (v18 or higher)
-- MongoDB
+- Neon PostgreSQL database (https://neon.tech)
 
 ## Installation
 
@@ -42,20 +43,24 @@ npm install
 ```bash
 # Copy the example env file
 cp backend/.env.example backend/.env
-# Edit backend/.env with your MongoDB connection string
+# Edit backend/.env with your Neon PostgreSQL connection string
+```
+
+3. Run database migrations:
+```bash
+cd backend
+npm run migrate
 ```
 
 ## Running the Application
 
-1. Start MongoDB on your local machine
-
-2. Start the backend server:
+1. Start the backend server:
 ```bash
 npm run backend
 ```
 Backend will run on http://localhost:5000
 
-3. In a separate terminal, start the frontend:
+2. In a separate terminal, start the frontend:
 ```bash
 npm run frontend
 ```
@@ -80,10 +85,25 @@ Frontend will run on http://localhost:5173
 - **Customer ID**: Instagram ID, phone number, etc.
 - **Items**: Select items with quantity
 
+## Environment Variables
+
+For Vercel deployment, set the following environment variables:
+
+- `NEON_DATABASE_URL` - Neon PostgreSQL connection string (pooled)
+
+Example:
+```
+NEON_DATABASE_URL=postgresql://neondb_owner:xxxx@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=require
+```
+
 ## Project Structure
 
 ```
 ├── backend/
+│   ├── db/
+│   │   ├── connection.js  # Database connection (Neon/Drizzle)
+│   │   ├── schema.js      # Drizzle table schemas
+│   │   └── migrate.js     # Database migration script
 │   ├── models/
 │   │   ├── Item.js
 │   │   └── Order.js

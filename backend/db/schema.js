@@ -1,0 +1,35 @@
+const { pgTable, serial, text, numeric, timestamp, integer, uuid, pgEnum } = require('drizzle-orm/pg-core');
+
+// Enum for order source
+const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
+
+// Items table
+const items = pgTable('items', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// Orders table
+const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  orderId: text('order_id').notNull().unique(),
+  orderFrom: orderFromEnum('order_from').notNull(),
+  customerName: text('customer_name').notNull(),
+  customerId: text('customer_id').notNull(),
+  totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// Order items table (for the items in each order)
+const orderItems = pgTable('order_items', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  itemId: integer('item_id').notNull().references(() => items.id),
+  name: text('name').notNull(),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  quantity: integer('quantity').notNull()
+});
+
+module.exports = { items, orders, orderItems, orderFromEnum };

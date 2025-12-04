@@ -6,7 +6,7 @@ const Item = require('../models/Item');
 // Get all orders
 router.get('/', async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find();
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -43,7 +43,7 @@ router.post('/', async (req, res) => {
       totalPrice += item.price * quantity;
     }
 
-    const order = new Order({
+    const newOrder = await Order.create({
       orderFrom,
       customerName,
       customerId,
@@ -51,7 +51,6 @@ router.post('/', async (req, res) => {
       totalPrice
     });
 
-    const newOrder = await order.save();
     res.status(201).json(newOrder);
   } catch (error) {
     res.status(400).json({ message: error.message });

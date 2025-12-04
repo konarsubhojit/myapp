@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 console.log('[Server] Starting application...');
 console.log('[Server] NODE_ENV:', process.env.NODE_ENV || 'not set');
 console.log('[Server] PORT:', PORT);
-console.log('[Server] MONGODB_URI defined:', !!process.env.MONGODB_URI);
+console.log('[Server] NEON_DATABASE_URL defined:', !!process.env.NEON_DATABASE_URL);
 
 // Rate limiting middleware
 const limiter = rateLimit({
@@ -25,11 +25,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/', limiter);
 
-// MongoDB connection - optimized for serverless (Vercel)
+// PostgreSQL connection - optimized for serverless (Vercel)
 connectToDatabase()
-  .then(() => console.log('[Server] MongoDB connection successful'))
+  .then(() => console.log('[Server] PostgreSQL connection successful'))
   .catch(err => {
-    console.error('[Server] MongoDB connection error:', err.message);
+    console.error('[Server] PostgreSQL connection error:', err.message);
     console.error('[Server] Full error:', err);
   });
 
