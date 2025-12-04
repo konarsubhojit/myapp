@@ -1,10 +1,17 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const { connectToDatabase } = require('./db/connection');
 
 const app = express();
+
+// Log startup environment info
+const PORT = process.env.PORT || 5000;
+console.log('[Server] Starting application...');
+console.log('[Server] NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('[Server] PORT:', PORT);
+console.log('[Server] MONGODB_URI defined:', !!process.env.MONGODB_URI);
 
 // Rate limiting middleware
 const limiter = rateLimit({
@@ -18,12 +25,13 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/', limiter);
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/orderapp';
-
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// MongoDB connection - optimized for serverless (Vercel)
+connectToDatabase()
+  .then(() => console.log('[Server] MongoDB connection successful'))
+  .catch(err => {
+    console.error('[Server] MongoDB connection error:', err.message);
+    console.error('[Server] Full error:', err);
+  });
 
 // Routes
 const itemRoutes = require('./routes/items');
@@ -37,7 +45,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`[Server] Server running on port ${PORT}`);
 });
