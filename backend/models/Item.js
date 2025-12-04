@@ -16,7 +16,10 @@ const Item = {
     return result.map(item => ({
       ...item,
       _id: item.id,
-      price: parseFloat(item.price)
+      price: parseFloat(item.price),
+      color: item.color || '',
+      fabric: item.fabric || '',
+      specialFeatures: item.specialFeatures || ''
     }));
   },
 
@@ -36,26 +39,35 @@ const Item = {
     return {
       ...result[0],
       _id: result[0].id,
-      price: parseFloat(result[0].price)
+      price: parseFloat(result[0].price),
+      color: result[0].color || '',
+      fabric: result[0].fabric || '',
+      specialFeatures: result[0].specialFeatures || ''
     };
   },
 
   /**
    * Create a new item
-   * @param {Object} data Item data (name, price)
+   * @param {Object} data Item data (name, price, color, fabric, specialFeatures)
    * @returns {Promise<Object>} Created item
    */
   async create(data) {
     const db = getDatabase();
     const result = await db.insert(items).values({
       name: data.name.trim(),
-      price: data.price.toString()
+      price: data.price.toString(),
+      color: data.color?.trim() || null,
+      fabric: data.fabric?.trim() || null,
+      specialFeatures: data.specialFeatures?.trim() || null
     }).returning();
     
     return {
       ...result[0],
       _id: result[0].id,
-      price: parseFloat(result[0].price)
+      price: parseFloat(result[0].price),
+      color: result[0].color || '',
+      fabric: result[0].fabric || '',
+      specialFeatures: result[0].specialFeatures || ''
     };
   },
 
@@ -75,7 +87,10 @@ const Item = {
     return {
       ...result[0],
       _id: result[0].id,
-      price: parseFloat(result[0].price)
+      price: parseFloat(result[0].price),
+      color: result[0].color || '',
+      fabric: result[0].fabric || '',
+      specialFeatures: result[0].specialFeatures || ''
     };
   }
 };

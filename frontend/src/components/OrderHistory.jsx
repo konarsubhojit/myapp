@@ -1,8 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { getOrdersPaginated } from '../services/api';
 
-function OrderHistory({ orders }) {
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+function OrderHistory() {
   const { formatPrice } = useCurrency();
+  const [orders, setOrders] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     customerName: '',
     customerId: '',
@@ -10,6 +17,24 @@ function OrderHistory({ orders }) {
     orderId: '',
   });
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+
+  const fetchOrders = useCallback(async (page, limit) => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await getOrdersPaginated({ page, limit });
+      setOrders(result.orders);
+      setPagination(result.pagination);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders(pagination.page, pagination.limit);
+  }, [pagination.page, pagination.limit, fetchOrders]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -20,6 +45,16 @@ function OrderHistory({ orders }) {
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
+    }
+  };
+
+  const handlePageSizeChange = (newLimit) => {
+    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
   const filteredOrders = useMemo(() => {
@@ -80,9 +115,20 @@ function OrderHistory({ orders }) {
 
   const orderSources = ['instagram', 'facebook', 'whatsapp', 'call', 'offline'];
 
+  if (loading && orders.length === 0) {
+    return (
+      <div className="panel order-history-panel">
+        <h2>Order History</h2>
+        <p className="loading-text">Loading orders...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="panel order-history-panel">
       <h2>Order History</h2>
+      
+      {error && <p className="error">{error}</p>}
       
       <div className="filters-section">
         <h4>Filters</h4>
@@ -122,6 +168,21 @@ function OrderHistory({ orders }) {
           >
             Clear Filters
           </button>
+        </div>
+      </div>
+
+      <div className="pagination-controls">
+        <div className="page-size-selector">
+          <label htmlFor="pageSize">Items per page:</label>
+          <select
+            id="pageSize"
+            value={pagination.limit}
+            onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+          >
+            {PAGE_SIZE_OPTIONS.map(size => (
+              <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -169,6 +230,9 @@ function OrderHistory({ orders }) {
                       {order.items.map((item, idx) => (
                         <li key={idx}>
                           {item.name} × {item.quantity}
+                          {item.customizationRequest && (
+                            <span className="customization-note"> ({item.customizationRequest})</span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -181,9 +245,42 @@ function OrderHistory({ orders }) {
           </table>
         </div>
       )}
-      
-      <div className="orders-summary">
-        Showing {sortedOrders.length} of {orders.length} orders
+
+      <div className="pagination-footer">
+        <div className="pagination-info">
+          Showing {sortedOrders.length} of {pagination.total} orders (Page {pagination.page} of {pagination.totalPages})
+        </div>
+        <div className="pagination-buttons">
+          <button
+            className="pagination-btn"
+            onClick={() => handlePageChange(1)}
+            disabled={pagination.page === 1}
+          >
+            First
+          </button>
+          <button
+            className="pagination-btn"
+            onClick={() => handlePageChange(pagination.page - 1)}
+            disabled={pagination.page === 1}
+          >
+            Previous
+          </button>
+          <span className="page-indicator">Page {pagination.page}</span>
+          <button
+            className="pagination-btn"
+            onClick={() => handlePageChange(pagination.page + 1)}
+            disabled={pagination.page === pagination.totalPages}
+          >
+            Next
+          </button>
+          <button
+            className="pagination-btn"
+            onClick={() => handlePageChange(pagination.totalPages)}
+            disabled={pagination.page === pagination.totalPages}
+          >
+            Last
+          </button>
+        </div>
       </div>
     </div>
   );

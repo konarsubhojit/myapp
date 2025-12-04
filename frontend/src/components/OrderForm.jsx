@@ -21,7 +21,7 @@ function OrderForm({ items, onOrderCreated }) {
   const [createdOrder, setCreatedOrder] = useState(null);
 
   const handleAddItem = () => {
-    setOrderItems([...orderItems, { itemId: '', quantity: 1 }]);
+    setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
   };
 
   const handleRemoveItem = (index) => {
@@ -146,35 +146,46 @@ function OrderForm({ items, onOrderCreated }) {
             const lineTotal = selectedItem ? selectedItem.price * orderItem.quantity : 0;
             
             return (
-              <div key={index} className="order-item-row">
-                <select
-                  value={orderItem.itemId}
-                  onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
-                >
-                  <option value="">Select item</option>
-                  {items.map((item) => (
-                    <option key={item._id} value={item._id}>
-                      {item.name} - {formatPrice(item.price)}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={orderItem.quantity}
-                  onChange={(e) =>
-                    handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 1)
-                  }
-                  placeholder="Qty"
-                />
-                <span className="line-total">{formatPrice(lineTotal)}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveItem(index)}
-                  className="remove-btn"
-                >
-                  Remove
-                </button>
+              <div key={index} className="order-item-block">
+                <div className="order-item-row">
+                  <select
+                    value={orderItem.itemId}
+                    onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
+                  >
+                    <option value="">Select item</option>
+                    {items.map((item) => (
+                      <option key={item._id} value={item._id}>
+                        {item.name} - {formatPrice(item.price)}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={orderItem.quantity}
+                    onChange={(e) =>
+                      handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 1)
+                    }
+                    placeholder="Qty"
+                  />
+                  <span className="line-total">{formatPrice(lineTotal)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(index)}
+                    className="remove-btn"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="customization-row">
+                  <input
+                    type="text"
+                    value={orderItem.customizationRequest}
+                    onChange={(e) => handleItemChange(index, 'customizationRequest', e.target.value)}
+                    placeholder="Customization request (optional)"
+                    className="customization-input"
+                  />
+                </div>
               </div>
             );
           })}

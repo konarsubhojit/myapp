@@ -13,6 +13,7 @@ function AppContent() {
   const [orders, setOrders] = useState([])
   const [activeTab, setActiveTab] = useState('orders')
   const [loading, setLoading] = useState(true)
+  const [orderHistoryKey, setOrderHistoryKey] = useState(0)
 
   const fetchItems = async () => {
     try {
@@ -30,6 +31,12 @@ function AppContent() {
     } catch (error) {
       console.error('Error fetching orders:', error)
     }
+  }
+
+  const handleOrderCreated = () => {
+    fetchOrders()
+    // Increment key to trigger OrderHistory refresh when switching tabs
+    setOrderHistoryKey(prev => prev + 1)
   }
 
   useEffect(() => {
@@ -83,7 +90,7 @@ function AppContent() {
         {activeTab === 'orders' && (
           <OrderForm 
             items={items} 
-            onOrderCreated={fetchOrders} 
+            onOrderCreated={handleOrderCreated} 
           />
         )}
 
@@ -95,7 +102,7 @@ function AppContent() {
         )}
 
         {activeTab === 'history' && (
-          <OrderHistory orders={orders} />
+          <OrderHistory key={orderHistoryKey} />
         )}
 
         {activeTab === 'sales' && (

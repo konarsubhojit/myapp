@@ -89,6 +89,9 @@ function SalesReport({ orders }) {
     return Math.max(...counts);
   };
 
+  // Get the top selling item for the highlight card
+  const topSellingItem = currentStats.topItems.length > 0 ? currentStats.topItems[0] : null;
+
   return (
     <div className="panel sales-report-panel">
       <h2>Sales Report & Analytics</h2>
@@ -118,6 +121,12 @@ function SalesReport({ orders }) {
           <div className="stat-value">{formatPrice(currentStats.averageOrderValue)}</div>
           <div className="stat-label">Avg. Order Value</div>
         </div>
+        {topSellingItem && (
+          <div className="stat-card top-seller-card">
+            <div className="stat-value top-seller-name">{topSellingItem.name}</div>
+            <div className="stat-label">🏆 Top Selling Item ({topSellingItem.quantity} units)</div>
+          </div>
+        )}
       </div>
 
       <div className="analytics-sections">
@@ -128,14 +137,15 @@ function SalesReport({ orders }) {
           ) : (
             <div className="top-items-chart">
               {currentStats.topItems.map((item, idx) => (
-                <div key={item.name} className="chart-bar-container">
+                <div key={item.name} className={`chart-bar-container ${idx === 0 ? 'top-seller' : ''}`}>
                   <div className="chart-label">
                     <span className="rank">#{idx + 1}</span>
                     <span className="item-name">{item.name}</span>
+                    {idx === 0 && <span className="top-badge">🏆</span>}
                   </div>
                   <div className="chart-bar-wrapper">
                     <div 
-                      className="chart-bar"
+                      className={`chart-bar ${idx === 0 ? 'top-seller-bar' : ''}`}
                       style={{ width: `${(item.quantity / getMaxQuantity()) * 100}%` }}
                     >
                       <span className="bar-value">{item.quantity} units</span>
@@ -176,26 +186,28 @@ function SalesReport({ orders }) {
 
       <div className="all-time-comparison">
         <h3>Period Comparison</h3>
-        <table className="comparison-table">
-          <thead>
-            <tr>
-              <th>Period</th>
-              <th>Orders</th>
-              <th>Total Sales</th>
-              <th>Avg. Order Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {TIME_RANGES.map(range => (
-              <tr key={range.key} className={selectedRange === range.key ? 'selected' : ''}>
-                <td>{range.label}</td>
-                <td>{analytics[range.key]?.orderCount || 0}</td>
-                <td>{formatPrice(analytics[range.key]?.totalSales || 0)}</td>
-                <td>{formatPrice(analytics[range.key]?.averageOrderValue || 0)}</td>
+        <div className="comparison-table-container">
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Orders</th>
+                <th>Total Sales</th>
+                <th>Avg. Order Value</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {TIME_RANGES.map(range => (
+                <tr key={range.key} className={selectedRange === range.key ? 'selected' : ''}>
+                  <td>{range.label}</td>
+                  <td>{analytics[range.key]?.orderCount || 0}</td>
+                  <td>{formatPrice(analytics[range.key]?.totalSales || 0)}</td>
+                  <td>{formatPrice(analytics[range.key]?.averageOrderValue || 0)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

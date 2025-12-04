@@ -8,8 +8,22 @@ const logger = createLogger('OrdersRoute');
 
 router.get('/', async (req, res) => {
   try {
-    const orders = await Order.find();
-    res.json(orders);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    
+    // Validate limit to be one of allowed values
+    const allowedLimits = [10, 20, 50];
+    const validLimit = allowedLimits.includes(limit) ? limit : 10;
+    
+    // If page and limit params are provided, use paginated find
+    if (req.query.page || req.query.limit) {
+      const result = await Order.findPaginated({ page, limit: validLimit });
+      res.json(result);
+    } else {
+      // Legacy: return all orders for backwards compatibility (used by sales report)
+      const orders = await Order.find();
+      res.json(orders);
+    }
   } catch (error) {
     logger.error('Failed to fetch orders', error);
     res.status(500).json({ message: 'Failed to fetch orders' });
@@ -46,7 +60,8 @@ router.post('/', async (req, res) => {
         item: item._id,
         name: item.name,
         price: item.price,
-        quantity: quantity
+        quantity: quantity,
+        customizationRequest: orderItem.customizationRequest || ''
       });
 
       totalPrice += item.price * quantity;
