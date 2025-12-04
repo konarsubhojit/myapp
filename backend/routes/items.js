@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { name, price } = req.body;
+    const { name, price, color, fabric, specialFeatures } = req.body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ message: 'Item name is required' });
@@ -30,7 +30,10 @@ router.post('/', async (req, res) => {
 
     const newItem = await Item.create({
       name: name.trim(),
-      price: parsedPrice
+      price: parsedPrice,
+      color: color || '',
+      fabric: fabric || '',
+      specialFeatures: specialFeatures || ''
     });
     
     logger.info('Item created', { itemId: newItem._id, name: newItem.name });

@@ -1,4 +1,4 @@
-const { eq, desc } = require('drizzle-orm');
+const { eq, desc, sql } = require('drizzle-orm');
 const { getDatabase } = require('../db/connection');
 const { orders, orderItems } = require('../db/schema');
 
@@ -35,13 +35,66 @@ const Order = {
             ...item,
             _id: item.id,
             item: item.itemId,
-            price: parseFloat(item.price)
+            price: parseFloat(item.price),
+            customizationRequest: item.customizationRequest || ''
           }))
         };
       })
     );
     
     return ordersWithItems;
+  },
+
+  /**
+   * Get orders with server-side pagination
+   * @param {Object} options Pagination options
+   * @param {number} options.page Page number (1-based)
+   * @param {number} options.limit Number of orders per page
+   * @returns {Promise<Object>} Paginated orders with metadata
+   */
+  async findPaginated({ page = 1, limit = 10 }) {
+    const db = getDatabase();
+    const offset = (page - 1) * limit;
+    
+    // Get total count
+    const countResult = await db.select({ count: sql`count(*)` }).from(orders);
+    const total = parseInt(countResult[0].count, 10);
+    
+    // Get paginated orders
+    const ordersResult = await db.select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Fetch items for each order
+    const ordersWithItems = await Promise.all(
+      ordersResult.map(async (order) => {
+        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+        return {
+          ...order,
+          _id: order.id,
+          totalPrice: parseFloat(order.totalPrice),
+          items: itemsResult.map(item => ({
+            ...item,
+            _id: item.id,
+            item: item.itemId,
+            price: parseFloat(item.price),
+            customizationRequest: item.customizationRequest || ''
+          }))
+        };
+      })
+    );
+    
+    return {
+      orders: ordersWithItems,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   },
 
   /**
@@ -68,7 +121,8 @@ const Order = {
         ...item,
         _id: item.id,
         item: item.itemId,
-        price: parseFloat(item.price)
+        price: parseFloat(item.price),
+        customizationRequest: item.customizationRequest || ''
       }))
     };
   },
@@ -95,13 +149,14 @@ const Order = {
     
     const newOrder = orderResult[0];
     
-    // Insert order items
+    // Insert order items with customization request
     const orderItemsData = data.items.map(item => ({
       orderId: newOrder.id,
       itemId: item.item,
       name: item.name,
       price: item.price.toString(),
-      quantity: item.quantity
+      quantity: item.quantity,
+      customizationRequest: item.customizationRequest?.trim() || null
     }));
     
     const itemsResult = await db.insert(orderItems).values(orderItemsData).returning();
@@ -114,7 +169,8 @@ const Order = {
         ...item,
         _id: item.id,
         item: item.itemId,
-        price: parseFloat(item.price)
+        price: parseFloat(item.price),
+        customizationRequest: item.customizationRequest || ''
       }))
     };
   }

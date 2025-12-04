@@ -8,6 +8,9 @@ const items = pgTable('items', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  color: text('color'),
+  fabric: text('fabric'),
+  specialFeatures: text('special_features'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
@@ -29,7 +32,8 @@ const orderItems = pgTable('order_items', {
   itemId: integer('item_id').notNull().references(() => items.id),
   name: text('name').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
-  quantity: integer('quantity').notNull()
+  quantity: integer('quantity').notNull(),
+  customizationRequest: text('customization_request')
 });
 
 module.exports = { items, orders, orderItems, orderFromEnum };
