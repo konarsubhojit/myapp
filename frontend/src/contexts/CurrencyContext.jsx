@@ -1,11 +1,11 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 
 const CURRENCIES = [
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee', locale: 'en-IN' },
+  { code: 'USD', symbol: '$', name: 'US Dollar', locale: 'en-US' },
+  { code: 'EUR', symbol: '€', name: 'Euro', locale: 'de-DE' },
+  { code: 'GBP', symbol: '£', name: 'British Pound', locale: 'en-GB' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen', locale: 'ja-JP' },
 ];
 
 const CurrencyContext = createContext(undefined);
@@ -22,9 +22,14 @@ export function useCurrency() {
 export function CurrencyProvider({ children }) {
   const [currency, setCurrency] = useState(CURRENCIES[0]); // INR as default
 
-  const formatPrice = (amount) => {
-    return `${currency.symbol}${amount.toFixed(2)}`;
-  };
+  const formatPrice = useCallback((amount) => {
+    return new Intl.NumberFormat(currency.locale, {
+      style: 'currency',
+      currency: currency.code,
+      minimumFractionDigits: currency.code === 'JPY' ? 0 : 2,
+      maximumFractionDigits: currency.code === 'JPY' ? 0 : 2,
+    }).format(amount);
+  }, [currency]);
 
   return (
     <CurrencyContext.Provider value={{ currency, setCurrency, currencies: CURRENCIES, formatPrice }}>
