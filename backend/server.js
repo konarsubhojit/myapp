@@ -3,7 +3,6 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { connectToDatabase } = require('./db/connection');
-const { runMigrations } = require('./db/migrate');
 const { createLogger } = require('./utils/logger');
 
 const logger = createLogger('Server');
@@ -30,9 +29,6 @@ app.use('/api/', limiter);
 
 async function initializeDatabase() {
   try {
-    await runMigrations();
-    logger.info('Database migrations completed');
-    
     await connectToDatabase();
     logger.info('PostgreSQL connection successful');
   } catch (err) {
