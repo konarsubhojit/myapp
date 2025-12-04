@@ -1,15 +1,53 @@
-# React + Vite
+# Order Management System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React frontend for the Order Management System built with Vite.
 
-Currently, two official plugins are available:
+## Environment Variables
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The frontend requires configuration for connecting to the backend API. Copy `.env.example` to `.env` and configure:
 
-## React Compiler
+```bash
+cp .env.example .env
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_URL` | Backend API URL | `http://localhost:5000/api` |
+
+### Production Deployment
+
+When deploying the frontend and backend as separate services (e.g., Azure App Services), set `VITE_API_URL` to your deployed backend URL:
+
+```bash
+VITE_API_URL=https://your-backend-app.azurewebsites.net/api
+```
+
+**Important:** Environment variables prefixed with `VITE_` are embedded into the build at build time. You must set the environment variable before running `npm run build`.
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+## Production Build
+
+```bash
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+## Tech Stack
+
+- React 19 with Vite
+- ESLint for linting
 
 ## Expanding the ESLint configuration
 
