@@ -1,25 +1,16 @@
-const mongoose = require('mongoose');
-const { attachDatabasePool } = require('@vercel/functions');
+const { drizzle } = require('drizzle-orm/neon-http');
+const { neon } = require('@neondatabase/serverless');
 
-// MongoDB connection options optimized for serverless
-const mongooseOptions = {
-  maxPoolSize: 10,
-  minPoolSize: 1,
-  maxIdleTimeMS: 30000,
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
-};
-
-// Cache the connection promise for reuse across invocations
-let cached = global.mongoose;
+// Cache the database connection for reuse across invocations
+let cached = global.neonDb;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = global.neonDb = { db: null };
 }
 
 /**
  * Mask sensitive parts of the connection URI for logging
- * @param {string} uri MongoDB connection URI
+ * @param {string} uri PostgreSQL connection URI
  * @returns {string} Masked URI safe for logging
  */
 function maskUri(uri) {
@@ -33,67 +24,53 @@ function maskUri(uri) {
 }
 
 /**
- * Connect to MongoDB with caching for serverless environments.
- * Uses @vercel/functions attachDatabasePool for proper cleanup on function suspension.
- * @returns {Promise<mongoose.Connection>} Mongoose connection
+ * Get Drizzle database connection for Neon PostgreSQL.
+ * Optimized for serverless environments like Vercel.
+ * @returns {Object} Drizzle database instance
  */
-async function connectToDatabase() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/orderapp';
-  const isUriFromEnv = !!process.env.MONGODB_URI;
+function getDatabase() {
+  const uri = process.env.DATABASE_URL;
+  const isUriFromEnv = !!process.env.DATABASE_URL;
 
   // Debug logging for connection diagnostics
-  console.log('[MongoDB] Connection attempt starting...');
-  console.log('[MongoDB] Environment:', process.env.NODE_ENV || 'not set');
-  console.log('[MongoDB] MONGODB_URI from env:', isUriFromEnv ? 'yes' : 'no (using default)');
-  console.log('[MongoDB] Connection URI (masked):', maskUri(uri));
-  console.log('[MongoDB] Connection options:', JSON.stringify(mongooseOptions));
+  console.log('[PostgreSQL] Getting database connection...');
+  console.log('[PostgreSQL] Environment:', process.env.NODE_ENV || 'not set');
+  console.log('[PostgreSQL] DATABASE_URL from env:', isUriFromEnv ? 'yes' : 'no');
+  console.log('[PostgreSQL] Connection URI (masked):', maskUri(uri));
 
-  if (cached.conn) {
-    console.log('[MongoDB] Returning cached connection');
-    return cached.conn;
+  if (cached.db) {
+    console.log('[PostgreSQL] Returning cached connection');
+    return cached.db;
   }
 
-  if (!cached.promise) {
-    console.log('[MongoDB] Creating new connection...');
-    const startTime = Date.now();
-
-    cached.promise = mongoose.connect(uri, mongooseOptions).then((mongoose) => {
-      const duration = Date.now() - startTime;
-      console.log(`[MongoDB] Connection established in ${duration}ms`);
-
-      // Attach the mongoose connection for proper cleanup on Vercel
-      // The underlying connection is exposed via mongoose.connection.getClient()
-      try {
-        const client = mongoose.connection.getClient();
-        attachDatabasePool(client);
-        console.log('[MongoDB] Database pool attached for Vercel cleanup');
-      } catch (error) {
-        // attachDatabasePool may not be available in non-Vercel environments
-        // This is expected behavior in local development
-        console.warn('[MongoDB] Could not attach database pool:', error.message);
-      }
-      return mongoose;
-    }).catch((error) => {
-      const duration = Date.now() - startTime;
-      console.error(`[MongoDB] Connection failed after ${duration}ms`);
-      console.error('[MongoDB] Error name:', error.name);
-      console.error('[MongoDB] Error message:', error.message);
-      console.error('[MongoDB] Error code:', error.code);
-      if (error.reason) {
-        console.error('[MongoDB] Error reason:', JSON.stringify(error.reason, null, 2));
-      }
-      throw error;
-    });
+  if (!uri) {
+    throw new Error('DATABASE_URL environment variable is not set');
   }
+
+  console.log('[PostgreSQL] Creating new connection...');
+  const startTime = Date.now();
 
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
+    const sql = neon(uri);
+    cached.db = drizzle({ client: sql });
+    const duration = Date.now() - startTime;
+    console.log(`[PostgreSQL] Connection established in ${duration}ms`);
+    return cached.db;
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[PostgreSQL] Connection failed after ${duration}ms`);
+    console.error('[PostgreSQL] Error name:', error.name);
+    console.error('[PostgreSQL] Error message:', error.message);
+    throw error;
   }
-
-  return cached.conn;
 }
 
-module.exports = { connectToDatabase };
+/**
+ * Connect to the database (for backwards compatibility with server.js)
+ * @returns {Promise<Object>} Database connection
+ */
+async function connectToDatabase() {
+  return getDatabase();
+}
+
+module.exports = { connectToDatabase, getDatabase };
