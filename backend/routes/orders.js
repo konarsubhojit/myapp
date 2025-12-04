@@ -2,23 +2,32 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Item = require('../models/Item');
+const { createLogger } = require('../utils/logger');
 
-// Get all orders
+const logger = createLogger('OrdersRoute');
+
 router.get('/', async (req, res) => {
   try {
     const orders = await Order.find();
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Failed to fetch orders', error);
+    res.status(500).json({ message: 'Failed to fetch orders' });
   }
 });
 
-// Create a new order
 router.post('/', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items } = req.body;
 
-    // Validate items and calculate total price
+    if (!orderFrom || !customerName || !customerId) {
+      return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
+    }
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'At least one item is required' });
+    }
+
     let totalPrice = 0;
     const orderItems = [];
 
@@ -29,8 +38,8 @@ router.post('/', async (req, res) => {
       }
       
       const quantity = parseInt(orderItem.quantity, 10);
-      if (quantity < 1) {
-        return res.status(400).json({ message: 'Quantity must be at least 1' });
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return res.status(400).json({ message: 'Quantity must be a positive integer' });
       }
 
       orderItems.push({
@@ -51,13 +60,14 @@ router.post('/', async (req, res) => {
       totalPrice
     });
 
+    logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
     res.status(201).json(newOrder);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    logger.error('Failed to create order', error);
+    res.status(500).json({ message: 'Failed to create order' });
   }
 });
 
-// Get a specific order
 router.get('/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -66,7 +76,8 @@ router.get('/:id', async (req, res) => {
     }
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    logger.error('Failed to fetch order', error);
+    res.status(500).json({ message: 'Failed to fetch order' });
   }
 });
 

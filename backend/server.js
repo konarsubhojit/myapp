@@ -4,15 +4,17 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { connectToDatabase } = require('./db/connection');
 const { runMigrations } = require('./db/migrate');
+const { createLogger } = require('./utils/logger');
 
+const logger = createLogger('Server');
 const app = express();
 
-// Log startup environment info
 const PORT = process.env.PORT || 5000;
-console.log('[Server] Starting application...');
-console.log('[Server] NODE_ENV:', process.env.NODE_ENV || 'not set');
-console.log('[Server] PORT:', PORT);
-console.log('[Server] NEON_DATABASE_URL defined:', !!process.env.NEON_DATABASE_URL);
+logger.info('Starting application', { 
+  nodeEnv: process.env.NODE_ENV || 'development',
+  port: PORT,
+  databaseConfigured: !!process.env.NEON_DATABASE_URL
+});
 
 // Rate limiting middleware
 const limiter = rateLimit({
@@ -26,19 +28,16 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/', limiter);
 
-// Run migrations and connect to PostgreSQL
 async function initializeDatabase() {
   try {
-    // Run migrations first to ensure tables exist
     await runMigrations();
-    console.log('[Server] Database migrations completed');
+    logger.info('Database migrations completed');
     
-    // Then connect to the database
     await connectToDatabase();
-    console.log('[Server] PostgreSQL connection successful');
+    logger.info('PostgreSQL connection successful');
   } catch (err) {
-    console.error('[Server] Database initialization error:', err.message);
-    console.error('[Server] Full error:', err);
+    logger.error('Database initialization failed', err);
+    process.exit(1);
   }
 }
 
@@ -57,5 +56,5 @@ app.get('/api/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[Server] Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
