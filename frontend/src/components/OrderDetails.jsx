@@ -2,45 +2,13 @@ import { useState, useEffect } from 'react';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrder, updateOrder } from '../services/api';
 import { getPriorityStatus } from '../utils/priorityUtils';
-
-const ORDER_STATUSES = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const ORDER_SOURCES = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'call', label: 'Call' },
-  { value: 'offline', label: 'Offline' },
-];
-
-const PAYMENT_STATUSES = [
-  { value: 'unpaid', label: 'Unpaid' },
-  { value: 'partially_paid', label: 'Partially Paid' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'cash_on_delivery', label: 'Cash on Delivery' },
-  { value: 'refunded', label: 'Refunded' },
-];
-
-const CONFIRMATION_STATUSES = [
-  { value: 'unconfirmed', label: 'Unconfirmed' },
-  { value: 'pending_confirmation', label: 'Pending Confirmation' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const PRIORITY_LEVELS = [
-  { value: 0, label: 'Normal' },
-  { value: 1, label: 'Low Priority' },
-  { value: 2, label: 'Medium Priority' },
-  { value: 3, label: 'High Priority' },
-  { value: 4, label: 'Urgent' },
-  { value: 5, label: 'Critical' },
-];
+import {
+  ORDER_SOURCES,
+  ORDER_STATUSES,
+  PAYMENT_STATUSES,
+  CONFIRMATION_STATUSES,
+  PRIORITY_LEVELS,
+} from '../constants/orderConstants';
 
 function OrderDetails({ orderId, onClose, onOrderUpdated }) {
   const { formatPrice } = useCurrency();
@@ -393,7 +361,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
                     onChange={(e) => handleEditChange('customerNotes', e.target.value)}
                     placeholder="Enter any notes about this customer or order"
                     rows={3}
-                    style={{ resize: 'vertical', width: '100%', padding: '12px 16px', border: '2px solid #e2e8f0', borderRadius: '10px', fontSize: '15px' }}
+                    className="customer-notes-input"
                   />
                 </div>
               </div>

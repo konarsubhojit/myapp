@@ -2600,3 +2600,31 @@ button[type="submit"]:disabled {
 .confirmation-cell {
   white-space: nowrap;
 }
+
+/* Customer Notes Input */
+.customer-notes-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  resize: vertical;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  background: #fafbfc;
+}
+
+.customer-notes-input:hover {
+  border-color: #cbd5e1;
+}
+
+.customer-notes-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.customer-notes-input::placeholder {
+  color: #94a3b8;
+}

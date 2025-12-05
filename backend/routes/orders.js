@@ -3,6 +3,14 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Item = require('../models/Item');
 const { createLogger } = require('../utils/logger');
+const {
+  VALID_ORDER_STATUSES,
+  VALID_PAYMENT_STATUSES,
+  VALID_CONFIRMATION_STATUSES,
+  MAX_CUSTOMER_NOTES_LENGTH,
+  PRIORITY_MIN,
+  PRIORITY_MAX,
+} = require('../constants/orderConstants');
 
 const logger = createLogger('OrdersRoute');
 
@@ -37,8 +45,8 @@ router.post('/', async (req, res) => {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
     // Validate customerNotes length
-    if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > 5000) {
-      return res.status(400).json({ message: 'Customer notes cannot exceed 5000 characters' });
+    if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
     }
     if (!orderFrom || !customerName || !customerId) {
       return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
@@ -68,15 +76,13 @@ router.post('/', async (req, res) => {
     }
 
     // Validate payment status if provided
-    const validPaymentStatuses = ['unpaid', 'partially_paid', 'paid', 'cash_on_delivery', 'refunded'];
-    if (paymentStatus && !validPaymentStatuses.includes(paymentStatus)) {
-      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${validPaymentStatuses.join(', ')}` });
+    if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
     }
 
     // Validate confirmation status if provided
-    const validConfirmationStatuses = ['unconfirmed', 'pending_confirmation', 'confirmed', 'cancelled'];
-    if (confirmationStatus && !validConfirmationStatuses.includes(confirmationStatus)) {
-      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${validConfirmationStatuses.join(', ')}` });
+    if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
     }
 
     // Validate paid amount if provided
@@ -92,8 +98,8 @@ router.post('/', async (req, res) => {
     let parsedPriority = 0;
     if (priority !== undefined && priority !== null) {
       parsedPriority = parseInt(priority, 10);
-      if (isNaN(parsedPriority) || parsedPriority < 0 || parsedPriority > 5) {
-        return res.status(400).json({ message: 'Priority must be a number between 0 and 5' });
+      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
       }
     }
 
@@ -177,7 +183,6 @@ router.put('/:id', async (req, res) => {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
     // Validate customerNotes length if provided
-    const MAX_CUSTOMER_NOTES_LENGTH = 1000;
     if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
       return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
     }
@@ -191,21 +196,18 @@ router.put('/:id', async (req, res) => {
     }
 
     // Validate status if provided
-    const validStatuses = ['pending', 'processing', 'completed', 'cancelled'];
-    if (status !== undefined && !validStatuses.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` });
     }
 
     // Validate payment status if provided
-    const validPaymentStatuses = ['unpaid', 'partially_paid', 'paid', 'cash_on_delivery', 'refunded'];
-    if (paymentStatus !== undefined && !validPaymentStatuses.includes(paymentStatus)) {
-      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${validPaymentStatuses.join(', ')}` });
+    if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
     }
 
     // Validate confirmation status if provided
-    const validConfirmationStatuses = ['unconfirmed', 'pending_confirmation', 'confirmed', 'cancelled'];
-    if (confirmationStatus !== undefined && !validConfirmationStatuses.includes(confirmationStatus)) {
-      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${validConfirmationStatuses.join(', ')}` });
+    if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
     }
 
     // Validate paid amount if provided
@@ -221,8 +223,8 @@ router.put('/:id', async (req, res) => {
     let parsedPriority;
     if (priority !== undefined) {
       parsedPriority = parseInt(priority, 10);
-      if (isNaN(parsedPriority) || parsedPriority < 0 || parsedPriority > 5) {
-        return res.status(400).json({ message: 'Priority must be a number between 0 and 5' });
+      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
       }
     }
 

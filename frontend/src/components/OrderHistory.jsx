@@ -3,23 +3,15 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
+import {
+  ORDER_SOURCES,
+  PAYMENT_STATUSES,
+  CONFIRMATION_STATUSES,
+  getPaymentStatusLabel,
+  getConfirmationStatusLabel,
+} from '../constants/orderConstants';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-const PAYMENT_STATUS_LABELS = {
-  unpaid: 'Unpaid',
-  partially_paid: 'Partial',
-  paid: 'Paid',
-  cash_on_delivery: 'COD',
-  refunded: 'Refunded'
-};
-
-const CONFIRMATION_STATUS_LABELS = {
-  unconfirmed: 'Unconfirmed',
-  pending_confirmation: 'Pending',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled'
-};
 
 function OrderHistory() {
   const { formatPrice } = useCurrency();
@@ -148,8 +140,6 @@ function OrderHistory() {
     return sortConfig.direction === 'asc' ? '↑' : '↓';
   };
 
-  const orderSources = ['instagram', 'facebook', 'whatsapp', 'call', 'offline'];
-
   if (initialLoading) {
     return (
       <div className="panel order-history-panel">
@@ -214,9 +204,9 @@ function OrderHistory() {
             onChange={(e) => handleFilterChange('orderFrom', e.target.value)}
           >
             <option value="">All Sources</option>
-            {orderSources.map(source => (
-              <option key={source} value={source}>
-                {source.charAt(0).toUpperCase() + source.slice(1)}
+            {ORDER_SOURCES.map(source => (
+              <option key={source.value} value={source.value}>
+                {source.label}
               </option>
             ))}
           </select>
@@ -225,21 +215,22 @@ function OrderHistory() {
             onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
           >
             <option value="">All Confirmations</option>
-            <option value="unconfirmed">Unconfirmed</option>
-            <option value="pending_confirmation">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="cancelled">Cancelled</option>
+            {CONFIRMATION_STATUSES.map(status => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
           </select>
           <select
             value={filters.paymentStatus}
             onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
           >
             <option value="">All Payments</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="partially_paid">Partial</option>
-            <option value="paid">Paid</option>
-            <option value="cash_on_delivery">COD</option>
-            <option value="refunded">Refunded</option>
+            {PAYMENT_STATUSES.map(status => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
           </select>
           <button 
             className="clear-filters-btn"
@@ -330,7 +321,7 @@ function OrderHistory() {
                     </td>
                     <td className="confirmation-cell">
                       <span className={`confirmation-badge confirmation-${order.confirmationStatus || 'unconfirmed'}`}>
-                        {CONFIRMATION_STATUS_LABELS[order.confirmationStatus] || 'Unconfirmed'}
+                        {getConfirmationStatusLabel(order.confirmationStatus)}
                       </span>
                     </td>
                     <td className="status-cell">
@@ -340,7 +331,7 @@ function OrderHistory() {
                     </td>
                     <td className="payment-cell">
                       <span className={`payment-badge payment-${order.paymentStatus || 'unpaid'}`}>
-                        {PAYMENT_STATUS_LABELS[order.paymentStatus] || 'Unpaid'}
+                        {getPaymentStatusLabel(order.paymentStatus)}
                       </span>
                     </td>
                     <td className="total-cell">{formatPrice(order.totalPrice)}</td>

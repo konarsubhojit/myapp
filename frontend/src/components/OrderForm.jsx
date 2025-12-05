@@ -1,38 +1,12 @@
 import { useState } from 'react';
 import { createOrder } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
-
-const ORDER_SOURCES = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'call', label: 'Call' },
-  { value: 'offline', label: 'Offline' },
-];
-
-const PAYMENT_STATUSES = [
-  { value: 'unpaid', label: 'Unpaid' },
-  { value: 'partially_paid', label: 'Partially Paid' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'cash_on_delivery', label: 'Cash on Delivery' },
-  { value: 'refunded', label: 'Refunded' },
-];
-
-const CONFIRMATION_STATUSES = [
-  { value: 'unconfirmed', label: 'Unconfirmed' },
-  { value: 'pending_confirmation', label: 'Pending Confirmation' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const PRIORITY_LEVELS = [
-  { value: 0, label: 'Normal' },
-  { value: 1, label: 'Low Priority' },
-  { value: 2, label: 'Medium Priority' },
-  { value: 3, label: 'High Priority' },
-  { value: 4, label: 'Urgent' },
-  { value: 5, label: 'Critical' },
-];
+import {
+  ORDER_SOURCES,
+  PAYMENT_STATUSES,
+  CONFIRMATION_STATUSES,
+  PRIORITY_LEVELS,
+} from '../constants/orderConstants';
 
 // Format item display name with color and fabric info
 const formatItemDisplayName = (item) => {
@@ -278,7 +252,7 @@ function OrderForm({ items, onOrderCreated }) {
             onChange={(e) => setCustomerNotes(e.target.value)}
             placeholder="Enter any notes about this customer or order (e.g., follow-up needed, special requirements)"
             rows={3}
-            style={{ resize: 'vertical' }}
+            className="customer-notes-input"
           />
         </div>
 
