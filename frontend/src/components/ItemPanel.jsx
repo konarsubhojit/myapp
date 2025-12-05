@@ -1,12 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max
 
+// Parse URL params to state
+const parseUrlParams = (searchParams) => {
+  const page = parseInt(searchParams.get('page'), 10);
+  const limit = parseInt(searchParams.get('limit'), 10);
+  
+  return {
+    page: Number.isNaN(page) || page < 1 ? 1 : page,
+    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
+    search: searchParams.get('search') || '',
+    showDeleted: searchParams.get('deleted') === 'true',
+  };
+};
+
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Parse initial state from URL
+  const initialState = parseUrlParams(searchParams);
+  
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [color, setColor] = useState('');
@@ -23,18 +42,33 @@ function ItemPanel({ onItemsChange }) {
   
   // Pagination and search for active items
   const [activeItemsData, setActiveItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
-  const [activeSearch, setActiveSearch] = useState('');
-  const [activeSearchInput, setActiveSearchInput] = useState('');
-  const [activePagination, setActivePagination] = useState({ page: 1, limit: 10 });
+  const [activeSearch, setActiveSearch] = useState(initialState.search);
+  const [activeSearchInput, setActiveSearchInput] = useState(initialState.search);
+  const [activePagination, setActivePagination] = useState({ page: initialState.page, limit: initialState.limit });
   const [loadingActive, setLoadingActive] = useState(false);
   
   // Deleted items section
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(initialState.showDeleted);
   const [deletedItemsData, setDeletedItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
   const [deletedSearch, setDeletedSearch] = useState('');
   const [deletedSearchInput, setDeletedSearchInput] = useState('');
   const [deletedPagination, setDeletedPagination] = useState({ page: 1, limit: 10 });
   const [loadingDeleted, setLoadingDeleted] = useState(false);
+
+  // Update URL when state changes
+  const updateUrl = useCallback((search, pagination, deleted) => {
+    const params = new URLSearchParams();
+    if (pagination.page > 1) params.set('page', pagination.page);
+    if (pagination.limit !== 10) params.set('limit', pagination.limit);
+    if (search) params.set('search', search);
+    if (deleted) params.set('deleted', 'true');
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
+
+  // Update URL when state changes
+  useEffect(() => {
+    updateUrl(activeSearch, activePagination, showDeleted);
+  }, [activeSearch, activePagination, showDeleted, updateUrl]);
 
   const fetchActiveItems = useCallback(async () => {
     setLoadingActive(true);

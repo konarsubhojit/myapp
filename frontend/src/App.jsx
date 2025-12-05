@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
@@ -13,33 +14,34 @@ function AppContent() {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth()
   const [items, setItems] = useState([])
   const [orders, setOrders] = useState([])
-  const [activeTab, setActiveTab] = useState('orders')
   const [loading, setLoading] = useState(true)
   const [orderHistoryKey, setOrderHistoryKey] = useState(0)
+  const location = useLocation()
+  const navigate = useNavigate()
 
-  const fetchItems = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       const data = await getItems()
       setItems(data)
     } catch (error) {
       console.error('Error fetching items:', error)
     }
-  }
+  }, [])
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const data = await getOrders()
       setOrders(data)
     } catch (error) {
       console.error('Error fetching orders:', error)
     }
-  }
+  }, [])
 
-  const handleOrderCreated = () => {
+  const handleOrderCreated = useCallback(() => {
     fetchOrders()
     // Increment key to trigger OrderHistory refresh when switching tabs
     setOrderHistoryKey(prev => prev + 1)
-  }
+  }, [fetchOrders])
 
   useEffect(() => {
     let isMounted = true;
@@ -60,7 +62,7 @@ function AppContent() {
     return () => {
       isMounted = false
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, fetchItems, fetchOrders])
 
   // Show loading while checking auth
   if (authLoading) {
@@ -89,53 +91,83 @@ function AppContent() {
       </header>
 
       <nav className="tabs">
-        <button
-          className={activeTab === 'orders' ? 'active' : ''}
-          onClick={() => setActiveTab('orders')}
+        <NavLink
+          to="/orders/new"
+          className={({ isActive }) => isActive || location.pathname.startsWith('/orders/new') || location.pathname.startsWith('/orders/duplicate') ? 'active' : ''}
         >
           Create Order
-        </button>
-        <button
-          className={activeTab === 'items' ? 'active' : ''}
-          onClick={() => setActiveTab('items')}
+        </NavLink>
+        <NavLink
+          to="/items"
+          className={({ isActive }) => isActive || location.pathname.startsWith('/items') ? 'active' : ''}
         >
           Manage Items
-        </button>
-        <button
-          className={activeTab === 'history' ? 'active' : ''}
-          onClick={() => setActiveTab('history')}
+        </NavLink>
+        <NavLink
+          to="/history"
+          className={({ isActive }) => isActive || location.pathname.startsWith('/history') ? 'active' : ''}
         >
           Order History
-        </button>
-        <button
-          className={activeTab === 'sales' ? 'active' : ''}
-          onClick={() => setActiveTab('sales')}
+        </NavLink>
+        <NavLink
+          to="/sales"
+          className={({ isActive }) => isActive || location.pathname.startsWith('/sales') ? 'active' : ''}
         >
           Sales Report
-        </button>
+        </NavLink>
       </nav>
 
       <main>
-        {activeTab === 'orders' && (
-          <OrderForm 
-            items={items} 
-            onOrderCreated={handleOrderCreated} 
+        <Routes>
+          <Route 
+            path="/" 
+            element={<Navigate to="/orders/new" replace />} 
           />
-        )}
-
-        {activeTab === 'items' && (
-          <ItemPanel 
-            onItemsChange={fetchItems} 
+          <Route 
+            path="/orders/new" 
+            element={
+              <OrderForm 
+                items={items} 
+                onOrderCreated={handleOrderCreated} 
+              />
+            } 
           />
-        )}
-
-        {activeTab === 'history' && (
-          <OrderHistory key={orderHistoryKey} />
-        )}
-
-        {activeTab === 'sales' && (
-          <SalesReport orders={orders} />
-        )}
+          <Route 
+            path="/orders/duplicate/:orderId" 
+            element={
+              <OrderForm 
+                items={items} 
+                onOrderCreated={handleOrderCreated} 
+              />
+            } 
+          />
+          <Route 
+            path="/items/*" 
+            element={
+              <ItemPanel 
+                onItemsChange={fetchItems} 
+              />
+            } 
+          />
+          <Route 
+            path="/history/*" 
+            element={
+              <OrderHistory 
+                key={orderHistoryKey}
+                onDuplicateOrder={(orderId) => navigate(`/orders/duplicate/${orderId}`)}
+              />
+            } 
+          />
+          <Route 
+            path="/sales/*" 
+            element={<SalesReport orders={orders} />} 
+          />
+          {/* Catch-all route */}
+          <Route 
+            path="*" 
+            element={<Navigate to="/orders/new" replace />} 
+          />
+        </Routes>
       </main>
     </div>
   )

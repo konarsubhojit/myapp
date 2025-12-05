@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { createOrder } from '../services/api';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { createOrder, getOrder } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import {
   ORDER_SOURCES,
@@ -22,6 +23,8 @@ const formatItemDisplayName = (item) => {
 
 function OrderForm({ items, onOrderCreated }) {
   const { formatPrice } = useCurrency();
+  const { orderId: duplicateOrderId } = useParams();
+  const navigate = useNavigate();
   const [orderFrom, setOrderFrom] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -34,7 +37,65 @@ function OrderForm({ items, onOrderCreated }) {
   const [orderItems, setOrderItems] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [duplicatedFrom, setDuplicatedFrom] = useState(null);
+
+  // Load order data when duplicating
+  useEffect(() => {
+    const loadOrderForDuplication = async () => {
+      if (!duplicateOrderId || items.length === 0) return;
+      
+      setDuplicateLoading(true);
+      setError('');
+      try {
+        const order = await getOrder(duplicateOrderId);
+        setDuplicatedFrom(order.orderId);
+        
+        // Pre-fill form with order data (except payment info which should be fresh)
+        setOrderFrom(order.orderFrom || '');
+        setCustomerName(order.customerName || '');
+        setCustomerId(order.customerId || '');
+        setCustomerNotes(order.customerNotes || '');
+        setPriority(order.priority || 0);
+        
+        // Reset payment info for new order
+        setPaymentStatus('unpaid');
+        setPaidAmount('');
+        setConfirmationStatus('unconfirmed');
+        setExpectedDeliveryDate('');
+        
+        // Map order items - try to match by itemId first, then by name
+        const mappedItems = order.items.map(orderItem => {
+          // Try to find the item by ID first
+          let matchedItem = items.find(i => String(i._id) === String(orderItem.item));
+          
+          // If not found by ID, try to match by name (for cases where same item exists)
+          if (!matchedItem) {
+            matchedItem = items.find(i => i.name.toLowerCase() === orderItem.name.toLowerCase());
+          }
+          
+          return {
+            itemId: matchedItem ? String(matchedItem._id) : '',
+            quantity: orderItem.quantity || 1,
+            customizationRequest: orderItem.customizationRequest || ''
+          };
+        }).filter(item => item.itemId); // Only include items that were found
+        
+        setOrderItems(mappedItems);
+        
+        if (mappedItems.length < order.items.length) {
+          setError(`Note: Some items from the original order could not be found in current inventory.`);
+        }
+      } catch (err) {
+        setError('Failed to load order for duplication: ' + err.message);
+      } finally {
+        setDuplicateLoading(false);
+      }
+    };
+    
+    loadOrderForDuplication();
+  }, [duplicateOrderId, items]);
 
   const handleAddItem = () => {
     setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
@@ -64,6 +125,20 @@ function OrderForm({ items, onOrderCreated }) {
   const getMinDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
+  };
+
+  const resetForm = () => {
+    setOrderFrom('');
+    setCustomerName('');
+    setCustomerId('');
+    setExpectedDeliveryDate('');
+    setPaymentStatus('unpaid');
+    setPaidAmount('');
+    setConfirmationStatus('unconfirmed');
+    setCustomerNotes('');
+    setPriority(0);
+    setOrderItems([]);
+    setDuplicatedFrom(null);
   };
 
   const handleSubmit = async (e) => {
@@ -102,17 +177,13 @@ function OrderForm({ items, onOrderCreated }) {
         priority,
       });
       setCreatedOrder(order);
-      setOrderFrom('');
-      setCustomerName('');
-      setCustomerId('');
-      setExpectedDeliveryDate('');
-      setPaymentStatus('unpaid');
-      setPaidAmount('');
-      setConfirmationStatus('unconfirmed');
-      setCustomerNotes('');
-      setPriority(0);
-      setOrderItems([]);
+      resetForm();
       onOrderCreated();
+      
+      // Navigate back to /orders/new if we were duplicating
+      if (duplicateOrderId) {
+        navigate('/orders/new', { replace: true });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -120,11 +191,41 @@ function OrderForm({ items, onOrderCreated }) {
     }
   };
 
+  const handleCancelDuplicate = () => {
+    resetForm();
+    navigate('/orders/new', { replace: true });
+  };
+
   const estimatedTotal = calculateTotal();
+
+  if (duplicateLoading) {
+    return (
+      <div className="panel">
+        <h2>Loading Order Data...</h2>
+        <p className="loading-text">Preparing order for duplication...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="panel">
-      <h2>Create Order</h2>
+      <h2>{duplicatedFrom ? `Duplicate Order (from ${duplicatedFrom})` : 'Create Order'}</h2>
+
+      {duplicatedFrom && (
+        <div className="duplicate-notice">
+          <p>
+            <strong>📋 Duplicating order {duplicatedFrom}</strong> - 
+            Review the pre-filled details and make any changes before creating the new order.
+          </p>
+          <button 
+            type="button" 
+            onClick={handleCancelDuplicate}
+            className="cancel-duplicate-btn"
+          >
+            Cancel Duplication
+          </button>
+        </div>
+      )}
 
       {createdOrder && (
         <div className="success-message">
