@@ -18,6 +18,30 @@ const ORDER_SOURCES = [
   { value: 'offline', label: 'Offline' },
 ];
 
+const PAYMENT_STATUSES = [
+  { value: 'unpaid', label: 'Unpaid' },
+  { value: 'partially_paid', label: 'Partially Paid' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'cash_on_delivery', label: 'Cash on Delivery' },
+  { value: 'refunded', label: 'Refunded' },
+];
+
+const CONFIRMATION_STATUSES = [
+  { value: 'unconfirmed', label: 'Unconfirmed' },
+  { value: 'pending_confirmation', label: 'Pending Confirmation' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const PRIORITY_LEVELS = [
+  { value: 0, label: 'Normal' },
+  { value: 1, label: 'Low Priority' },
+  { value: 2, label: 'Medium Priority' },
+  { value: 3, label: 'High Priority' },
+  { value: 4, label: 'Urgent' },
+  { value: 5, label: 'Critical' },
+];
+
 function OrderDetails({ orderId, onClose, onOrderUpdated }) {
   const { formatPrice } = useCurrency();
   const [order, setOrder] = useState(null);
@@ -32,7 +56,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
     customerId: '',
     orderFrom: '',
     expectedDeliveryDate: '',
-    status: ''
+    status: '',
+    paymentStatus: '',
+    paidAmount: '',
+    confirmationStatus: '',
+    customerNotes: '',
+    priority: 0
   });
 
   useEffect(() => {
@@ -47,7 +76,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
           customerId: data.customerId || '',
           orderFrom: data.orderFrom || '',
           expectedDeliveryDate: data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : '',
-          status: data.status || 'pending'
+          status: data.status || 'pending',
+          paymentStatus: data.paymentStatus || 'unpaid',
+          paidAmount: data.paidAmount || 0,
+          confirmationStatus: data.confirmationStatus || 'unconfirmed',
+          customerNotes: data.customerNotes || '',
+          priority: data.priority || 0
         });
       } catch (err) {
         setError(err.message || 'Failed to fetch order details');
@@ -91,6 +125,18 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
       return;
     }
 
+    // Validate paid amount
+    const parsedPaidAmount = parseFloat(editForm.paidAmount);
+    if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+      setError('Paid amount must be a valid non-negative number');
+      return;
+    }
+
+    if (parsedPaidAmount > order.totalPrice) {
+      setError('Paid amount cannot exceed total price');
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -99,7 +145,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
         customerId: editForm.customerId.trim(),
         orderFrom: editForm.orderFrom,
         status: editForm.status,
-        expectedDeliveryDate: editForm.expectedDeliveryDate || null
+        expectedDeliveryDate: editForm.expectedDeliveryDate || null,
+        paymentStatus: editForm.paymentStatus,
+        paidAmount: parsedPaidAmount,
+        confirmationStatus: editForm.confirmationStatus,
+        customerNotes: editForm.customerNotes,
+        priority: parseInt(editForm.priority, 10)
       };
 
       const updatedOrder = await updateOrder(orderId, updateData);
@@ -123,7 +174,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
         customerId: order.customerId || '',
         orderFrom: order.orderFrom || '',
         expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.split('T')[0] : '',
-        status: order.status || 'pending'
+        status: order.status || 'pending',
+        paymentStatus: order.paymentStatus || 'unpaid',
+        paidAmount: order.paidAmount || 0,
+        confirmationStatus: order.confirmationStatus || 'unconfirmed',
+        customerNotes: order.customerNotes || '',
+        priority: order.priority || 0
       });
     }
   };
@@ -253,11 +309,83 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
                   </select>
                 </div>
                 <div className="form-group">
+                  <label>Confirmation Status</label>
+                  <select
+                    value={editForm.confirmationStatus}
+                    onChange={(e) => handleEditChange('confirmationStatus', e.target.value)}
+                    className="status-select"
+                  >
+                    {CONFIRMATION_STATUSES.map(status => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
                   <label>Expected Delivery Date</label>
                   <input
                     type="date"
                     value={editForm.expectedDeliveryDate}
                     onChange={(e) => handleEditChange('expectedDeliveryDate', e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Priority Level</label>
+                  <select
+                    value={editForm.priority}
+                    onChange={(e) => handleEditChange('priority', parseInt(e.target.value, 10))}
+                    className="status-select"
+                  >
+                    {PRIORITY_LEVELS.map(level => (
+                      <option key={level.value} value={level.value}>
+                        {level.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="order-details-section">
+                <h3>Payment Information</h3>
+                <div className="form-group">
+                  <label>Payment Status</label>
+                  <select
+                    value={editForm.paymentStatus}
+                    onChange={(e) => handleEditChange('paymentStatus', e.target.value)}
+                    className="status-select"
+                  >
+                    {PAYMENT_STATUSES.map(status => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {editForm.paymentStatus === 'partially_paid' && (
+                  <div className="form-group">
+                    <label>Amount Paid</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editForm.paidAmount}
+                      onChange={(e) => handleEditChange('paidAmount', e.target.value)}
+                      placeholder="Enter amount paid"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="order-details-section">
+                <h3>Customer Notes</h3>
+                <div className="form-group">
+                  <textarea
+                    value={editForm.customerNotes}
+                    onChange={(e) => handleEditChange('customerNotes', e.target.value)}
+                    placeholder="Enter any notes about this customer or order"
+                    rows={3}
+                    style={{ resize: 'vertical', width: '100%', padding: '12px 16px', border: '2px solid #e2e8f0', borderRadius: '10px', fontSize: '15px' }}
                   />
                 </div>
               </div>
@@ -302,6 +430,22 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
                   </span>
                 </div>
                 <div className="detail-row">
+                  <span className="detail-label">Confirmation:</span>
+                  <span className="detail-value">
+                    <span className={`confirmation-badge confirmation-${order.confirmationStatus || 'unconfirmed'}`}>
+                      {CONFIRMATION_STATUSES.find(s => s.value === order.confirmationStatus)?.label || 'Unconfirmed'}
+                    </span>
+                  </span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Priority:</span>
+                  <span className="detail-value">
+                    <span className={`priority-level priority-level-${order.priority || 0}`}>
+                      {PRIORITY_LEVELS.find(l => l.value === (order.priority || 0))?.label || 'Normal'}
+                    </span>
+                  </span>
+                </div>
+                <div className="detail-row">
                   <span className="detail-label">Created:</span>
                   <span className="detail-value">{formatDate(order.createdAt)}</span>
                 </div>
@@ -317,6 +461,39 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
                   </span>
                 </div>
               </div>
+
+              <div className="order-details-section">
+                <h3>Payment Information</h3>
+                <div className="detail-row">
+                  <span className="detail-label">Payment Status:</span>
+                  <span className="detail-value">
+                    <span className={`payment-badge payment-${order.paymentStatus || 'unpaid'}`}>
+                      {PAYMENT_STATUSES.find(s => s.value === order.paymentStatus)?.label || 'Unpaid'}
+                    </span>
+                  </span>
+                </div>
+                {order.paymentStatus === 'partially_paid' && (
+                  <div className="detail-row">
+                    <span className="detail-label">Amount Paid:</span>
+                    <span className="detail-value">{formatPrice(order.paidAmount || 0)}</span>
+                  </div>
+                )}
+                <div className="detail-row">
+                  <span className="detail-label">Balance Due:</span>
+                  <span className="detail-value">
+                    {formatPrice(order.totalPrice - (order.paidAmount || 0))}
+                  </span>
+                </div>
+              </div>
+
+              {order.customerNotes && (
+                <div className="order-details-section">
+                  <h3>Customer Notes</h3>
+                  <div className="customer-notes-display">
+                    {order.customerNotes}
+                  </div>
+                </div>
+              )}
 
               <div className="order-details-section">
                 <h3>Order Items</h3>

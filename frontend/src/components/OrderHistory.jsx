@@ -6,6 +6,21 @@ import OrderDetails from './OrderDetails';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
+const PAYMENT_STATUS_LABELS = {
+  unpaid: 'Unpaid',
+  partially_paid: 'Partial',
+  paid: 'Paid',
+  cash_on_delivery: 'COD',
+  refunded: 'Refunded'
+};
+
+const CONFIRMATION_STATUS_LABELS = {
+  unconfirmed: 'Unconfirmed',
+  pending_confirmation: 'Pending',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled'
+};
+
 function OrderHistory() {
   const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState([]);
@@ -19,6 +34,8 @@ function OrderHistory() {
     customerId: '',
     orderFrom: '',
     orderId: '',
+    confirmationStatus: '',
+    paymentStatus: '',
   });
   const [sortConfig, setSortConfig] = useState({ key: 'expectedDeliveryDate', direction: 'asc' });
 
@@ -82,8 +99,10 @@ function OrderHistory() {
       const matchesOrderId = order.orderId
         .toLowerCase()
         .includes(filters.orderId.toLowerCase());
+      const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
+      const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
       
-      return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId;
+      return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
     });
   }, [orders, filters]);
 
@@ -114,16 +133,6 @@ function OrderHistory() {
     });
     return sorted;
   }, [filteredOrders, sortConfig]);
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   const formatDeliveryDate = (dateString) => {
     if (!dateString) return '-';
@@ -211,9 +220,30 @@ function OrderHistory() {
               </option>
             ))}
           </select>
+          <select
+            value={filters.confirmationStatus}
+            onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
+          >
+            <option value="">All Confirmations</option>
+            <option value="unconfirmed">Unconfirmed</option>
+            <option value="pending_confirmation">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            value={filters.paymentStatus}
+            onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
+          >
+            <option value="">All Payments</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partially_paid">Partial</option>
+            <option value="paid">Paid</option>
+            <option value="cash_on_delivery">COD</option>
+            <option value="refunded">Refunded</option>
+          </select>
           <button 
             className="clear-filters-btn"
-            onClick={() => setFilters({ customerName: '', customerId: '', orderFrom: '', orderId: '' })}
+            onClick={() => setFilters({ customerName: '', customerId: '', orderFrom: '', orderId: '', confirmationStatus: '', paymentStatus: '' })}
           >
             Clear Filters
           </button>
@@ -250,24 +280,23 @@ function OrderHistory() {
                 <th onClick={() => handleSort('customerName')} className="sortable">
                   Customer {getSortIcon('customerName')}
                 </th>
-                <th onClick={() => handleSort('customerId')} className="sortable">
-                  Customer ID {getSortIcon('customerId')}
-                </th>
                 <th onClick={() => handleSort('orderFrom')} className="sortable">
                   Source {getSortIcon('orderFrom')}
+                </th>
+                <th onClick={() => handleSort('confirmationStatus')} className="sortable">
+                  Confirmation {getSortIcon('confirmationStatus')}
                 </th>
                 <th onClick={() => handleSort('status')} className="sortable">
                   Status {getSortIcon('status')}
                 </th>
-                <th>Items</th>
+                <th onClick={() => handleSort('paymentStatus')} className="sortable">
+                  Payment {getSortIcon('paymentStatus')}
+                </th>
                 <th onClick={() => handleSort('totalPrice')} className="sortable">
                   Total {getSortIcon('totalPrice')}
                 </th>
                 <th onClick={() => handleSort('expectedDeliveryDate')} className="sortable">
                   Delivery {getSortIcon('expectedDeliveryDate')}
-                </th>
-                <th onClick={() => handleSort('createdAt')} className="sortable">
-                  Created {getSortIcon('createdAt')}
                 </th>
               </tr>
             </thead>
@@ -290,11 +319,18 @@ function OrderHistory() {
                     className={`order-row clickable ${priority ? priority.className : ''}`}
                   >
                     <td className="order-id-cell">{order.orderId}</td>
-                    <td>{order.customerName}</td>
-                    <td>{order.customerId}</td>
+                    <td>
+                      <div>{order.customerName}</div>
+                      <div className="customer-id-small">{order.customerId}</div>
+                    </td>
                     <td>
                       <span className="source-badge">
                         {order.orderFrom}
+                      </span>
+                    </td>
+                    <td className="confirmation-cell">
+                      <span className={`confirmation-badge confirmation-${order.confirmationStatus || 'unconfirmed'}`}>
+                        {CONFIRMATION_STATUS_LABELS[order.confirmationStatus] || 'Unconfirmed'}
                       </span>
                     </td>
                     <td className="status-cell">
@@ -302,17 +338,10 @@ function OrderHistory() {
                         {order.status || 'pending'}
                       </span>
                     </td>
-                    <td className="items-cell">
-                      <ul className="items-list-compact">
-                        {order.items.map((item, idx) => (
-                          <li key={idx}>
-                            {item.name} × {item.quantity}
-                            {item.customizationRequest && (
-                              <span className="customization-note"> ({item.customizationRequest})</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                    <td className="payment-cell">
+                      <span className={`payment-badge payment-${order.paymentStatus || 'unpaid'}`}>
+                        {PAYMENT_STATUS_LABELS[order.paymentStatus] || 'Unpaid'}
+                      </span>
                     </td>
                     <td className="total-cell">{formatPrice(order.totalPrice)}</td>
                     <td className="delivery-cell">
@@ -325,7 +354,6 @@ function OrderHistory() {
                         </span>
                       )}
                     </td>
-                    <td className="date-cell">{formatDate(order.createdAt)}</td>
                   </tr>
                 );
               })}

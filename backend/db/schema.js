@@ -6,6 +6,12 @@ const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp',
 // Enum for order status
 const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
 
+// Enum for payment status
+const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'partially_paid', 'paid', 'cash_on_delivery', 'refunded']);
+
+// Enum for confirmation status
+const confirmationStatusEnum = pgEnum('confirmation_status', ['unconfirmed', 'pending_confirmation', 'confirmed', 'cancelled']);
+
 // Items table
 const items = pgTable('items', {
   id: serial('id').primaryKey(),
@@ -28,6 +34,11 @@ const orders = pgTable('orders', {
   customerId: text('customer_id').notNull(),
   totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
   status: text('status').default('pending'),
+  paymentStatus: text('payment_status').default('unpaid'),
+  paidAmount: numeric('paid_amount', { precision: 10, scale: 2 }).default('0'),
+  confirmationStatus: text('confirmation_status').default('unconfirmed'),
+  customerNotes: text('customer_notes'),
+  priority: integer('priority').default(0),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -43,4 +54,4 @@ const orderItems = pgTable('order_items', {
   customizationRequest: text('customization_request')
 });
 
-module.exports = { items, orders, orderItems, orderFromEnum, orderStatusEnum };
+module.exports = { items, orders, orderItems, orderFromEnum, orderStatusEnum, paymentStatusEnum, confirmationStatusEnum };
