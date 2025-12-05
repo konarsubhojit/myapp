@@ -137,6 +137,14 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
       return;
     }
 
+    // Additional validation for partially paid orders
+    if (
+      editForm.paymentStatus === 'partially_paid' &&
+      (parsedPaidAmount <= 0 || parsedPaidAmount >= order.totalPrice)
+    ) {
+      setError('For partially paid orders, paid amount must be greater than 0 and less than total price');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
