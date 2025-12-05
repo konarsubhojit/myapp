@@ -23,9 +23,9 @@ const loginRequest = {
 
 // Scopes for requesting access token for API
 const tokenRequest = {
-  scopes: [`api://${import.meta.env.VITE_AZURE_CLIENT_ID}/access_as_user`].filter(
-    (scope) => !scope.startsWith('api://') || import.meta.env.VITE_AZURE_CLIENT_ID
-  ),
+  scopes: import.meta.env.VITE_AZURE_CLIENT_ID 
+    ? [`api://${import.meta.env.VITE_AZURE_CLIENT_ID}/access_as_user`]
+    : [],
 };
 
 export { msalConfig, loginRequest, tokenRequest };

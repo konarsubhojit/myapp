@@ -62,12 +62,20 @@ async function validateMicrosoftToken(token) {
   ].filter(Boolean);
 
   const tenantId = process.env.AZURE_TENANT_ID;
-  const validIssuers = tenantId && tenantId !== 'common'
-    ? [
-        `https://login.microsoftonline.com/${tenantId}/v2.0`,
-        `https://sts.windows.net/${tenantId}/`,
-      ]
-    : undefined;
+  // For multi-tenant apps (common), we still validate Microsoft issuers pattern
+  // For single-tenant, we validate against the specific tenant
+  let validIssuers;
+  if (tenantId && tenantId !== 'common') {
+    validIssuers = [
+      `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      `https://sts.windows.net/${tenantId}/`,
+    ];
+  } else {
+    // For multi-tenant apps, validate issuer format matches Microsoft pattern
+    // The issuer must contain login.microsoftonline.com or sts.windows.net
+    // This is enforced in the verify callback below
+    logger.debug('Multi-tenant mode enabled - will validate issuer format');
+  }
 
   return new Promise((resolve, reject) => {
     const options = {
@@ -83,6 +91,14 @@ async function validateMicrosoftToken(token) {
       if (err) {
         reject(err);
       } else {
+        // For multi-tenant apps, validate issuer format
+        if (!validIssuers && payload.iss) {
+          const iss = payload.iss;
+          if (!iss.includes('login.microsoftonline.com') && !iss.includes('sts.windows.net')) {
+            reject(new Error('Invalid issuer format for Microsoft token'));
+            return;
+          }
+        }
         resolve(payload);
       }
     });
@@ -162,8 +178,14 @@ async function validateToken(token) {
  * Validates JWT token from Authorization header
  */
 async function authMiddleware(req, res, next) {
-  // Skip auth if explicitly disabled (for development)
+  // Skip auth if explicitly disabled (for development only)
+  // WARNING: This should never be enabled in production
   if (process.env.AUTH_DISABLED === 'true') {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('AUTH_DISABLED is set to true in production - this is a security risk!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+    logger.warn('Authentication is disabled - dev mode active');
     req.user = { id: 'dev-user', email: 'dev@localhost', name: 'Dev User', provider: 'dev' };
     return next();
   }

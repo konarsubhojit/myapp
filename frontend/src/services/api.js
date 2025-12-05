@@ -34,6 +34,17 @@ async function getAuthHeaders() {
   return headers;
 }
 
+// Callback for handling unauthorized responses
+let onUnauthorizedCallback = null;
+
+/**
+ * Set callback to be called when an unauthorized (401) response is received
+ * @param {Function} callback - Function to call on 401 response
+ */
+export const setOnUnauthorizedCallback = (callback) => {
+  onUnauthorizedCallback = callback;
+};
+
 /**
  * Wrapper for fetch that includes auth headers
  * @param {string} url - URL to fetch
@@ -50,9 +61,12 @@ async function authFetch(url, options = {}) {
     },
   });
   
-  // If unauthorized, clear token and let the app handle re-auth
+  // If unauthorized, notify callback to handle re-authentication
   if (response.status === 401) {
-    console.warn('Unauthorized request - token may be expired');
+    console.warn('Unauthorized request - token may be expired or invalid');
+    if (onUnauthorizedCallback) {
+      onUnauthorizedCallback();
+    }
   }
   
   return response;

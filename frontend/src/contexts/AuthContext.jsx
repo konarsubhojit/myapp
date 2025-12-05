@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo } 
 import { useMsal, useIsAuthenticated } from '@azure/msal-react';
 import { InteractionStatus } from '@azure/msal-browser';
 import { loginRequest } from '../config/authConfig';
-import { setAccessTokenGetter } from '../services/api';
+import { setAccessTokenGetter, setOnUnauthorizedCallback } from '../services/api';
 
 const AuthContext = createContext(undefined);
 
@@ -53,8 +53,9 @@ export function AuthProvider({ children }) {
       setAccessToken(response.accessToken);
       setError(null);
       return response.accessToken;
-    } catch {
+    } catch (silentError) {
       // If silent acquisition fails, try interactive
+      console.debug('Silent token acquisition failed, attempting popup:', silentError);
       try {
         const response = await instance.acquireTokenPopup({
           ...loginRequest,
@@ -124,7 +125,16 @@ export function AuthProvider({ children }) {
     if (accessToken) {
       // Check if token is still valid (basic check)
       try {
-        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        const parts = accessToken.split('.');
+        if (parts.length !== 3) {
+          // Malformed JWT, acquire new one
+          return acquireToken();
+        }
+        const payload = JSON.parse(atob(parts[1]));
+        if (typeof payload.exp !== 'number') {
+          // Invalid exp claim, acquire new one
+          return acquireToken();
+        }
         const expiry = payload.exp * 1000;
         if (Date.now() < expiry - 60000) {
           // Token valid for at least 1 more minute
@@ -137,10 +147,19 @@ export function AuthProvider({ children }) {
     return acquireToken();
   }, [accessToken, acquireToken]);
 
-  // Set the token getter for API service
+  // Handle unauthorized responses by clearing token and triggering re-auth
+  const handleUnauthorized = useCallback(() => {
+    console.warn('Handling unauthorized response - clearing token');
+    setAccessToken(null);
+    // Attempt to acquire a new token
+    acquireToken();
+  }, [acquireToken]);
+
+  // Set the token getter and unauthorized handler for API service
   useEffect(() => {
     setAccessTokenGetter(getAccessToken);
-  }, [getAccessToken]);
+    setOnUnauthorizedCallback(handleUnauthorized);
+  }, [getAccessToken, handleUnauthorized]);
 
   const value = {
     user,
