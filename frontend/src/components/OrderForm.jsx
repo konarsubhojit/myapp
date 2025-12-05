@@ -36,9 +36,10 @@ function OrderForm({ items, onOrderCreated }) {
 
   const calculateTotal = () => {
     return orderItems.reduce((total, orderItem) => {
-      const item = items.find((i) => i._id === orderItem.itemId);
-      if (item && orderItem.quantity > 0) {
-        return total + item.price * orderItem.quantity;
+      const item = items.find((i) => String(i._id) === String(orderItem.itemId));
+      const qty = parseInt(orderItem.quantity, 10);
+      if (item && !isNaN(qty) && qty > 0) {
+        return total + item.price * qty;
       }
       return total;
     }, 0);
@@ -142,8 +143,9 @@ function OrderForm({ items, onOrderCreated }) {
         <div className="order-items-section">
           <h3>Order Items</h3>
           {orderItems.map((orderItem, index) => {
-            const selectedItem = items.find(i => i._id === orderItem.itemId);
-            const lineTotal = selectedItem ? selectedItem.price * orderItem.quantity : 0;
+            const selectedItem = items.find(i => String(i._id) === String(orderItem.itemId));
+            const qty = parseInt(orderItem.quantity, 10);
+            const lineTotal = selectedItem && !isNaN(qty) && qty > 0 ? selectedItem.price * qty : 0;
             
             return (
               <div key={index} className="order-item-block">
@@ -163,9 +165,21 @@ function OrderForm({ items, onOrderCreated }) {
                     type="number"
                     min="1"
                     value={orderItem.quantity}
-                    onChange={(e) =>
-                      handleItemChange(index, 'quantity', parseInt(e.target.value, 10) || 1)
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        handleItemChange(index, 'quantity', '');
+                      } else {
+                        const parsed = parseInt(val, 10);
+                        handleItemChange(index, 'quantity', isNaN(parsed) ? '' : parsed);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (isNaN(val) || val < 1) {
+                        handleItemChange(index, 'quantity', 1);
+                      }
+                    }}
                     placeholder="Qty"
                   />
                   <span className="line-total">{formatPrice(lineTotal)}</span>

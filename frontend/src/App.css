@@ -1263,4 +1263,88 @@ button[type="submit"]:disabled {
     padding: 0 20px;
     border-radius: 0;
   }
+
+  /* Sales report mobile fixes */
+  .sales-report-panel {
+    overflow-x: hidden;
+  }
+
+  .stat-card {
+    padding: 20px 16px;
+    min-width: 0;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    word-break: break-word;
+  }
+
+  .top-seller-name {
+    font-size: 18px !important;
+  }
+
+  .analytics-section {
+    padding: 16px;
+    overflow: hidden;
+  }
+
+  /* Fix chart bar container overflow on mobile */
+  .chart-bar-container {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chart-label {
+    min-width: auto;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .chart-bar-wrapper {
+    width: 100%;
+    flex: none;
+  }
+
+  .chart-revenue {
+    min-width: auto;
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+
+  .chart-bar-container.top-seller {
+    padding: 12px 8px;
+  }
+
+  /* Fix source breakdown overflow on mobile */
+  .source-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .source-info {
+    min-width: auto;
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .source-bar-wrapper {
+    width: 100%;
+    flex: none;
+  }
+
+  .source-revenue {
+    min-width: auto;
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+
+  /* All-time comparison section mobile fix */
+  .all-time-comparison {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
