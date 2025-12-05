@@ -15,6 +15,7 @@ function OrderForm({ items, onOrderCreated }) {
   const [orderFrom, setOrderFrom] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
   const [orderItems, setOrderItems] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,6 +46,11 @@ function OrderForm({ items, onOrderCreated }) {
     }, 0);
   };
 
+  const getMinDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -73,11 +79,13 @@ function OrderForm({ items, onOrderCreated }) {
         customerName: customerName.trim(),
         customerId: customerId.trim(),
         items: orderItems,
+        expectedDeliveryDate: expectedDeliveryDate || null,
       });
       setCreatedOrder(order);
       setOrderFrom('');
       setCustomerName('');
       setCustomerId('');
+      setExpectedDeliveryDate('');
       setOrderItems([]);
       onOrderCreated();
     } catch (err) {
@@ -137,6 +145,17 @@ function OrderForm({ items, onOrderCreated }) {
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             placeholder="Enter customer ID"
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="expectedDeliveryDate">Expected Delivery Date</label>
+          <input
+            id="expectedDeliveryDate"
+            type="date"
+            value={expectedDeliveryDate}
+            onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+            min={getMinDate()}
           />
         </div>
 

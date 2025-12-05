@@ -1,4 +1,4 @@
-const { eq, desc } = require('drizzle-orm');
+const { eq, desc, isNull } = require('drizzle-orm');
 const { getDatabase } = require('../db/connection');
 const { items } = require('../db/schema');
 
@@ -7,12 +7,14 @@ const { items } = require('../db/schema');
  */
 const Item = {
   /**
-   * Get all items sorted by creation date (newest first)
+   * Get all active items (not soft-deleted) sorted by creation date (newest first)
    * @returns {Promise<Array>} Array of items
    */
   async find() {
     const db = getDatabase();
-    const result = await db.select().from(items).orderBy(desc(items.createdAt));
+    const result = await db.select().from(items)
+      .where(isNull(items.deletedAt))
+      .orderBy(desc(items.createdAt));
     return result.map(item => ({
       ...item,
       _id: item.id,
@@ -72,16 +74,19 @@ const Item = {
   },
 
   /**
-   * Delete an item by ID
+   * Soft delete an item by ID (sets deletedAt timestamp)
    * @param {number|string} id Item ID
-   * @returns {Promise<Object|null>} Deleted item or null if not found
+   * @returns {Promise<Object|null>} Soft-deleted item or null if not found
    */
   async findByIdAndDelete(id) {
     const db = getDatabase();
     const numericId = parseInt(id, 10);
     if (isNaN(numericId)) return null;
     
-    const result = await db.delete(items).where(eq(items.id, numericId)).returning();
+    const result = await db.update(items)
+      .set({ deletedAt: new Date() })
+      .where(eq(items.id, numericId))
+      .returning();
     if (result.length === 0) return null;
     
     return {

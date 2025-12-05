@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, items } = req.body;
+    const { orderFrom, customerName, customerId, items, expectedDeliveryDate } = req.body;
 
     if (!orderFrom || !customerName || !customerId) {
       return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
@@ -42,6 +42,25 @@ router.post('/', async (req, res) => {
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'At least one item is required' });
+    }
+
+    // Validate expectedDeliveryDate if provided
+    let parsedDeliveryDate = null;
+    if (expectedDeliveryDate) {
+      parsedDeliveryDate = new Date(expectedDeliveryDate);
+      if (isNaN(parsedDeliveryDate.getTime())) {
+        return res.status(400).json({ message: 'Invalid expected delivery date' });
+      }
+      
+      // Ensure the delivery date is not in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deliveryDate = new Date(parsedDeliveryDate);
+      deliveryDate.setHours(0, 0, 0, 0);
+      
+      if (deliveryDate < today) {
+        return res.status(400).json({ message: 'Expected delivery date cannot be in the past' });
+      }
     }
 
     let totalPrice = 0;
@@ -74,7 +93,8 @@ router.post('/', async (req, res) => {
       customerName,
       customerId,
       items: orderItems,
-      totalPrice
+      totalPrice,
+      expectedDeliveryDate: parsedDeliveryDate
     });
 
     logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });

@@ -51,7 +51,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    logger.info('Item deleted', { itemId: req.params.id });
+    logger.info('Item soft deleted', { itemId: req.params.id });
     res.json({ message: 'Item deleted' });
   } catch (error) {
     logger.error('Failed to delete item', error);
