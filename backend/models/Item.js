@@ -1,4 +1,4 @@
-const { eq, desc, isNull, isNotNull, ilike, or, sql } = require('drizzle-orm');
+const { eq, desc, isNull, isNotNull, ilike, or, sql, and } = require('drizzle-orm');
 const { getDatabase } = require('../db/connection');
 const { items } = require('../db/schema');
 
@@ -158,15 +158,16 @@ const Item = {
     
     let whereCondition = isNull(items.deletedAt);
     
-    // Add search condition if search term is provided
+    // Add search condition if search term is provided using safe drizzle-orm operators
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
-      whereCondition = sql`${items.deletedAt} IS NULL AND (
-        ${items.name} ILIKE ${searchTerm} OR
-        ${items.color} ILIKE ${searchTerm} OR
-        ${items.fabric} ILIKE ${searchTerm} OR
-        ${items.specialFeatures} ILIKE ${searchTerm}
-      )`;
+      const searchCondition = or(
+        ilike(items.name, searchTerm),
+        ilike(items.color, searchTerm),
+        ilike(items.fabric, searchTerm),
+        ilike(items.specialFeatures, searchTerm)
+      );
+      whereCondition = and(isNull(items.deletedAt), searchCondition);
     }
     
     // Get total count
@@ -217,15 +218,16 @@ const Item = {
     
     let whereCondition = isNotNull(items.deletedAt);
     
-    // Add search condition if search term is provided
+    // Add search condition if search term is provided using safe drizzle-orm operators
     if (search && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
-      whereCondition = sql`${items.deletedAt} IS NOT NULL AND (
-        ${items.name} ILIKE ${searchTerm} OR
-        ${items.color} ILIKE ${searchTerm} OR
-        ${items.fabric} ILIKE ${searchTerm} OR
-        ${items.specialFeatures} ILIKE ${searchTerm}
-      )`;
+      const searchCondition = or(
+        ilike(items.name, searchTerm),
+        ilike(items.color, searchTerm),
+        ilike(items.fabric, searchTerm),
+        ilike(items.specialFeatures, searchTerm)
+      );
+      whereCondition = and(isNotNull(items.deletedAt), searchCondition);
     }
     
     // Get total count
