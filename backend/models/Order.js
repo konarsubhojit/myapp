@@ -31,7 +31,12 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          paidAmount: parseFloat(order.paidAmount || 0),
           status: order.status || 'pending',
+          paymentStatus: order.paymentStatus || 'unpaid',
+          confirmationStatus: order.confirmationStatus || 'unconfirmed',
+          customerNotes: order.customerNotes || '',
+          priority: order.priority || 0,
           expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
@@ -82,7 +87,12 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          paidAmount: parseFloat(order.paidAmount || 0),
           status: order.status || 'pending',
+          paymentStatus: order.paymentStatus || 'unpaid',
+          confirmationStatus: order.confirmationStatus || 'unconfirmed',
+          customerNotes: order.customerNotes || '',
+          priority: order.priority || 0,
           expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
@@ -126,7 +136,12 @@ const Order = {
       ...order,
       _id: order.id,
       totalPrice: parseFloat(order.totalPrice),
+      paidAmount: parseFloat(order.paidAmount || 0),
       status: order.status || 'pending',
+      paymentStatus: order.paymentStatus || 'unpaid',
+      confirmationStatus: order.confirmationStatus || 'unconfirmed',
+      customerNotes: order.customerNotes || '',
+      priority: order.priority || 0,
       expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
@@ -156,6 +171,11 @@ const Order = {
       customerName: data.customerName.trim(),
       customerId: data.customerId.trim(),
       totalPrice: data.totalPrice.toString(),
+      paidAmount: (data.paidAmount || 0).toString(),
+      paymentStatus: data.paymentStatus || 'unpaid',
+      confirmationStatus: data.confirmationStatus || 'unconfirmed',
+      customerNotes: data.customerNotes?.trim() || null,
+      priority: data.priority || 0,
       expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
     }).returning();
     
@@ -177,7 +197,12 @@ const Order = {
       ...newOrder,
       _id: newOrder.id,
       totalPrice: parseFloat(newOrder.totalPrice),
+      paidAmount: parseFloat(newOrder.paidAmount || 0),
       status: newOrder.status || 'pending',
+      paymentStatus: newOrder.paymentStatus || 'unpaid',
+      confirmationStatus: newOrder.confirmationStatus || 'unconfirmed',
+      customerNotes: newOrder.customerNotes || '',
+      priority: newOrder.priority || 0,
       expectedDeliveryDate: newOrder.expectedDeliveryDate ? newOrder.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
@@ -214,6 +239,11 @@ const Order = {
       updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
     }
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
+    if (data.paidAmount !== undefined) updateData.paidAmount = data.paidAmount.toString();
+    if (data.confirmationStatus !== undefined) updateData.confirmationStatus = data.confirmationStatus;
+    if (data.customerNotes !== undefined) updateData.customerNotes = data.customerNotes?.trim() || null;
+    if (data.priority !== undefined) updateData.priority = data.priority;
     
     // Update the order if there are changes
     if (Object.keys(updateData).length > 0) {

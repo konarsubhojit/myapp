@@ -4,7 +4,6 @@ import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
 import OrderHistory from './components/OrderHistory'
 import SalesReport from './components/SalesReport'
-import CurrencySelector from './components/CurrencySelector'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { getItems, getOrders } from './services/api'
 
@@ -56,7 +55,6 @@ function AppContent() {
     <div className="app">
       <header>
         <h1>Order Management System</h1>
-        <CurrencySelector />
       </header>
 
       <nav className="tabs">

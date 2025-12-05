@@ -3,6 +3,14 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Item = require('../models/Item');
 const { createLogger } = require('../utils/logger');
+const {
+  VALID_ORDER_STATUSES,
+  VALID_PAYMENT_STATUSES,
+  VALID_CONFIRMATION_STATUSES,
+  MAX_CUSTOMER_NOTES_LENGTH,
+  PRIORITY_MIN,
+  PRIORITY_MAX,
+} = require('../constants/orderConstants');
 
 const logger = createLogger('OrdersRoute');
 
@@ -34,8 +42,12 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, items, expectedDeliveryDate } = req.body;
+    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
+    // Validate customerNotes length
+    if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
+    }
     if (!orderFrom || !customerName || !customerId) {
       return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
     }
@@ -60,6 +72,34 @@ router.post('/', async (req, res) => {
       
       if (deliveryDate < today) {
         return res.status(400).json({ message: 'Expected delivery date cannot be in the past' });
+      }
+    }
+
+    // Validate payment status if provided
+    if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
+    }
+
+    // Validate confirmation status if provided
+    if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
+    }
+
+    // Validate paid amount if provided
+    let parsedPaidAmount = 0;
+    if (paidAmount !== undefined && paidAmount !== null) {
+      parsedPaidAmount = parseFloat(paidAmount);
+      if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+        return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
+      }
+    }
+
+    // Validate priority if provided
+    let parsedPriority = 0;
+    if (priority !== undefined && priority !== null) {
+      parsedPriority = parseInt(priority, 10);
+      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
       }
     }
 
@@ -88,13 +128,32 @@ router.post('/', async (req, res) => {
       totalPrice += item.price * quantity;
     }
 
+    // Validate paid amount against total price
+    if (parsedPaidAmount > totalPrice) {
+      return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
+    }
+    // Additional validation for 'partially_paid' status
+    if (
+      paymentStatus === 'partially_paid' &&
+      (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)
+    ) {
+      return res.status(400).json({
+        message: 'Partially paid orders must have a paid amount greater than 0 and less than the total price'
+      });
+    }
+
     const newOrder = await Order.create({
       orderFrom,
       customerName,
       customerId,
       items: orderItems,
       totalPrice,
-      expectedDeliveryDate: parsedDeliveryDate
+      expectedDeliveryDate: parsedDeliveryDate,
+      paymentStatus: paymentStatus || 'unpaid',
+      paidAmount: parsedPaidAmount,
+      confirmationStatus: confirmationStatus || 'unconfirmed',
+      customerNotes: customerNotes || '',
+      priority: parsedPriority
     });
 
     logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
@@ -121,8 +180,12 @@ router.get('/:id', async (req, res) => {
 // Update an existing order
 router.put('/:id', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status } = req.body;
+    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
+    // Validate customerNotes length if provided
+    if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
+    }
     // Validate required fields if provided
     if (customerName !== undefined && (!customerName || !customerName.trim())) {
       return res.status(400).json({ message: 'Customer name cannot be empty' });
@@ -133,9 +196,36 @@ router.put('/:id', async (req, res) => {
     }
 
     // Validate status if provided
-    const validStatuses = ['pending', 'processing', 'completed', 'cancelled'];
-    if (status !== undefined && !validStatuses.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` });
+    }
+
+    // Validate payment status if provided
+    if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
+    }
+
+    // Validate confirmation status if provided
+    if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
+    }
+
+    // Validate paid amount if provided
+    let parsedPaidAmount;
+    if (paidAmount !== undefined) {
+      parsedPaidAmount = parseFloat(paidAmount);
+      if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+        return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
+      }
+    }
+
+    // Validate priority if provided
+    let parsedPriority;
+    if (priority !== undefined) {
+      parsedPriority = parseInt(priority, 10);
+      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
+      }
     }
 
     // Validate expectedDeliveryDate if provided
@@ -186,6 +276,28 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    // Validate paid amount against total price
+    if (parsedPaidAmount !== undefined) {
+      // Get existing order to validate against its total price if items not being updated
+      const existingOrder = await Order.findById(req.params.id);
+      if (!existingOrder) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      const effectiveTotalPrice = totalPrice !== undefined ? totalPrice : existingOrder.totalPrice;
+      if (parsedPaidAmount > effectiveTotalPrice) {
+        return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
+      }
+      // Additional validation for 'partially_paid' status
+      if (
+        paymentStatus === 'partially_paid' &&
+        (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)
+      ) {
+        return res.status(400).json({
+          message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
+        });
+      }
+    }
+
     // Build update data
     const updateData = {};
     if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
@@ -193,6 +305,11 @@ router.put('/:id', async (req, res) => {
     if (customerId !== undefined) updateData.customerId = customerId;
     if (parsedDeliveryDate !== undefined) updateData.expectedDeliveryDate = parsedDeliveryDate;
     if (status !== undefined) updateData.status = status;
+    if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+    if (parsedPaidAmount !== undefined) updateData.paidAmount = parsedPaidAmount;
+    if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
+    if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
+    if (parsedPriority !== undefined) updateData.priority = parsedPriority;
     if (orderItems !== undefined) updateData.items = orderItems;
     if (totalPrice !== undefined) updateData.totalPrice = totalPrice;
 

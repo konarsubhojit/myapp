@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { createOrder } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
-
-const ORDER_SOURCES = [
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'call', label: 'Call' },
-  { value: 'offline', label: 'Offline' },
-];
+import {
+  ORDER_SOURCES,
+  PAYMENT_STATUSES,
+  CONFIRMATION_STATUSES,
+  PRIORITY_LEVELS,
+} from '../constants/orderConstants';
 
 // Format item display name with color and fabric info
 const formatItemDisplayName = (item) => {
@@ -28,6 +26,11 @@ function OrderForm({ items, onOrderCreated }) {
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState('unpaid');
+  const [paidAmount, setPaidAmount] = useState('');
+  const [confirmationStatus, setConfirmationStatus] = useState('unconfirmed');
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [priority, setPriority] = useState(0);
   const [orderItems, setOrderItems] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -92,12 +95,22 @@ function OrderForm({ items, onOrderCreated }) {
         customerId: customerId.trim(),
         items: orderItems,
         expectedDeliveryDate: expectedDeliveryDate || null,
+        paymentStatus,
+        paidAmount: paidAmount ? parseFloat(paidAmount) : 0,
+        confirmationStatus,
+        customerNotes: customerNotes.trim(),
+        priority,
       });
       setCreatedOrder(order);
       setOrderFrom('');
       setCustomerName('');
       setCustomerId('');
       setExpectedDeliveryDate('');
+      setPaymentStatus('unpaid');
+      setPaidAmount('');
+      setConfirmationStatus('unconfirmed');
+      setCustomerNotes('');
+      setPriority(0);
       setOrderItems([]);
       onOrderCreated();
     } catch (err) {
@@ -168,6 +181,78 @@ function OrderForm({ items, onOrderCreated }) {
             value={expectedDeliveryDate}
             onChange={(e) => setExpectedDeliveryDate(e.target.value)}
             min={getMinDate()}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="confirmationStatus">Confirmation Status</label>
+          <select
+            id="confirmationStatus"
+            value={confirmationStatus}
+            onChange={(e) => setConfirmationStatus(e.target.value)}
+          >
+            {CONFIRMATION_STATUSES.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="paymentStatus">Payment Status</label>
+          <select
+            id="paymentStatus"
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+          >
+            {PAYMENT_STATUSES.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {paymentStatus === 'partially_paid' && (
+          <div className="form-group">
+            <label htmlFor="paidAmount">Amount Paid</label>
+            <input
+              id="paidAmount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(e.target.value)}
+              placeholder="Enter amount paid"
+            />
+          </div>
+        )}
+
+        <div className="form-group">
+          <label htmlFor="priority">Priority Level</label>
+          <select
+            id="priority"
+            value={priority}
+            onChange={(e) => setPriority(parseInt(e.target.value, 10))}
+          >
+            {PRIORITY_LEVELS.map((level) => (
+              <option key={level.value} value={level.value}>
+                {level.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="customerNotes">Customer Notes / Remarks</label>
+          <textarea
+            id="customerNotes"
+            value={customerNotes}
+            onChange={(e) => setCustomerNotes(e.target.value)}
+            placeholder="Enter any notes about this customer or order (e.g., follow-up needed, special requirements)"
+            rows={3}
+            className="customer-notes-input"
           />
         </div>
 
