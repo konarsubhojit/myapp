@@ -31,6 +31,7 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          status: order.status || 'pending',
           expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
@@ -81,6 +82,7 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          status: order.status || 'pending',
           expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
@@ -124,6 +126,7 @@ const Order = {
       ...order,
       _id: order.id,
       totalPrice: parseFloat(order.totalPrice),
+      status: order.status || 'pending',
       expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
@@ -174,6 +177,7 @@ const Order = {
       ...newOrder,
       _id: newOrder.id,
       totalPrice: parseFloat(newOrder.totalPrice),
+      status: newOrder.status || 'pending',
       expectedDeliveryDate: newOrder.expectedDeliveryDate ? newOrder.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
@@ -183,6 +187,63 @@ const Order = {
         customizationRequest: item.customizationRequest || ''
       }))
     };
+  },
+
+  /**
+   * Update an order by ID
+   * @param {number|string} id Order ID
+   * @param {Object} data Order data to update
+   * @returns {Promise<Object|null>} Updated order or null if not found
+   */
+  async findByIdAndUpdate(id, data) {
+    const db = getDatabase();
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    
+    // Check if order exists
+    const existingOrder = await db.select().from(orders).where(eq(orders.id, numericId));
+    if (existingOrder.length === 0) return null;
+    
+    // Update order fields
+    const updateData = {};
+    if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
+    if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
+    if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
+    if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
+    if (data.expectedDeliveryDate !== undefined) {
+      updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
+    }
+    if (data.status !== undefined) updateData.status = data.status;
+    
+    // Update the order if there are changes
+    if (Object.keys(updateData).length > 0) {
+      await db.update(orders)
+        .set(updateData)
+        .where(eq(orders.id, numericId));
+    }
+    
+    // If items are provided, replace them
+    if (data.items && Array.isArray(data.items)) {
+      // Delete existing order items
+      await db.delete(orderItems).where(eq(orderItems.orderId, numericId));
+      
+      // Insert new order items
+      if (data.items.length > 0) {
+        const orderItemsData = data.items.map(item => ({
+          orderId: numericId,
+          itemId: item.item,
+          name: item.name,
+          price: item.price.toString(),
+          quantity: item.quantity,
+          customizationRequest: item.customizationRequest?.trim() || null
+        }));
+        
+        await db.insert(orderItems).values(orderItemsData);
+      }
+    }
+    
+    // Return the updated order
+    return this.findById(numericId);
   }
 };
 

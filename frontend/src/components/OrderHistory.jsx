@@ -256,6 +256,9 @@ function OrderHistory() {
                 <th onClick={() => handleSort('orderFrom')} className="sortable">
                   Source {getSortIcon('orderFrom')}
                 </th>
+                <th onClick={() => handleSort('status')} className="sortable">
+                  Status {getSortIcon('status')}
+                </th>
                 <th>Items</th>
                 <th onClick={() => handleSort('totalPrice')} className="sortable">
                   Total {getSortIcon('totalPrice')}
@@ -271,6 +274,15 @@ function OrderHistory() {
             <tbody>
               {sortedOrders.map(order => {
                 const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true });
+                const getStatusClass = (status) => {
+                  switch (status) {
+                    case 'pending': return 'status-pending';
+                    case 'processing': return 'status-processing';
+                    case 'completed': return 'status-completed';
+                    case 'cancelled': return 'status-cancelled';
+                    default: return 'status-pending';
+                  }
+                };
                 return (
                   <tr 
                     key={order._id} 
@@ -283,6 +295,11 @@ function OrderHistory() {
                     <td>
                       <span className="source-badge">
                         {order.orderFrom}
+                      </span>
+                    </td>
+                    <td className="status-cell">
+                      <span className={`status-badge ${getStatusClass(order.status)}`}>
+                        {order.status || 'pending'}
                       </span>
                     </td>
                     <td className="items-cell">
@@ -355,7 +372,11 @@ function OrderHistory() {
       </div>
 
       {selectedOrderId && (
-        <OrderDetails orderId={selectedOrderId} onClose={handleCloseDetails} />
+        <OrderDetails 
+          orderId={selectedOrderId} 
+          onClose={handleCloseDetails}
+          onOrderUpdated={() => fetchOrders(pagination.page, pagination.limit)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,9 @@ const { pgTable, serial, text, numeric, timestamp, integer, uuid, pgEnum } = req
 // Enum for order source
 const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
 
+// Enum for order status
+const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
+
 // Items table
 const items = pgTable('items', {
   id: serial('id').primaryKey(),
@@ -24,6 +27,7 @@ const orders = pgTable('orders', {
   customerName: text('customer_name').notNull(),
   customerId: text('customer_id').notNull(),
   totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
+  status: text('status').default('pending'),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
@@ -39,4 +43,4 @@ const orderItems = pgTable('order_items', {
   customizationRequest: text('customization_request')
 });
 
-module.exports = { items, orders, orderItems, orderFromEnum };
+module.exports = { items, orders, orderItems, orderFromEnum, orderStatusEnum };
