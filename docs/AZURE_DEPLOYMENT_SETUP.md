@@ -27,6 +27,7 @@ Variables are used for non-sensitive configuration values. Navigate to your repo
 | `VITE_AZURE_TENANT_ID` | Azure AD tenant ID | - | `common` or your tenant GUID |
 | `VITE_AZURE_CLIENT_ID` | Azure AD app client ID | - | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
 | `VITE_REDIRECT_URI` | OAuth redirect URI (must match Azure AD registration) | - | `https://your-frontend.azurewebsites.net` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID | - | `xxxxxxxx.apps.googleusercontent.com` |
 
 ## Setup Instructions
 
@@ -65,6 +66,16 @@ These variables are required for Microsoft authentication to work properly:
 | `VITE_REDIRECT_URI` | Your frontend URL (e.g., `https://your-app.azurewebsites.net`) |
 
 **Important:** The `VITE_REDIRECT_URI` must exactly match one of the redirect URIs configured in your Azure AD app registration. This includes the protocol (`https://`). Typically, redirect URIs should NOT have a trailing slash (e.g., use `https://your-app.azurewebsites.net` not `https://your-app.azurewebsites.net/`).
+
+### Step 4: Configure Google OAuth (Optional)
+
+To enable Google Sign-In:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **APIs & Services** > **Credentials**
+3. Create an OAuth 2.0 Client ID (Web application type)
+4. Add your frontend URLs to **Authorized JavaScript origins**
+5. Copy the Client ID and add it as `VITE_GOOGLE_CLIENT_ID` in GitHub Actions variables
 
 ## Environment File Generation
 

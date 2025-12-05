@@ -101,3 +101,27 @@
   font-size: 0.75rem;
   margin: 0;
 }
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 0.5rem 0;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.login-divider span {
+  padding: 0 1rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.google-login-wrapper {
+  display: flex;
+  justify-content: center;
+}
