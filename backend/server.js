@@ -9,6 +9,11 @@ const { authMiddleware } = require('./middleware/auth');
 const logger = createLogger('Server');
 const app = express();
 
+// Trust proxy - required when running behind reverse proxies (Vercel, AWS, etc.)
+// This allows express-rate-limit to correctly identify clients via X-Forwarded-For header
+// Using 1 to trust only the first proxy hop for security
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 5000;
 logger.info('Starting application', { 
   nodeEnv: process.env.NODE_ENV || 'development',

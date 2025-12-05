@@ -4,23 +4,8 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('AuthMiddleware');
 
-// Valid Microsoft issuer patterns (must start with these URLs)
-const MICROSOFT_ISSUER_PATTERNS = [
-  /^https:\/\/login\.microsoftonline\.com\/[a-z0-9-]+\/v2\.0$/,
-  /^https:\/\/sts\.windows\.net\/[a-z0-9-]+\/$/,
-];
-
 // Valid Google issuer values
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
-
-/**
- * Check if issuer matches Microsoft patterns
- * @param {string} issuer - Token issuer
- * @returns {boolean} Whether issuer is a valid Microsoft issuer
- */
-function isMicrosoftIssuer(issuer) {
-  return MICROSOFT_ISSUER_PATTERNS.some(pattern => pattern.test(issuer));
-}
 
 /**
  * Check if issuer matches Google issuers
@@ -30,15 +15,6 @@ function isMicrosoftIssuer(issuer) {
 function isGoogleIssuer(issuer) {
   return GOOGLE_ISSUERS.includes(issuer);
 }
-
-// JWKS client for Microsoft Entra ID (Azure AD)
-const microsoftJwksClient = jwksClient({
-  jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || 'common'}/discovery/v2.0/keys`,
-  cache: true,
-  cacheMaxAge: 86400000, // 24 hours
-  rateLimit: true,
-  jwksRequestsPerMinute: 10,
-});
 
 // JWKS client for Google
 const googleJwksClient = jwksClient({
@@ -50,83 +26,19 @@ const googleJwksClient = jwksClient({
 });
 
 /**
- * Get the signing key from the appropriate JWKS endpoint
+ * Get the signing key from Google's JWKS endpoint
  * @param {string} header - JWT header
- * @param {string} issuer - Token issuer
  * @returns {Promise<string>} Signing key
  */
-async function getSigningKey(header, issuer) {
+async function getSigningKey(header) {
   return new Promise((resolve, reject) => {
-    const client = issuer.includes('google') ? googleJwksClient : microsoftJwksClient;
-    
-    client.getSigningKey(header.kid, (err, key) => {
+    googleJwksClient.getSigningKey(header.kid, (err, key) => {
       if (err) {
         reject(err);
         return;
       }
       const signingKey = key.getPublicKey();
       resolve(signingKey);
-    });
-  });
-}
-
-/**
- * Validate Microsoft Entra ID token
- * @param {string} token - JWT token
- * @returns {Promise<Object>} Decoded token payload
- */
-async function validateMicrosoftToken(token) {
-  const decoded = jwt.decode(token, { complete: true });
-  if (!decoded) {
-    throw new Error('Invalid token format');
-  }
-
-  const signingKey = await getSigningKey(decoded.header, 'microsoft');
-  
-  const validAudiences = [
-    process.env.AZURE_CLIENT_ID,
-    `api://${process.env.AZURE_CLIENT_ID}`,
-  ].filter(Boolean);
-
-  const tenantId = process.env.AZURE_TENANT_ID;
-  // For multi-tenant apps (common), we still validate Microsoft issuers pattern
-  // For single-tenant, we validate against the specific tenant
-  let validIssuers;
-  if (tenantId && tenantId !== 'common') {
-    validIssuers = [
-      `https://login.microsoftonline.com/${tenantId}/v2.0`,
-      `https://sts.windows.net/${tenantId}/`,
-    ];
-  } else {
-    // For multi-tenant apps, validate issuer format matches Microsoft pattern
-    // The issuer must contain login.microsoftonline.com or sts.windows.net
-    // This is enforced in the verify callback below
-    logger.debug('Multi-tenant mode enabled - will validate issuer format');
-  }
-
-  return new Promise((resolve, reject) => {
-    const options = {
-      algorithms: ['RS256'],
-      audience: validAudiences,
-    };
-    
-    if (validIssuers) {
-      options.issuer = validIssuers;
-    }
-
-    jwt.verify(token, signingKey, options, (err, payload) => {
-      if (err) {
-        reject(err);
-      } else {
-        // For multi-tenant apps, validate issuer format using regex
-        if (!validIssuers && payload.iss) {
-          if (!isMicrosoftIssuer(payload.iss)) {
-            reject(new Error('Invalid issuer format for Microsoft token'));
-            return;
-          }
-        }
-        resolve(payload);
-      }
     });
   });
 }
@@ -142,7 +54,7 @@ async function validateGoogleToken(token) {
     throw new Error('Invalid token format');
   }
 
-  const signingKey = await getSigningKey(decoded.header, 'google');
+  const signingKey = await getSigningKey(decoded.header);
   
   return new Promise((resolve, reject) => {
     jwt.verify(
@@ -151,7 +63,7 @@ async function validateGoogleToken(token) {
       {
         algorithms: ['RS256'],
         audience: process.env.GOOGLE_CLIENT_ID,
-        issuer: ['https://accounts.google.com', 'accounts.google.com'],
+        issuer: GOOGLE_ISSUERS,
       },
       (err, payload) => {
         if (err) {
@@ -165,7 +77,7 @@ async function validateGoogleToken(token) {
 }
 
 /**
- * Determine token issuer and validate accordingly
+ * Validate token and extract user info
  * @param {string} token - JWT token
  * @returns {Promise<Object>} User info extracted from token
  */
@@ -176,18 +88,9 @@ async function validateToken(token) {
   }
 
   const issuer = decoded.payload.iss || '';
-  let payload;
 
-  if (isMicrosoftIssuer(issuer)) {
-    payload = await validateMicrosoftToken(token);
-    return {
-      id: payload.oid || payload.sub,
-      email: payload.preferred_username || payload.email,
-      name: payload.name,
-      provider: 'microsoft',
-    };
-  } else if (isGoogleIssuer(issuer)) {
-    payload = await validateGoogleToken(token);
+  if (isGoogleIssuer(issuer)) {
+    const payload = await validateGoogleToken(token);
     return {
       id: payload.sub,
       email: payload.email,
