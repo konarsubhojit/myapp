@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const { connectToDatabase } = require('./db/connection');
 const { createLogger } = require('./utils/logger');
+const { authMiddleware } = require('./middleware/auth');
 
 const logger = createLogger('Server');
 const app = express();
@@ -12,7 +13,8 @@ const PORT = process.env.PORT || 5000;
 logger.info('Starting application', { 
   nodeEnv: process.env.NODE_ENV || 'development',
   port: PORT,
-  databaseConfigured: !!process.env.NEON_DATABASE_URL
+  databaseConfigured: !!process.env.NEON_DATABASE_URL,
+  authEnabled: process.env.AUTH_DISABLED !== 'true'
 });
 
 // Rate limiting middleware
@@ -43,10 +45,11 @@ initializeDatabase();
 const itemRoutes = require('./routes/items');
 const orderRoutes = require('./routes/orders');
 
-app.use('/api/items', itemRoutes);
-app.use('/api/orders', orderRoutes);
+// Protected routes - require authentication
+app.use('/api/items', authMiddleware, itemRoutes);
+app.use('/api/orders', authMiddleware, orderRoutes);
 
-// Health check
+// Health check (public - no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });

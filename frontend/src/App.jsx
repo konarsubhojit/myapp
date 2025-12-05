@@ -4,10 +4,13 @@ import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
 import OrderHistory from './components/OrderHistory'
 import SalesReport from './components/SalesReport'
+import Login from './components/Login'
 import { CurrencyProvider } from './contexts/CurrencyContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
 
 function AppContent() {
+  const { isAuthenticated, loading: authLoading, user, logout } = useAuth()
   const [items, setItems] = useState([])
   const [orders, setOrders] = useState([])
   const [activeTab, setActiveTab] = useState('orders')
@@ -39,13 +42,35 @@ function AppContent() {
   }
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadData = async () => {
-      setLoading(true)
+      if (!isAuthenticated) {
+        if (isMounted) setLoading(false)
+        return
+      }
+      
+      if (isMounted) setLoading(true)
       await Promise.all([fetchItems(), fetchOrders()])
-      setLoading(false)
+      if (isMounted) setLoading(false)
     }
+    
     loadData()
-  }, [])
+    
+    return () => {
+      isMounted = false
+    }
+  }, [isAuthenticated])
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return <div className="loading">Checking authentication...</div>
+  }
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return <Login />
+  }
 
   if (loading) {
     return <div className="loading">Loading your data...</div>
@@ -55,6 +80,12 @@ function AppContent() {
     <div className="app">
       <header>
         <h1>Order Management System</h1>
+        <div className="user-info">
+          <span className="user-name">{user?.name || user?.email}</span>
+          <button className="logout-button" onClick={logout}>
+            Sign Out
+          </button>
+        </div>
       </header>
 
       <nav className="tabs">
@@ -112,9 +143,11 @@ function AppContent() {
 
 function App() {
   return (
-    <CurrencyProvider>
-      <AppContent />
-    </CurrencyProvider>
+    <AuthProvider>
+      <CurrencyProvider>
+        <AppContent />
+      </CurrencyProvider>
+    </AuthProvider>
   )
 }
 
