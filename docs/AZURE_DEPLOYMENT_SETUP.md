@@ -23,6 +23,10 @@ Variables are used for non-sensitive configuration values. Navigate to your repo
 | Variable Name | Description | Default Value | Example Value |
 |---------------|-------------|---------------|---------------|
 | `PORT` | Port number for the backend server | `5000` | `5000` |
+| `VITE_API_URL` | Backend API URL for frontend | - | `https://your-backend.azurewebsites.net/api` |
+| `VITE_AZURE_TENANT_ID` | Azure AD tenant ID | - | `common` or your tenant GUID |
+| `VITE_AZURE_CLIENT_ID` | Azure AD app client ID | - | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
+| `VITE_REDIRECT_URI` | OAuth redirect URI (must match Azure AD registration) | - | `https://your-frontend.azurewebsites.net` |
 
 ## Setup Instructions
 
@@ -44,6 +48,23 @@ Variables are used for non-sensitive configuration values. Navigate to your repo
 5. Set the name as `PORT`
 6. Enter the port number (e.g., `5000`) as the value
 7. Click **Add variable**
+
+### Step 3: Configure Azure AD Variables
+
+These variables are required for Microsoft authentication to work properly:
+
+1. Go to your GitHub repository
+2. Navigate to **Settings** > **Secrets and variables** > **Actions**
+3. Click on the **Variables** tab
+4. Add the following variables:
+
+| Variable | Value |
+|----------|-------|
+| `VITE_AZURE_TENANT_ID` | Your Azure AD tenant ID (or `common` for multi-tenant apps) |
+| `VITE_AZURE_CLIENT_ID` | Your Azure AD app registration client ID |
+| `VITE_REDIRECT_URI` | Your frontend URL (e.g., `https://your-app.azurewebsites.net`) |
+
+**Important:** The `VITE_REDIRECT_URI` must exactly match one of the redirect URIs configured in your Azure AD app registration. This includes the protocol (`https://`). Typically, redirect URIs should NOT have a trailing slash (e.g., use `https://your-app.azurewebsites.net` not `https://your-app.azurewebsites.net/`).
 
 ## Environment File Generation
 
@@ -70,6 +91,14 @@ If the `MONGODB_URI` secret is not set, the deployment will create an empty valu
 ### Port defaults to 5000
 
 If the `PORT` variable is not set, the workflow defaults to port `5000`. This is intentional to ensure the application can start even without explicit configuration.
+
+### Authentication fails with redirect_uri error
+
+If you see an error like "The provided value for the input parameter 'redirect_uri' is not valid", check the following:
+
+1. Ensure `VITE_REDIRECT_URI` is set in GitHub Actions variables
+2. Verify the URI exactly matches one registered in Azure AD app registration (including protocol, no trailing slash)
+3. Check Azure Portal > App Registrations > Your App > Authentication > Redirect URIs
 
 ## Related Files
 
