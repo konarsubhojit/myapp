@@ -22,6 +22,7 @@ const CONFIRMATION_STATUSES = [
   { value: 'unconfirmed', label: 'Unconfirmed' },
   { value: 'pending_confirmation', label: 'Pending Confirmation' },
   { value: 'confirmed', label: 'Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
 
 const PRIORITY_LEVELS = [
