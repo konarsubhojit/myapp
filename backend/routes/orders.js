@@ -167,6 +167,11 @@ router.put('/:id', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
+    // Validate customerNotes length if provided
+    const MAX_CUSTOMER_NOTES_LENGTH = 1000;
+    if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
+    }
     // Validate required fields if provided
     if (customerName !== undefined && (!customerName || !customerName.trim())) {
       return res.status(400).json({ message: 'Customer name cannot be empty' });
