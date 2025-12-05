@@ -1,7 +1,4 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { useMsal, useIsAuthenticated } from '@azure/msal-react';
-import { InteractionStatus } from '@azure/msal-browser';
-import { loginRequest } from '../config/authConfig';
 import { setAccessTokenGetter, setOnUnauthorizedCallback } from '../services/api';
 
 const AuthContext = createContext(undefined);
@@ -16,79 +13,20 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
-  const { instance, accounts, inProgress } = useMsal();
-  const isMicrosoftAuthenticated = useIsAuthenticated();
   const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [googleUser, setGoogleUser] = useState(null);
 
-  // Get the active Microsoft account
-  const activeAccount = accounts[0] || null;
-
-  // Derive user from activeAccount or googleUser
+  // Derive user from googleUser
   const user = useMemo(() => {
-    if (googleUser) {
-      return googleUser;
-    }
-    if (activeAccount) {
-      return {
-        id: activeAccount.localAccountId,
-        email: activeAccount.username,
-        name: activeAccount.name || activeAccount.username,
-        provider: 'microsoft',
-      };
-    }
-    return null;
-  }, [activeAccount, googleUser]);
+    return googleUser;
+  }, [googleUser]);
 
-  // Check if authenticated (Microsoft or Google)
-  const isAuthenticated = isMicrosoftAuthenticated || !!googleUser;
+  // Check if authenticated
+  const isAuthenticated = !!googleUser;
 
-  // Acquire token silently when authenticated
-  const acquireToken = useCallback(async () => {
-    if (!activeAccount) {
-      setAccessToken(null);
-      return null;
-    }
-
-    try {
-      const response = await instance.acquireTokenSilent({
-        ...loginRequest,
-        account: activeAccount,
-      });
-      setAccessToken(response.accessToken);
-      setError(null);
-      return response.accessToken;
-    } catch (silentError) {
-      // If silent acquisition fails, try interactive
-      console.warn('[Auth] Silent token acquisition failed:', {
-        errorCode: silentError.errorCode,
-        errorMessage: silentError.errorMessage || silentError.message,
-        timestamp: new Date().toISOString(),
-      });
-      try {
-        const response = await instance.acquireTokenPopup({
-          ...loginRequest,
-          account: activeAccount,
-        });
-        setAccessToken(response.accessToken);
-        setError(null);
-        return response.accessToken;
-      } catch (popupError) {
-        console.error('[Auth] Token acquisition via popup failed:', {
-          errorCode: popupError.errorCode,
-          errorMessage: popupError.errorMessage || popupError.message,
-          correlationId: popupError.correlationId,
-          timestamp: new Date().toISOString(),
-        });
-        setError('Failed to acquire access token');
-        return null;
-      }
-    }
-  }, [instance, activeAccount]);
-
-  // Initial token acquisition - using a flag to track initial load
+  // Initial auth check - restore session from storage
   useEffect(() => {
     let isMounted = true;
     
@@ -109,13 +47,8 @@ export function AuthProvider({ children }) {
         }
       }
       
-      if (inProgress === InteractionStatus.None) {
-        if (isMicrosoftAuthenticated && activeAccount) {
-          await acquireToken();
-        }
-        if (isMounted) {
-          setLoading(false);
-        }
+      if (isMounted) {
+        setLoading(false);
       }
     };
     
@@ -124,42 +57,7 @@ export function AuthProvider({ children }) {
     return () => {
       isMounted = false;
     };
-  }, [isMicrosoftAuthenticated, activeAccount, inProgress, acquireToken]);
-
-  // Login with Microsoft
-  const loginWithMicrosoft = useCallback(async () => {
-    setError(null);
-    console.log('[Auth] Starting Microsoft login...');
-    if (import.meta.env.DEV) {
-      console.log('[Auth] Redirect URI:', import.meta.env.VITE_REDIRECT_URI || window.location.origin);
-      console.log('[Auth] Client ID:', import.meta.env.VITE_AZURE_CLIENT_ID ? '[configured]' : '[not configured]');
-      console.log('[Auth] Tenant ID:', import.meta.env.VITE_AZURE_TENANT_ID || 'common');
-    }
-    
-    try {
-      await instance.loginPopup(loginRequest);
-      console.log('[Auth] Microsoft login successful');
-    } catch (loginErr) {
-      if (loginErr.errorCode !== 'user_cancelled') {
-        const errorMessage = loginErr.errorMessage || loginErr.message || 'Unknown error';
-        const errorCode = loginErr.errorCode || 'unknown';
-        console.error('[Auth] Microsoft login failed:', {
-          errorCode,
-          errorMessage,
-          correlationId: loginErr.correlationId,
-          timestamp: new Date().toISOString(),
-        });
-        if (import.meta.env.DEV) {
-          console.error('[Auth] Debug info:', {
-            redirectUri: import.meta.env.VITE_REDIRECT_URI || window.location.origin,
-          });
-        }
-        setError(`Login failed (${errorCode}): ${errorMessage}`);
-      } else {
-        console.log('[Auth] Login cancelled by user');
-      }
-    }
-  }, [instance]);
+  }, []);
 
   // Handle Google login success
   const handleGoogleSuccess = useCallback((credentialResponse) => {
@@ -209,49 +107,25 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Logout
-  const logout = useCallback(async () => {
-    // Clear Google session if present
-    if (googleUser) {
-      setGoogleUser(null);
-      sessionStorage.removeItem('googleUser');
-      sessionStorage.removeItem('googleToken');
-      setAccessToken(null);
-      console.log('[Auth] Google logout successful');
-      return;
-    }
-    
-    // Microsoft logout
-    try {
-      await instance.logoutPopup({
-        postLogoutRedirectUri: window.location.origin,
-        account: activeAccount,
-      });
-      setAccessToken(null);
-      console.log('[Auth] Microsoft logout successful');
-    } catch (logoutErr) {
-      console.error('[Auth] Logout error:', logoutErr);
-    }
-  }, [instance, activeAccount, googleUser]);
+  const logout = useCallback(() => {
+    setGoogleUser(null);
+    sessionStorage.removeItem('googleUser');
+    sessionStorage.removeItem('googleToken');
+    setAccessToken(null);
+    console.log('[Auth] Logout successful');
+  }, []);
 
-  // Get current access token (refreshes if needed)
+  // Get current access token
   const getAccessToken = useCallback(async () => {
     if (accessToken) {
       // Check if token is still valid (basic check)
       try {
         const parts = accessToken.split('.');
         if (parts.length !== 3) {
-          // Malformed JWT, acquire new one (only for Microsoft)
-          if (!googleUser) {
-            return acquireToken();
-          }
           return null;
         }
         const payload = JSON.parse(atob(parts[1]));
         if (typeof payload.exp !== 'number') {
-          // Invalid exp claim, acquire new one (only for Microsoft)
-          if (!googleUser) {
-            return acquireToken();
-          }
           return null;
         }
         const expiry = payload.exp * 1000;
@@ -259,34 +133,29 @@ export function AuthProvider({ children }) {
           // Token valid for at least 1 more minute
           return accessToken;
         }
-        // Token expired
-        if (googleUser) {
-          // For Google, we need to re-login (can't refresh silently)
-          console.warn('[Auth] Google token expired, user needs to re-login');
-          setGoogleUser(null);
-          sessionStorage.removeItem('googleUser');
-          sessionStorage.removeItem('googleToken');
-          setAccessToken(null);
-          return null;
-        }
+        // Token expired - user needs to re-login
+        console.warn('[Auth] Google token expired, user needs to re-login');
+        setGoogleUser(null);
+        sessionStorage.removeItem('googleUser');
+        sessionStorage.removeItem('googleToken');
+        setAccessToken(null);
+        return null;
       } catch {
-        // Token parsing failed, try to acquire new one
+        // Token parsing failed
+        return null;
       }
     }
-    // Only try to acquire token for Microsoft users
-    if (!googleUser) {
-      return acquireToken();
-    }
     return null;
-  }, [accessToken, acquireToken, googleUser]);
+  }, [accessToken]);
 
-  // Handle unauthorized responses by clearing token and triggering re-auth
+  // Handle unauthorized responses by clearing token
   const handleUnauthorized = useCallback(() => {
     console.warn('Handling unauthorized response - clearing token');
     setAccessToken(null);
-    // Attempt to acquire a new token
-    acquireToken();
-  }, [acquireToken]);
+    setGoogleUser(null);
+    sessionStorage.removeItem('googleUser');
+    sessionStorage.removeItem('googleToken');
+  }, []);
 
   // Set the token getter and unauthorized handler for API service
   // This must be called synchronously to avoid race conditions with API calls
@@ -296,10 +165,9 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     isAuthenticated,
-    loading: loading || inProgress !== InteractionStatus.None,
+    loading,
     error,
     accessToken,
-    loginWithMicrosoft,
     handleGoogleSuccess,
     handleGoogleError,
     logout,
