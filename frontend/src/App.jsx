@@ -96,7 +96,6 @@ function AppContent() {
 
         {activeTab === 'items' && (
           <ItemPanel 
-            items={items} 
             onItemsChange={fetchItems} 
           />
         )}
