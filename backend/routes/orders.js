@@ -126,6 +126,15 @@ router.post('/', async (req, res) => {
     if (parsedPaidAmount > totalPrice) {
       return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
     }
+    // Additional validation for 'partially_paid' status
+    if (
+      paymentStatus === 'partially_paid' &&
+      (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)
+    ) {
+      return res.status(400).json({
+        message: 'Partially paid orders must have a paid amount greater than 0 and less than the total price'
+      });
+    }
 
     const newOrder = await Order.create({
       orderFrom,
