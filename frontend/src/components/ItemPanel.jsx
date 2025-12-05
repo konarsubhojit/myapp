@@ -3,6 +3,7 @@ import { createItem, deleteItem, getItemsPaginated, getDeletedItems, restoreItem
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max
 
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
@@ -11,6 +12,8 @@ function ItemPanel({ onItemsChange }) {
   const [color, setColor] = useState('');
   const [fabric, setFabric] = useState('');
   const [specialFeatures, setSpecialFeatures] = useState('');
+  const [image, setImage] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -71,6 +74,42 @@ function ItemPanel({ onItemsChange }) {
     }
   }, [showDeleted, fetchDeletedItems]);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      setImage('');
+      setImagePreview('');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    // Check file size
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError('Image size should be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImage(reader.result);
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setImage('');
+    setImagePreview('');
+    // Reset file input
+    const fileInput = document.getElementById('itemImage');
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -93,13 +132,19 @@ function ItemPanel({ onItemsChange }) {
         price: priceNum,
         color: color.trim(),
         fabric: fabric.trim(),
-        specialFeatures: specialFeatures.trim()
+        specialFeatures: specialFeatures.trim(),
+        image: image
       });
       setName('');
       setPrice('');
       setColor('');
       setFabric('');
       setSpecialFeatures('');
+      setImage('');
+      setImagePreview('');
+      // Reset file input
+      const fileInput = document.getElementById('itemImage');
+      if (fileInput) fileInput.value = '';
       onItemsChange();
       fetchActiveItems();
     } catch (err) {
@@ -155,6 +200,18 @@ function ItemPanel({ onItemsChange }) {
     setDeletedSearchInput('');
     setDeletedSearch('');
     setDeletedPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // Format item name with color and fabric
+  const formatItemName = (item) => {
+    const details = [];
+    if (item.color) details.push(item.color);
+    if (item.fabric) details.push(item.fabric);
+    
+    if (details.length > 0) {
+      return `${item.name} (${details.join(', ')})`;
+    }
+    return item.name;
   };
 
   const formatItemDetails = (item) => {
@@ -275,6 +332,28 @@ function ItemPanel({ onItemsChange }) {
             placeholder="e.g., Handmade, Embroidered, Washable"
           />
         </div>
+
+        <div className="form-group">
+          <label htmlFor="itemImage">Item Image</label>
+          <div className="image-upload-container">
+            <input
+              id="itemImage"
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="image-input"
+            />
+            {imagePreview && (
+              <div className="image-preview">
+                <img src={imagePreview} alt="Preview" />
+                <button type="button" onClick={clearImage} className="clear-image-btn">
+                  ✕
+                </button>
+              </div>
+            )}
+            <small className="image-hint">Max size: 2MB</small>
+          </div>
+        </div>
         
         {error && <p className="error">{error}</p>}
         
@@ -318,8 +397,11 @@ function ItemPanel({ onItemsChange }) {
             <ul>
               {activeItemsData.items.map((item) => (
                 <li key={item._id} className="item-card">
+                  {item.imageUrl && (
+                    <img src={item.imageUrl} alt={item.name} className="item-thumbnail" />
+                  )}
                   <div className="item-info">
-                    <span className="item-name-price">{item.name} - {formatPrice(item.price)}</span>
+                    <span className="item-name-price">{formatItemName(item)} - {formatPrice(item.price)}</span>
                     {formatItemDetails(item) && (
                       <span className="item-details">{formatItemDetails(item)}</span>
                     )}
@@ -370,8 +452,11 @@ function ItemPanel({ onItemsChange }) {
               <ul>
                 {deletedItemsData.items.map((item) => (
                   <li key={item._id} className="item-card deleted-item">
+                    {item.imageUrl && (
+                      <img src={item.imageUrl} alt={item.name} className="item-thumbnail" />
+                    )}
                     <div className="item-info">
-                      <span className="item-name-price">{item.name} - {formatPrice(item.price)}</span>
+                      <span className="item-name-price">{formatItemName(item)} - {formatPrice(item.price)}</span>
                       {formatItemDetails(item) && (
                         <span className="item-details">{formatItemDetails(item)}</span>
                       )}

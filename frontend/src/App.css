@@ -2129,3 +2129,137 @@ button[type="submit"]:disabled {
     padding: 12px 8px;
   }
 }
+
+
+/* Image Upload Styles */
+.image-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-input {
+  padding: 10px;
+  border: 2px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #fafbfc;
+  cursor: pointer;
+}
+
+.image-input:hover {
+  border-color: #667eea;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+  max-width: 150px;
+}
+
+.image-preview img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+
+.clear-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-image-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.image-hint {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Item Thumbnail in List */
+.item-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Selected Item Details in Order Form */
+.selected-item-details {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 8px;
+  margin-top: 8px;
+  align-items: center;
+  border: 1px solid #bae6fd;
+}
+
+.selected-item-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+}
+
+.selected-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selected-item-info .item-detail {
+  font-size: 13px;
+  color: #0369a1;
+  padding: 2px 8px;
+  background: white;
+  border-radius: 4px;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+/* Responsive for new image features */
+@media (max-width: 640px) {
+  .image-preview {
+    max-width: 100px;
+  }
+
+  .item-thumbnail {
+    width: 50px;
+    height: 50px;
+  }
+
+  .selected-item-details {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .selected-item-image {
+    width: 60px;
+    height: 60px;
+  }
+}

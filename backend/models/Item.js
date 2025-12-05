@@ -21,7 +21,8 @@ const Item = {
       price: parseFloat(item.price),
       color: item.color || '',
       fabric: item.fabric || '',
-      specialFeatures: item.specialFeatures || ''
+      specialFeatures: item.specialFeatures || '',
+      imageUrl: item.imageUrl || ''
     }));
   },
 
@@ -44,13 +45,14 @@ const Item = {
       price: parseFloat(result[0].price),
       color: result[0].color || '',
       fabric: result[0].fabric || '',
-      specialFeatures: result[0].specialFeatures || ''
+      specialFeatures: result[0].specialFeatures || '',
+      imageUrl: result[0].imageUrl || ''
     };
   },
 
   /**
    * Create a new item
-   * @param {Object} data Item data (name, price, color, fabric, specialFeatures)
+   * @param {Object} data Item data (name, price, color, fabric, specialFeatures, imageUrl)
    * @returns {Promise<Object>} Created item
    */
   async create(data) {
@@ -60,7 +62,8 @@ const Item = {
       price: data.price.toString(),
       color: data.color?.trim() || null,
       fabric: data.fabric?.trim() || null,
-      specialFeatures: data.specialFeatures?.trim() || null
+      specialFeatures: data.specialFeatures?.trim() || null,
+      imageUrl: data.imageUrl || null
     }).returning();
     
     return {
@@ -69,7 +72,8 @@ const Item = {
       price: parseFloat(result[0].price),
       color: result[0].color || '',
       fabric: result[0].fabric || '',
-      specialFeatures: result[0].specialFeatures || ''
+      specialFeatures: result[0].specialFeatures || '',
+      imageUrl: result[0].imageUrl || ''
     };
   },
 
@@ -95,7 +99,8 @@ const Item = {
       price: parseFloat(result[0].price),
       color: result[0].color || '',
       fabric: result[0].fabric || '',
-      specialFeatures: result[0].specialFeatures || ''
+      specialFeatures: result[0].specialFeatures || '',
+      imageUrl: result[0].imageUrl || ''
     };
   },
 
@@ -114,7 +119,8 @@ const Item = {
       price: parseFloat(item.price),
       color: item.color || '',
       fabric: item.fabric || '',
-      specialFeatures: item.specialFeatures || ''
+      specialFeatures: item.specialFeatures || '',
+      imageUrl: item.imageUrl || ''
     }));
   },
 
@@ -140,7 +146,8 @@ const Item = {
       price: parseFloat(result[0].price),
       color: result[0].color || '',
       fabric: result[0].fabric || '',
-      specialFeatures: result[0].specialFeatures || ''
+      specialFeatures: result[0].specialFeatures || '',
+      imageUrl: result[0].imageUrl || ''
     };
   },
 
@@ -190,7 +197,8 @@ const Item = {
       price: parseFloat(item.price),
       color: item.color || '',
       fabric: item.fabric || '',
-      specialFeatures: item.specialFeatures || ''
+      specialFeatures: item.specialFeatures || '',
+      imageUrl: item.imageUrl || ''
     }));
     
     return {
@@ -250,7 +258,8 @@ const Item = {
       price: parseFloat(item.price),
       color: item.color || '',
       fabric: item.fabric || '',
-      specialFeatures: item.specialFeatures || ''
+      specialFeatures: item.specialFeatures || '',
+      imageUrl: item.imageUrl || ''
     }));
     
     return {
