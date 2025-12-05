@@ -11,6 +11,7 @@ const items = pgTable('items', {
   color: text('color'),
   fabric: text('fabric'),
   specialFeatures: text('special_features'),
+  imageUrl: text('image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at')
 });

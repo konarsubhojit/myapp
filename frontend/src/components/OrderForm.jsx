@@ -10,6 +10,18 @@ const ORDER_SOURCES = [
   { value: 'offline', label: 'Offline' },
 ];
 
+// Format item display name with color and fabric info
+const formatItemDisplayName = (item) => {
+  const details = [];
+  if (item.color) details.push(item.color);
+  if (item.fabric) details.push(item.fabric);
+  
+  if (details.length > 0) {
+    return `${item.name} (${details.join(', ')})`;
+  }
+  return item.name;
+};
+
 function OrderForm({ items, onOrderCreated }) {
   const { formatPrice } = useCurrency();
   const [orderFrom, setOrderFrom] = useState('');
@@ -176,7 +188,7 @@ function OrderForm({ items, onOrderCreated }) {
                     <option value="">Select item</option>
                     {items.map((item) => (
                       <option key={item._id} value={item._id}>
-                        {item.name} - {formatPrice(item.price)}
+                        {formatItemDisplayName(item)} - {formatPrice(item.price)}
                       </option>
                     ))}
                   </select>
@@ -210,6 +222,23 @@ function OrderForm({ items, onOrderCreated }) {
                     Remove
                   </button>
                 </div>
+                {/* Item details preview when selected */}
+                {selectedItem && (
+                  <div className="selected-item-details">
+                    {selectedItem.imageUrl && (
+                      <img 
+                        src={selectedItem.imageUrl} 
+                        alt={selectedItem.name} 
+                        className="selected-item-image"
+                      />
+                    )}
+                    <div className="selected-item-info">
+                      {selectedItem.color && <span className="item-detail">Color: {selectedItem.color}</span>}
+                      {selectedItem.fabric && <span className="item-detail">Fabric: {selectedItem.fabric}</span>}
+                      {selectedItem.specialFeatures && <span className="item-detail">Features: {selectedItem.specialFeatures}</span>}
+                    </div>
+                  </div>
+                )}
                 <div className="customization-row">
                   <input
                     type="text"

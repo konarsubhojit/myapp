@@ -7,6 +7,24 @@ export const getItems = async () => {
   return response.json();
 };
 
+export const getItemsPaginated = async ({ page = 1, limit = 10, search = '' } = {}) => {
+  const params = new URLSearchParams({ page, limit });
+  if (search) params.append('search', search);
+  
+  const response = await fetch(`${API_BASE_URL}/items?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch items');
+  return response.json();
+};
+
+export const getDeletedItems = async ({ page = 1, limit = 10, search = '' } = {}) => {
+  const params = new URLSearchParams({ page, limit });
+  if (search) params.append('search', search);
+  
+  const response = await fetch(`${API_BASE_URL}/items/deleted?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch deleted items');
+  return response.json();
+};
+
 export const createItem = async (item) => {
   const response = await fetch(`${API_BASE_URL}/items`, {
     method: 'POST',
@@ -22,6 +40,14 @@ export const deleteItem = async (id) => {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete item');
+  return response.json();
+};
+
+export const restoreItem = async (id) => {
+  const response = await fetch(`${API_BASE_URL}/items/${id}/restore`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to restore item');
   return response.json();
 };
 

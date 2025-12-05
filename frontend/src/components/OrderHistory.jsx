@@ -156,6 +156,29 @@ function OrderHistory() {
       
       {error && <p className="error">{error}</p>}
       
+      {/* Priority Legend */}
+      <div className="priority-legend">
+        <span className="legend-title">Priority Indicators:</span>
+        <div className="legend-items">
+          <span className="legend-item">
+            <span className="legend-badge priority-overdue">Overdue</span>
+            <span className="legend-desc">Past delivery date</span>
+          </span>
+          <span className="legend-item">
+            <span className="legend-badge priority-due-today">Due Today</span>
+            <span className="legend-desc">Deliver today</span>
+          </span>
+          <span className="legend-item">
+            <span className="legend-badge priority-urgent">1-3d</span>
+            <span className="legend-desc">Due within 3 days</span>
+          </span>
+          <span className="legend-item">
+            <span className="legend-badge priority-normal">Normal</span>
+            <span className="legend-desc">Due later</span>
+          </span>
+        </div>
+      </div>
+      
       <div className="filters-section">
         <h4>Filters</h4>
         <div className="filters-row">
