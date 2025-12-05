@@ -118,4 +118,95 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Update an existing order
+router.put('/:id', async (req, res) => {
+  try {
+    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status } = req.body;
+
+    // Validate required fields if provided
+    if (customerName !== undefined && (!customerName || !customerName.trim())) {
+      return res.status(400).json({ message: 'Customer name cannot be empty' });
+    }
+
+    if (customerId !== undefined && (!customerId || !customerId.trim())) {
+      return res.status(400).json({ message: 'Customer ID cannot be empty' });
+    }
+
+    // Validate status if provided
+    const validStatuses = ['pending', 'processing', 'completed', 'cancelled'];
+    if (status !== undefined && !validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    // Validate expectedDeliveryDate if provided
+    let parsedDeliveryDate = undefined;
+    if (expectedDeliveryDate !== undefined) {
+      if (expectedDeliveryDate === null || expectedDeliveryDate === '') {
+        parsedDeliveryDate = null;
+      } else {
+        parsedDeliveryDate = new Date(expectedDeliveryDate);
+        if (isNaN(parsedDeliveryDate.getTime())) {
+          return res.status(400).json({ message: 'Invalid expected delivery date' });
+        }
+      }
+    }
+
+    // If items are provided, validate and calculate new total
+    let orderItems = undefined;
+    let totalPrice = undefined;
+    
+    if (items !== undefined) {
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: 'At least one item is required' });
+      }
+
+      orderItems = [];
+      totalPrice = 0;
+
+      for (const orderItem of items) {
+        const item = await Item.findById(orderItem.itemId);
+        if (!item) {
+          return res.status(400).json({ message: `Item with id ${orderItem.itemId} not found` });
+        }
+        
+        const quantity = parseInt(orderItem.quantity, 10);
+        if (!Number.isInteger(quantity) || quantity < 1) {
+          return res.status(400).json({ message: 'Quantity must be a positive integer' });
+        }
+
+        orderItems.push({
+          item: item._id,
+          name: item.name,
+          price: item.price,
+          quantity: quantity,
+          customizationRequest: orderItem.customizationRequest || ''
+        });
+
+        totalPrice += item.price * quantity;
+      }
+    }
+
+    // Build update data
+    const updateData = {};
+    if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
+    if (customerName !== undefined) updateData.customerName = customerName;
+    if (customerId !== undefined) updateData.customerId = customerId;
+    if (parsedDeliveryDate !== undefined) updateData.expectedDeliveryDate = parsedDeliveryDate;
+    if (status !== undefined) updateData.status = status;
+    if (orderItems !== undefined) updateData.items = orderItems;
+    if (totalPrice !== undefined) updateData.totalPrice = totalPrice;
+
+    const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
+    if (!updatedOrder) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
+    res.json(updatedOrder);
+  } catch (error) {
+    logger.error('Failed to update order', error);
+    res.status(500).json({ message: 'Failed to update order' });
+  }
+});
+
 module.exports = router;

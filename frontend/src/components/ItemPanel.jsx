@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { createItem, deleteItem, getItemsPaginated, getDeletedItems, restoreItem } from '../services/api';
+import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -16,6 +16,10 @@ function ItemPanel({ onItemsChange }) {
   const [imagePreview, setImagePreview] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Edit mode state
+  const [editingItem, setEditingItem] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   // Pagination and search for active items
   const [activeItemsData, setActiveItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
@@ -154,7 +158,10 @@ function ItemPanel({ onItemsChange }) {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, itemName) => {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
+      return;
+    }
     try {
       await deleteItem(id);
       onItemsChange();
@@ -176,6 +183,108 @@ function ItemPanel({ onItemsChange }) {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const handleEdit = (item) => {
+    setEditingItem({
+      ...item,
+      editName: item.name,
+      editPrice: String(item.price),
+      editColor: item.color || '',
+      editFabric: item.fabric || '',
+      editSpecialFeatures: item.specialFeatures || '',
+      editImage: '',
+      editImagePreview: item.imageUrl || '',
+      removeImage: false
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError('Image size should be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setEditingItem(prev => ({
+        ...prev,
+        editImage: reader.result,
+        editImagePreview: reader.result,
+        removeImage: false
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearEditImage = () => {
+    setEditingItem(prev => ({
+      ...prev,
+      editImage: '',
+      editImagePreview: '',
+      removeImage: true
+    }));
+    const fileInput = document.getElementById('editItemImage');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!editingItem.editName.trim() || !editingItem.editPrice) {
+      setError('Please fill in name and price');
+      return;
+    }
+
+    const priceNum = parseFloat(editingItem.editPrice);
+    if (isNaN(priceNum) || priceNum < 0) {
+      setError('Please enter a valid price');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updateData = {
+        name: editingItem.editName.trim(),
+        price: priceNum,
+        color: editingItem.editColor.trim(),
+        fabric: editingItem.editFabric.trim(),
+        specialFeatures: editingItem.editSpecialFeatures.trim()
+      };
+
+      // Handle image changes
+      if (editingItem.editImage) {
+        updateData.image = editingItem.editImage;
+      } else if (editingItem.removeImage) {
+        updateData.image = null;
+      }
+
+      await updateItem(editingItem._id, updateData);
+      setShowEditModal(false);
+      setEditingItem(null);
+      onItemsChange();
+      fetchActiveItems();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingItem(null);
+    setError('');
   };
 
   const handleActiveSearch = (e) => {
@@ -406,12 +515,20 @@ function ItemPanel({ onItemsChange }) {
                       <span className="item-details">{formatItemDetails(item)}</span>
                     )}
                   </div>
-                  <button 
-                    onClick={() => handleDelete(item._id)} 
-                    className="delete-btn"
-                  >
-                    Delete
-                  </button>
+                  <div className="item-actions">
+                    <button 
+                      onClick={() => handleEdit(item)} 
+                      className="edit-btn"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(item._id, item.name)} 
+                      className="delete-btn"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -480,6 +597,109 @@ function ItemPanel({ onItemsChange }) {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {showEditModal && editingItem && (
+        <div className="modal-overlay" onClick={closeEditModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Item</h3>
+              <button className="close-btn" onClick={closeEditModal}>×</button>
+            </div>
+            <form onSubmit={handleEditSubmit} className="form">
+              <div className="form-group">
+                <label htmlFor="editItemName">Item Name *</label>
+                <input
+                  id="editItemName"
+                  type="text"
+                  value={editingItem.editName}
+                  onChange={(e) => setEditingItem(prev => ({ ...prev, editName: e.target.value }))}
+                  placeholder="Enter item name"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="editItemPrice">Price *</label>
+                <input
+                  id="editItemPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editingItem.editPrice}
+                  onChange={(e) => setEditingItem(prev => ({ ...prev, editPrice: e.target.value }))}
+                  placeholder="Enter price"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editItemColor">Color</label>
+                <input
+                  id="editItemColor"
+                  type="text"
+                  value={editingItem.editColor}
+                  onChange={(e) => setEditingItem(prev => ({ ...prev, editColor: e.target.value }))}
+                  placeholder="e.g., Red, Blue, Multi-color"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editItemFabric">Fabric</label>
+                <input
+                  id="editItemFabric"
+                  type="text"
+                  value={editingItem.editFabric}
+                  onChange={(e) => setEditingItem(prev => ({ ...prev, editFabric: e.target.value }))}
+                  placeholder="e.g., Cotton, Silk, Polyester"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editItemSpecialFeatures">Special Features</label>
+                <input
+                  id="editItemSpecialFeatures"
+                  type="text"
+                  value={editingItem.editSpecialFeatures}
+                  onChange={(e) => setEditingItem(prev => ({ ...prev, editSpecialFeatures: e.target.value }))}
+                  placeholder="e.g., Handmade, Embroidered, Washable"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editItemImage">Item Image</label>
+                <div className="image-upload-container">
+                  <input
+                    id="editItemImage"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="image-input"
+                  />
+                  {editingItem.editImagePreview && (
+                    <div className="image-preview">
+                      <img src={editingItem.editImagePreview} alt="Preview" />
+                      <button type="button" onClick={clearEditImage} className="clear-image-btn">
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                  <small className="image-hint">Max size: 2MB. Upload a new image to replace the existing one.</small>
+                </div>
+              </div>
+              
+              {error && <p className="error">{error}</p>}
+              
+              <div className="modal-actions">
+                <button type="button" onClick={closeEditModal} className="cancel-btn">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading}>
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

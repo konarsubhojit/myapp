@@ -78,6 +78,47 @@ const Item = {
   },
 
   /**
+   * Update an item by ID
+   * @param {number|string} id Item ID
+   * @param {Object} data Item data to update
+   * @returns {Promise<Object|null>} Updated item or null if not found
+   */
+  async findByIdAndUpdate(id, data) {
+    const db = getDatabase();
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    
+    const updateData = {};
+    if (data.name !== undefined) updateData.name = data.name.trim();
+    if (data.price !== undefined) updateData.price = data.price.toString();
+    if (data.color !== undefined) updateData.color = data.color?.trim() || null;
+    if (data.fabric !== undefined) updateData.fabric = data.fabric?.trim() || null;
+    if (data.specialFeatures !== undefined) updateData.specialFeatures = data.specialFeatures?.trim() || null;
+    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
+    
+    if (Object.keys(updateData).length === 0) {
+      return this.findById(id);
+    }
+    
+    const result = await db.update(items)
+      .set(updateData)
+      .where(eq(items.id, numericId))
+      .returning();
+    
+    if (result.length === 0) return null;
+    
+    return {
+      ...result[0],
+      _id: result[0].id,
+      price: parseFloat(result[0].price),
+      color: result[0].color || '',
+      fabric: result[0].fabric || '',
+      specialFeatures: result[0].specialFeatures || '',
+      imageUrl: result[0].imageUrl || ''
+    };
+  },
+
+  /**
    * Soft delete an item by ID (sets deletedAt timestamp)
    * @param {number|string} id Item ID
    * @returns {Promise<Object|null>} Soft-deleted item or null if not found
