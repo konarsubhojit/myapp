@@ -38,6 +38,12 @@ export const getOrdersPaginated = async ({ page = 1, limit = 10 } = {}) => {
   return response.json();
 };
 
+export const getOrder = async (id) => {
+  const response = await fetch(`${API_BASE_URL}/orders/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch order');
+  return response.json();
+};
+
 export const createOrder = async (order) => {
   const response = await fetch(`${API_BASE_URL}/orders`, {
     method: 'POST',

@@ -11,7 +11,8 @@ const items = pgTable('items', {
   color: text('color'),
   fabric: text('fabric'),
   specialFeatures: text('special_features'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at')
 });
 
 // Orders table
@@ -22,6 +23,7 @@ const orders = pgTable('orders', {
   customerName: text('customer_name').notNull(),
   customerId: text('customer_id').notNull(),
   totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
+  expectedDeliveryDate: timestamp('expected_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 

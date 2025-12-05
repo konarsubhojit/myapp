@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
+import OrderDetails from './OrderDetails';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
@@ -11,13 +12,14 @@ function OrderHistory() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [filters, setFilters] = useState({
     customerName: '',
     customerId: '',
     orderFrom: '',
     orderId: '',
   });
-  const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'expectedDeliveryDate', direction: 'asc' });
 
   const fetchOrders = useCallback(async (page, limit) => {
     setLoading(true);
@@ -59,6 +61,34 @@ function OrderHistory() {
     setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
+  const handleOrderClick = (orderId) => {
+    setSelectedOrderId(orderId);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedOrderId(null);
+  };
+
+  const getPriorityStatus = (expectedDeliveryDate) => {
+    if (!expectedDeliveryDate) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deliveryDate = new Date(expectedDeliveryDate);
+    deliveryDate.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      return { status: 'overdue', label: 'Overdue', className: 'priority-overdue' };
+    } else if (diffDays === 0) {
+      return { status: 'due-today', label: 'Due Today', className: 'priority-due-today' };
+    } else if (diffDays <= 3) {
+      return { status: 'urgent', label: `${diffDays}d`, className: 'priority-urgent' };
+    }
+    return null;
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const matchesCustomerName = order.customerName
@@ -85,7 +115,11 @@ function OrderHistory() {
       if (sortConfig.key === 'totalPrice') {
         aValue = parseFloat(aValue);
         bValue = parseFloat(bValue);
-      } else if (sortConfig.key === 'createdAt') {
+      } else if (sortConfig.key === 'createdAt' || sortConfig.key === 'expectedDeliveryDate') {
+        // Handle null values - nulls go last for ascending, first for descending
+        if (!aValue && !bValue) return 0;
+        if (!aValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        if (!bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         aValue = new Date(aValue);
         bValue = new Date(bValue);
       } else {
@@ -107,6 +141,15 @@ function OrderHistory() {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
+    });
+  };
+
+  const formatDeliveryDate = (dateString) => {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -213,38 +256,58 @@ function OrderHistory() {
                 <th onClick={() => handleSort('totalPrice')} className="sortable">
                   Total {getSortIcon('totalPrice')}
                 </th>
+                <th onClick={() => handleSort('expectedDeliveryDate')} className="sortable">
+                  Delivery {getSortIcon('expectedDeliveryDate')}
+                </th>
                 <th onClick={() => handleSort('createdAt')} className="sortable">
-                  Date {getSortIcon('createdAt')}
+                  Created {getSortIcon('createdAt')}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {sortedOrders.map(order => (
-                <tr key={order._id}>
-                  <td className="order-id-cell">{order.orderId}</td>
-                  <td>{order.customerName}</td>
-                  <td>{order.customerId}</td>
-                  <td>
-                    <span className="source-badge">
-                      {order.orderFrom}
-                    </span>
-                  </td>
-                  <td className="items-cell">
-                    <ul className="items-list-compact">
-                      {order.items.map((item, idx) => (
-                        <li key={idx}>
-                          {item.name} × {item.quantity}
-                          {item.customizationRequest && (
-                            <span className="customization-note"> ({item.customizationRequest})</span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="total-cell">{formatPrice(order.totalPrice)}</td>
-                  <td className="date-cell">{formatDate(order.createdAt)}</td>
-                </tr>
-              ))}
+              {sortedOrders.map(order => {
+                const priority = getPriorityStatus(order.expectedDeliveryDate);
+                return (
+                  <tr 
+                    key={order._id} 
+                    onClick={() => handleOrderClick(order._id)}
+                    className={`order-row clickable ${priority ? priority.className : ''}`}
+                  >
+                    <td className="order-id-cell">{order.orderId}</td>
+                    <td>{order.customerName}</td>
+                    <td>{order.customerId}</td>
+                    <td>
+                      <span className="source-badge">
+                        {order.orderFrom}
+                      </span>
+                    </td>
+                    <td className="items-cell">
+                      <ul className="items-list-compact">
+                        {order.items.map((item, idx) => (
+                          <li key={idx}>
+                            {item.name} × {item.quantity}
+                            {item.customizationRequest && (
+                              <span className="customization-note"> ({item.customizationRequest})</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="total-cell">{formatPrice(order.totalPrice)}</td>
+                    <td className="delivery-cell">
+                      <span className="delivery-date">
+                        {formatDeliveryDate(order.expectedDeliveryDate)}
+                      </span>
+                      {priority && (
+                        <span className={`priority-badge-small ${priority.className}`}>
+                          {priority.label}
+                        </span>
+                      )}
+                    </td>
+                    <td className="date-cell">{formatDate(order.createdAt)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -286,6 +349,10 @@ function OrderHistory() {
           </button>
         </div>
       </div>
+
+      {selectedOrderId && (
+        <OrderDetails orderId={selectedOrderId} onClose={handleCloseDetails} />
+      )}
     </div>
   );
 }

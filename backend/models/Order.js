@@ -1,4 +1,4 @@
-const { eq, desc, sql } = require('drizzle-orm');
+const { eq, desc, sql, asc, isNull } = require('drizzle-orm');
 const { getDatabase } = require('../db/connection');
 const { orders, orderItems } = require('../db/schema');
 
@@ -31,6 +31,7 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
             _id: item.id,
@@ -46,7 +47,8 @@ const Order = {
   },
 
   /**
-   * Get orders with server-side pagination
+   * Get orders with server-side pagination, sorted by expected delivery date (ascending)
+   * Orders without expected delivery date are shown last
    * @param {Object} options Pagination options
    * @param {number} options.page Page number (1-based)
    * @param {number} options.limit Number of orders per page
@@ -60,10 +62,14 @@ const Order = {
     const countResult = await db.select({ count: sql`count(*)` }).from(orders);
     const total = parseInt(countResult[0].count, 10);
     
-    // Get paginated orders
+    // Get paginated orders sorted by expected delivery date (ascending), nulls last
     const ordersResult = await db.select()
       .from(orders)
-      .orderBy(desc(orders.createdAt))
+      .orderBy(
+        sql`${orders.expectedDeliveryDate} IS NULL`,
+        asc(orders.expectedDeliveryDate),
+        desc(orders.createdAt)
+      )
       .limit(limit)
       .offset(offset);
     
@@ -75,6 +81,7 @@ const Order = {
           ...order,
           _id: order.id,
           totalPrice: parseFloat(order.totalPrice),
+          expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
           items: itemsResult.map(item => ({
             ...item,
             _id: item.id,
@@ -117,6 +124,7 @@ const Order = {
       ...order,
       _id: order.id,
       totalPrice: parseFloat(order.totalPrice),
+      expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
         _id: item.id,
@@ -144,7 +152,8 @@ const Order = {
       orderFrom: data.orderFrom,
       customerName: data.customerName.trim(),
       customerId: data.customerId.trim(),
-      totalPrice: data.totalPrice.toString()
+      totalPrice: data.totalPrice.toString(),
+      expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
     }).returning();
     
     const newOrder = orderResult[0];
@@ -165,6 +174,7 @@ const Order = {
       ...newOrder,
       _id: newOrder.id,
       totalPrice: parseFloat(newOrder.totalPrice),
+      expectedDeliveryDate: newOrder.expectedDeliveryDate ? newOrder.expectedDeliveryDate.toISOString() : null,
       items: itemsResult.map(item => ({
         ...item,
         _id: item.id,
