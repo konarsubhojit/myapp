@@ -267,6 +267,15 @@ router.put('/:id', async (req, res) => {
       if (parsedPaidAmount > effectiveTotalPrice) {
         return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
       }
+      // Additional validation for 'partially_paid' status
+      if (
+        paymentStatus === 'partially_paid' &&
+        (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)
+      ) {
+        return res.status(400).json({
+          message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
+        });
+      }
     }
 
     // Build update data
