@@ -256,9 +256,17 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Validate paid amount against total price if both are provided
-    if (parsedPaidAmount !== undefined && totalPrice !== undefined && parsedPaidAmount > totalPrice) {
-      return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
+    // Validate paid amount against total price
+    if (parsedPaidAmount !== undefined) {
+      // Get existing order to validate against its total price if items not being updated
+      const existingOrder = await Order.findById(req.params.id);
+      if (!existingOrder) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      const effectiveTotalPrice = totalPrice !== undefined ? totalPrice : existingOrder.totalPrice;
+      if (parsedPaidAmount > effectiveTotalPrice) {
+        return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
+      }
     }
 
     // Build update data

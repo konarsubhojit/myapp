@@ -15,6 +15,7 @@ const PAYMENT_STATUSES = [
   { value: 'partially_paid', label: 'Partially Paid' },
   { value: 'paid', label: 'Paid' },
   { value: 'cash_on_delivery', label: 'Cash on Delivery' },
+  { value: 'refunded', label: 'Refunded' },
 ];
 
 const CONFIRMATION_STATUSES = [
