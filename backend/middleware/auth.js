@@ -4,6 +4,33 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('AuthMiddleware');
 
+// Valid Microsoft issuer patterns (must start with these URLs)
+const MICROSOFT_ISSUER_PATTERNS = [
+  /^https:\/\/login\.microsoftonline\.com\/[a-z0-9-]+\/v2\.0$/,
+  /^https:\/\/sts\.windows\.net\/[a-z0-9-]+\/$/,
+];
+
+// Valid Google issuer values
+const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
+
+/**
+ * Check if issuer matches Microsoft patterns
+ * @param {string} issuer - Token issuer
+ * @returns {boolean} Whether issuer is a valid Microsoft issuer
+ */
+function isMicrosoftIssuer(issuer) {
+  return MICROSOFT_ISSUER_PATTERNS.some(pattern => pattern.test(issuer));
+}
+
+/**
+ * Check if issuer matches Google issuers
+ * @param {string} issuer - Token issuer
+ * @returns {boolean} Whether issuer is a valid Google issuer
+ */
+function isGoogleIssuer(issuer) {
+  return GOOGLE_ISSUERS.includes(issuer);
+}
+
 // JWKS client for Microsoft Entra ID (Azure AD)
 const microsoftJwksClient = jwksClient({
   jwksUri: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID || 'common'}/discovery/v2.0/keys`,
@@ -91,10 +118,9 @@ async function validateMicrosoftToken(token) {
       if (err) {
         reject(err);
       } else {
-        // For multi-tenant apps, validate issuer format
+        // For multi-tenant apps, validate issuer format using regex
         if (!validIssuers && payload.iss) {
-          const iss = payload.iss;
-          if (!iss.includes('login.microsoftonline.com') && !iss.includes('sts.windows.net')) {
+          if (!isMicrosoftIssuer(payload.iss)) {
             reject(new Error('Invalid issuer format for Microsoft token'));
             return;
           }
@@ -152,7 +178,7 @@ async function validateToken(token) {
   const issuer = decoded.payload.iss || '';
   let payload;
 
-  if (issuer.includes('login.microsoftonline.com') || issuer.includes('sts.windows.net')) {
+  if (isMicrosoftIssuer(issuer)) {
     payload = await validateMicrosoftToken(token);
     return {
       id: payload.oid || payload.sub,
@@ -160,7 +186,7 @@ async function validateToken(token) {
       name: payload.name,
       provider: 'microsoft',
     };
-  } else if (issuer.includes('accounts.google.com') || issuer === 'accounts.google.com') {
+  } else if (isGoogleIssuer(issuer)) {
     payload = await validateGoogleToken(token);
     return {
       id: payload.sub,
