@@ -36,6 +36,10 @@ router.post('/', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
+    // Validate customerNotes length
+    if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > 5000) {
+      return res.status(400).json({ message: 'Customer notes cannot exceed 5000 characters' });
+    }
     if (!orderFrom || !customerName || !customerId) {
       return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
     }
