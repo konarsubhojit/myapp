@@ -289,10 +289,9 @@ export function AuthProvider({ children }) {
   }, [acquireToken]);
 
   // Set the token getter and unauthorized handler for API service
-  useEffect(() => {
-    setAccessTokenGetter(getAccessToken);
-    setOnUnauthorizedCallback(handleUnauthorized);
-  }, [getAccessToken, handleUnauthorized]);
+  // This must be called synchronously to avoid race conditions with API calls
+  setAccessTokenGetter(getAccessToken);
+  setOnUnauthorizedCallback(handleUnauthorized);
 
   const value = {
     user,
