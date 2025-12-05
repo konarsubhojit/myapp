@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
+import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
@@ -67,26 +68,6 @@ function OrderHistory() {
 
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
-  };
-
-  const getPriorityStatus = (expectedDeliveryDate) => {
-    if (!expectedDeliveryDate) return null;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deliveryDate = new Date(expectedDeliveryDate);
-    deliveryDate.setHours(0, 0, 0, 0);
-    
-    const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-      return { status: 'overdue', label: 'Overdue', className: 'priority-overdue' };
-    } else if (diffDays === 0) {
-      return { status: 'due-today', label: 'Due Today', className: 'priority-due-today' };
-    } else if (diffDays <= 3) {
-      return { status: 'urgent', label: `${diffDays}d`, className: 'priority-urgent' };
-    }
-    return null;
   };
 
   const filteredOrders = useMemo(() => {
@@ -266,7 +247,7 @@ function OrderHistory() {
             </thead>
             <tbody>
               {sortedOrders.map(order => {
-                const priority = getPriorityStatus(order.expectedDeliveryDate);
+                const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true });
                 return (
                   <tr 
                     key={order._id} 

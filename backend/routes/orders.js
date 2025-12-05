@@ -51,6 +51,16 @@ router.post('/', async (req, res) => {
       if (isNaN(parsedDeliveryDate.getTime())) {
         return res.status(400).json({ message: 'Invalid expected delivery date' });
       }
+      
+      // Ensure the delivery date is not in the past
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deliveryDate = new Date(parsedDeliveryDate);
+      deliveryDate.setHours(0, 0, 0, 0);
+      
+      if (deliveryDate < today) {
+        return res.status(400).json({ message: 'Expected delivery date cannot be in the past' });
+      }
     }
 
     let totalPrice = 0;
