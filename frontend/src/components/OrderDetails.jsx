@@ -478,12 +478,14 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
                     <span className="detail-value">{formatPrice(order.paidAmount || 0)}</span>
                   </div>
                 )}
-                <div className="detail-row">
-                  <span className="detail-label">Balance Due:</span>
-                  <span className="detail-value">
-                    {formatPrice(order.totalPrice - (order.paidAmount || 0))}
-                  </span>
-                </div>
+                {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'partially_paid') && (
+                  <div className="detail-row">
+                    <span className="detail-label">Balance Due:</span>
+                    <span className="detail-value">
+                      {formatPrice(order.totalPrice - (order.paidAmount || 0))}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {order.customerNotes && (
