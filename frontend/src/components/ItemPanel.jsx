@@ -158,7 +158,10 @@ function ItemPanel({ onItemsChange }) {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, itemName) => {
+    if (!window.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
+      return;
+    }
     try {
       await deleteItem(id);
       onItemsChange();
@@ -520,7 +523,7 @@ function ItemPanel({ onItemsChange }) {
                       Edit
                     </button>
                     <button 
-                      onClick={() => handleDelete(item._id)} 
+                      onClick={() => handleDelete(item._id, item.name)} 
                       className="delete-btn"
                     >
                       Delete

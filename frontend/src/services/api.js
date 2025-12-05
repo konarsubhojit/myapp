@@ -31,7 +31,10 @@ export const createItem = async (item) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(item),
   });
-  if (!response.ok) throw new Error('Failed to create item');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create item');
+  }
   return response.json();
 };
 
@@ -52,7 +55,10 @@ export const deleteItem = async (id) => {
   const response = await fetch(`${API_BASE_URL}/items/${id}`, {
     method: 'DELETE',
   });
-  if (!response.ok) throw new Error('Failed to delete item');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to delete item');
+  }
   return response.json();
 };
 
@@ -60,7 +66,10 @@ export const restoreItem = async (id) => {
   const response = await fetch(`${API_BASE_URL}/items/${id}/restore`, {
     method: 'POST',
   });
-  if (!response.ok) throw new Error('Failed to restore item');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to restore item');
+  }
   return response.json();
 };
 
