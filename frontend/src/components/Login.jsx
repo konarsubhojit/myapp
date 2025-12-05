@@ -1,8 +1,9 @@
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
 
 function Login() {
-  const { loginWithMicrosoft, loading, error } = useAuth();
+  const { loginWithMicrosoft, handleGoogleSuccess, handleGoogleError, loading, error } = useAuth();
 
   if (loading) {
     return (
@@ -43,6 +44,21 @@ function Login() {
             </svg>
             Sign in with Microsoft
           </button>
+
+          <div className="login-divider">
+            <span>or</span>
+          </div>
+
+          <div className="google-login-wrapper">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="outline"
+              size="large"
+              width="100%"
+              text="signin_with"
+            />
+          </div>
         </div>
 
         <div className="login-footer">
