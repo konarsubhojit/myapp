@@ -140,6 +140,128 @@ cd backend
 npm start        # Start the server
 ```
 
-## Deployment
+## Docker Deployment
+
+The application is containerized and ready for deployment on cloud container platforms like Azure Container Apps, AWS ECS, Google Cloud Run, etc.
+
+### CI/CD with GitHub Actions
+
+The repository includes automated Docker image building via GitHub Actions:
+
+#### Available Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| `docker-build.yml` | Push to `main`, tags, PRs | Builds and pushes Docker images to GitHub Container Registry |
+| `deploy-azure-container-apps.yml` | Manual dispatch | Deploys images to Azure Container Apps |
+
+#### Automatic Image Building
+
+On every push to `main` or when a version tag (e.g., `v1.0.0`) is created:
+- Docker images are automatically built for both backend and frontend
+- Images are pushed to GitHub Container Registry (ghcr.io)
+- Security scanning with Trivy is performed on the images
+
+#### Pull Published Images
+
+```bash
+# Backend
+docker pull ghcr.io/<your-username>/myapp-backend:latest
+
+# Frontend
+docker pull ghcr.io/<your-username>/myapp-frontend:latest
+```
+
+#### Required Repository Settings
+
+1. **Repository Variables** (Settings → Secrets and variables → Actions → Variables):
+   - `VITE_API_URL` - Backend API URL for frontend build
+   - `VITE_GOOGLE_CLIENT_ID` - Google OAuth Client ID
+
+2. **For Azure Container Apps deployment** (optional):
+   - `AZURE_RESOURCE_GROUP` - Azure resource group name
+   - `AZURE_BACKEND_APP_NAME` - Backend container app name
+   - `AZURE_FRONTEND_APP_NAME` - Frontend container app name
+   - `AZURE_CONTAINER_APP_ENVIRONMENT` - Container Apps environment name
+
+3. **Repository Secrets** (for Azure deployment):
+   - `AZURE_CREDENTIALS` - Azure service principal credentials JSON
+
+### Quick Start with Docker Compose
+
+1. Copy the environment template:
+```bash
+cp .env.docker.example .env
+```
+
+2. Edit `.env` with your actual values (database URL, OAuth credentials, etc.)
+
+3. Build and run the containers:
+```bash
+docker-compose up --build
+```
+
+The application will be available at:
+- Frontend: http://localhost:80
+- Backend API: http://localhost:5000
+
+### Building Individual Containers
+
+#### Backend Container
+```bash
+cd backend
+docker build -t order-management-backend .
+docker run -p 5000:5000 \
+  -e NEON_DATABASE_URL=your_database_url \
+  -e GOOGLE_CLIENT_ID=your_google_client_id \
+  order-management-backend
+```
+
+#### Frontend Container
+```bash
+cd frontend
+docker build -t order-management-frontend \
+  --build-arg VITE_API_URL=http://your-backend-url/api \
+  --build-arg VITE_GOOGLE_CLIENT_ID=your_google_client_id .
+docker run -p 80:80 order-management-frontend
+```
+
+### Cloud Container Deployment
+
+#### Azure Container Apps
+```bash
+# Build and push to Azure Container Registry
+az acr build --registry <your-registry> --image order-backend:latest ./backend
+az acr build --registry <your-registry> --image order-frontend:latest ./frontend
+
+# Deploy to Azure Container Apps
+az containerapp create --name order-backend --resource-group <rg> \
+  --image <your-registry>.azurecr.io/order-backend:latest \
+  --target-port 5000 --ingress external
+
+az containerapp create --name order-frontend --resource-group <rg> \
+  --image <your-registry>.azurecr.io/order-frontend:latest \
+  --target-port 80 --ingress external
+```
+
+#### Google Cloud Run
+```bash
+# Backend
+gcloud builds submit --tag gcr.io/<project>/order-backend ./backend
+gcloud run deploy order-backend --image gcr.io/<project>/order-backend --port 5000
+
+# Frontend
+gcloud builds submit --tag gcr.io/<project>/order-frontend ./frontend
+gcloud run deploy order-frontend --image gcr.io/<project>/order-frontend --port 80
+```
+
+#### AWS ECS / Fargate
+Build images and push to ECR, then deploy using ECS service definitions or the AWS Console.
+
+### Container Environment Variables
+
+See `.env.docker.example` for all available environment variables and their descriptions.
+
+## Deployment (Vercel)
 
 For Azure deployment setup, see [docs/AZURE_DEPLOYMENT_SETUP.md](docs/AZURE_DEPLOYMENT_SETUP.md).
