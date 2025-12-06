@@ -5,7 +5,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
@@ -310,16 +310,24 @@ function OrderHistory({ onDuplicateOrder }) {
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Priority Indicators:
         </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label="Overdue" color="error" size="small" />
-          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>Past delivery date</Typography>
-          <Chip label="Due Today" color="warning" size="small" />
-          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>Deliver today</Typography>
-          <Chip label="1-3d" color="warning" variant="outlined" size="small" />
-          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>Due within 3 days</Typography>
-          <Chip label="Normal" color="success" size="small" />
-          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>Due later</Typography>
-        </Stack>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Overdue" color="error" size="small" />
+            <Typography variant="caption" color="text.secondary">Past</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Due Today" color="warning" size="small" />
+            <Typography variant="caption" color="text.secondary">Today</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="1-3d" color="warning" variant="outlined" size="small" />
+            <Typography variant="caption" color="text.secondary">Soon</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Normal" color="success" size="small" />
+            <Typography variant="caption" color="text.secondary">Later</Typography>
+          </Box>
+        </Box>
       </Box>
       
       {/* Filters Section */}
@@ -365,7 +373,7 @@ function OrderHistory({ onDuplicateOrder }) {
               aria-label="Filter by Customer ID"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <FormControl size="small" fullWidth>
               <InputLabel>Source</InputLabel>
               <Select
@@ -382,15 +390,15 @@ function OrderHistory({ onDuplicateOrder }) {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <FormControl size="small" fullWidth>
-              <InputLabel>Confirmation</InputLabel>
+              <InputLabel>Confirm</InputLabel>
               <Select
                 value={filters.confirmationStatus}
-                label="Confirmation"
+                label="Confirm"
                 onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
               >
-                <MenuItem value="">All Confirmations</MenuItem>
+                <MenuItem value="">All</MenuItem>
                 {CONFIRMATION_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
                     {status.label}
@@ -399,7 +407,7 @@ function OrderHistory({ onDuplicateOrder }) {
               </Select>
             </FormControl>
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <FormControl size="small" fullWidth>
               <InputLabel>Payment</InputLabel>
               <Select
@@ -407,7 +415,7 @@ function OrderHistory({ onDuplicateOrder }) {
                 label="Payment"
                 onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
               >
-                <MenuItem value="">All Payments</MenuItem>
+                <MenuItem value="">All</MenuItem>
                 {PAYMENT_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
                     {status.label}

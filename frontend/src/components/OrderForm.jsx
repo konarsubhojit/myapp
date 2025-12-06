@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/Grid2';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -375,8 +375,8 @@ function OrderForm({ items, onOrderCreated }) {
             </FormControl>
           </Grid>
 
-          <Collapse in={paymentStatus === 'partially_paid'} sx={{ width: '100%' }}>
-            <Grid size={{ xs: 12 }} sx={{ px: 1 }}>
+          {paymentStatus === 'partially_paid' && (
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
               <TextField
                 id="paidAmount"
                 label="Amount Paid"
@@ -388,7 +388,7 @@ function OrderForm({ items, onOrderCreated }) {
                 fullWidth
               />
             </Grid>
-          </Collapse>
+          )}
 
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <FormControl fullWidth>
