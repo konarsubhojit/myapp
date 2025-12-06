@@ -48,33 +48,32 @@ const TARGET_IMAGE_SIZE = 2 * 1024 * 1024; // Compress to 2MB max
 
 // Image compression options
 const compressionOptions = {
-  maxSizeMB: 2,
+  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB
   maxWidthOrHeight: 1920,
   useWebWorker: true,
   fileType: 'image/jpeg',
+};
+
+// Helper to convert file to base64
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 };
 
 // Compress image if needed
 const compressImage = async (file) => {
   // If file is already small enough, just convert to base64
   if (file.size <= TARGET_IMAGE_SIZE) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    return fileToBase64(file);
   }
 
   // Compress the image
   const compressedFile = await imageCompression(file, compressionOptions);
-  
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(compressedFile);
-  });
+  return fileToBase64(compressedFile);
 };
 
 // Parse URL params to state
