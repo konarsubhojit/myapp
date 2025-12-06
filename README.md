@@ -144,6 +144,49 @@ npm start        # Start the server
 
 The application is containerized and ready for deployment on cloud container platforms like Azure Container Apps, AWS ECS, Google Cloud Run, etc.
 
+### CI/CD with GitHub Actions
+
+The repository includes automated Docker image building via GitHub Actions:
+
+#### Available Workflows
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| `docker-build.yml` | Push to `main`, tags, PRs | Builds and pushes Docker images to GitHub Container Registry |
+| `deploy-azure-container-apps.yml` | Manual dispatch | Deploys images to Azure Container Apps |
+
+#### Automatic Image Building
+
+On every push to `main` or when a version tag (e.g., `v1.0.0`) is created:
+- Docker images are automatically built for both backend and frontend
+- Images are pushed to GitHub Container Registry (ghcr.io)
+- Security scanning with Trivy is performed on the images
+
+#### Pull Published Images
+
+```bash
+# Backend
+docker pull ghcr.io/<your-username>/myapp-backend:latest
+
+# Frontend
+docker pull ghcr.io/<your-username>/myapp-frontend:latest
+```
+
+#### Required Repository Settings
+
+1. **Repository Variables** (Settings → Secrets and variables → Actions → Variables):
+   - `VITE_API_URL` - Backend API URL for frontend build
+   - `VITE_GOOGLE_CLIENT_ID` - Google OAuth Client ID
+
+2. **For Azure Container Apps deployment** (optional):
+   - `AZURE_RESOURCE_GROUP` - Azure resource group name
+   - `AZURE_BACKEND_APP_NAME` - Backend container app name
+   - `AZURE_FRONTEND_APP_NAME` - Frontend container app name
+   - `AZURE_CONTAINER_APP_ENVIRONMENT` - Container Apps environment name
+
+3. **Repository Secrets** (for Azure deployment):
+   - `AZURE_CREDENTIALS` - Azure service principal credentials JSON
+
 ### Quick Start with Docker Compose
 
 1. Copy the environment template:
