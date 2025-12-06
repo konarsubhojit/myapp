@@ -37,8 +37,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ImageIcon from '@mui/icons-material/Image';
-import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem } from '../services/api';
+import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem, permanentlyDeleteItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -308,6 +309,31 @@ function ItemPanel({ onItemsChange }) {
       fetchActiveItems();
       fetchDeletedItems();
       showSuccess(`Item "${itemName}" has been restored.`);
+    } catch (err) {
+      setError(err.message);
+      showError(err.message);
+    }
+  };
+
+  const handlePermanentDelete = async (id, itemName, hasImage) => {
+    const message = hasImage 
+      ? `Are you sure you want to permanently remove the image for "${itemName}"? This action cannot be undone. The item record will be kept for historical orders.`
+      : `This item "${itemName}" has no image to remove.`;
+    
+    if (!hasImage) {
+      showError(message);
+      return;
+    }
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
+    try {
+      await permanentlyDeleteItem(id);
+      onItemsChange();
+      fetchDeletedItems();
+      showSuccess(`Image for item "${itemName}" has been permanently removed.`);
     } catch (err) {
       setError(err.message);
       showError(err.message);
@@ -912,15 +938,28 @@ function ItemPanel({ onItemsChange }) {
                           Deleted: {new Date(item.deletedAt).toLocaleDateString()}
                         </Typography>
                       </Box>
-                      <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        startIcon={<RestoreIcon />}
-                        onClick={() => handleRestore(item._id, item.name)}
-                      >
-                        Restore
-                      </Button>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="error"
+                          startIcon={<DeleteForeverIcon />}
+                          onClick={() => handlePermanentDelete(item._id, item.name, !!item.imageUrl)}
+                          title="Permanently remove image"
+                          disabled={!item.imageUrl}
+                        >
+                          Remove Image
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color="success"
+                          startIcon={<RestoreIcon />}
+                          onClick={() => handleRestore(item._id, item.name)}
+                        >
+                          Restore
+                        </Button>
+                      </Stack>
                     </CardContent>
                   </Card>
                 ))}

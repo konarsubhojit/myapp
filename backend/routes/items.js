@@ -211,4 +211,39 @@ router.post('/:id/restore', async (req, res) => {
   }
 });
 
+router.delete('/:id/permanent', async (req, res) => {
+  try {
+    const item = await Item.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    // Check if item is soft deleted
+    if (!item.deletedAt) {
+      return res.status(400).json({ message: 'Item must be soft deleted before permanent deletion' });
+    }
+
+    const imageUrl = item.imageUrl;
+
+    // Remove image from blob storage if it exists
+    if (imageUrl) {
+      try {
+        await del(imageUrl);
+        logger.info('Image deleted from blob storage', { url: imageUrl });
+      } catch (deleteError) {
+        logger.warn('Failed to delete image from blob storage', { url: imageUrl, error: deleteError.message });
+      }
+    }
+
+    // Clear the imageUrl from the item record (keep the item for historical orders)
+    await Item.permanentlyRemoveImage(req.params.id);
+    
+    logger.info('Item image permanently removed', { itemId: req.params.id });
+    res.json({ message: 'Item image permanently removed' });
+  } catch (error) {
+    logger.error('Failed to permanently remove item image', error);
+    res.status(500).json({ message: 'Failed to permanently remove item image' });
+  }
+});
+
 module.exports = router;
