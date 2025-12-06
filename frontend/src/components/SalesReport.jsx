@@ -1,5 +1,33 @@
 import { useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import ButtonGroup from '@mui/material/ButtonGroup';
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import LinearProgress from '@mui/material/LinearProgress';
+import Stack from '@mui/material/Stack';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import PersonIcon from '@mui/icons-material/Person';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import GroupIcon from '@mui/icons-material/Group';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const TIME_RANGES = [
@@ -23,6 +51,8 @@ const VALID_VIEWS = VIEW_OPTIONS.map(v => v.key);
 function SalesReport({ orders }) {
   const { formatPrice } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   
   // Get initial values from URL or use defaults
   const rangeParam = searchParams.get('range');
@@ -189,261 +219,396 @@ function SalesReport({ orders }) {
   // Get the top selling item for the highlight card
   const topSellingItem = currentStats.topItems.length > 0 ? currentStats.topItems[0] : null;
 
+  const StatCard = ({ value, label, icon, color = 'primary' }) => (
+    <Card sx={{ height: '100%' }}>
+      <CardContent sx={{ textAlign: 'center' }}>
+        {icon && <Box sx={{ color: `${color}.main`, mb: 1 }}>{icon}</Box>}
+        <Typography variant="h4" fontWeight={700} color={`${color}.main`}>
+          {value}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {label}
+        </Typography>
+      </CardContent>
+    </Card>
+  );
+
   const renderOverviewView = () => (
     <>
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-value">{formatPrice(currentStats.totalSales)}</div>
-          <div className="stat-label">Total Sales</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{currentStats.orderCount}</div>
-          <div className="stat-label">Total Orders</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{formatPrice(currentStats.averageOrderValue)}</div>
-          <div className="stat-label">Avg. Order Value</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{currentStats.uniqueCustomers}</div>
-          <div className="stat-label">Unique Customers</div>
-        </div>
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard 
+            value={formatPrice(currentStats.totalSales)} 
+            label="Total Sales" 
+            icon={<TrendingUpIcon fontSize="large" />}
+          />
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard 
+            value={currentStats.orderCount} 
+            label="Total Orders" 
+            icon={<ShoppingCartIcon fontSize="large" />}
+          />
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard 
+            value={formatPrice(currentStats.averageOrderValue)} 
+            label="Avg. Order Value" 
+            icon={<AttachMoneyIcon fontSize="large" />}
+          />
+        </Grid>
+        <Grid size={{ xs: 6, md: 3 }}>
+          <StatCard 
+            value={currentStats.uniqueCustomers} 
+            label="Unique Customers" 
+            icon={<GroupIcon fontSize="large" />}
+          />
+        </Grid>
         {topSellingItem && (
-          <div className="stat-card top-seller-card">
-            <div className="stat-value top-seller-name">{topSellingItem.name}</div>
-            <div className="stat-label">🏆 Top Selling Item ({topSellingItem.quantity} units)</div>
-          </div>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ bgcolor: 'success.50', border: '2px solid', borderColor: 'success.200' }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <EmojiEventsIcon sx={{ color: 'success.main', fontSize: 40 }} />
+                <Typography variant="h6" fontWeight={600} color="success.dark">
+                  {topSellingItem.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  🏆 Top Selling Item ({topSellingItem.quantity} units)
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         )}
         {currentStats.highestOrderingCustomer && (
-          <div className="stat-card top-customer-card">
-            <div className="stat-value top-customer-name">{currentStats.highestOrderingCustomer.customerName}</div>
-            <div className="stat-label">👤 Top Customer ({currentStats.highestOrderingCustomer.orderCount} orders)</div>
-          </div>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card sx={{ bgcolor: 'info.50', border: '2px solid', borderColor: 'info.200' }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <PersonIcon sx={{ color: 'info.main', fontSize: 40 }} />
+                <Typography variant="h6" fontWeight={600} color="info.dark">
+                  {currentStats.highestOrderingCustomer.customerName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  👤 Top Customer ({currentStats.highestOrderingCustomer.orderCount} orders)
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         )}
-      </div>
+      </Grid>
 
-      <div className="all-time-comparison">
-        <h3>Period Comparison</h3>
-        <div className="comparison-table-container">
-          <table className="comparison-table">
-            <thead>
-              <tr>
-                <th>Period</th>
-                <th>Orders</th>
-                <th>Customers</th>
-                <th>Total Sales</th>
-                <th>Avg. Order Value</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" gutterBottom>Period Comparison</Typography>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Period</TableCell>
+                <TableCell align="right">Orders</TableCell>
+                <TableCell align="right">Customers</TableCell>
+                <TableCell align="right">Total Sales</TableCell>
+                <TableCell align="right">Avg. Order Value</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {TIME_RANGES.map(range => (
-                <tr key={range.key} className={selectedRange === range.key ? 'selected' : ''}>
-                  <td>{range.label}</td>
-                  <td>{analytics[range.key]?.orderCount || 0}</td>
-                  <td>{analytics[range.key]?.uniqueCustomers || 0}</td>
-                  <td>{formatPrice(analytics[range.key]?.totalSales || 0)}</td>
-                  <td>{formatPrice(analytics[range.key]?.averageOrderValue || 0)}</td>
-                </tr>
+                <TableRow 
+                  key={range.key} 
+                  selected={selectedRange === range.key}
+                  sx={{ 
+                    bgcolor: selectedRange === range.key ? 'primary.50' : 'inherit',
+                  }}
+                >
+                  <TableCell>{range.label}</TableCell>
+                  <TableCell align="right">{analytics[range.key]?.orderCount || 0}</TableCell>
+                  <TableCell align="right">{analytics[range.key]?.uniqueCustomers || 0}</TableCell>
+                  <TableCell align="right">{formatPrice(analytics[range.key]?.totalSales || 0)}</TableCell>
+                  <TableCell align="right">{formatPrice(analytics[range.key]?.averageOrderValue || 0)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     </>
   );
 
   const renderItemsView = () => (
-    <div className="analytics-sections">
-      <div className="analytics-section">
-        <h3>Top Items by Quantity Sold</h3>
+    <Grid container spacing={3}>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" gutterBottom>Top Items by Quantity Sold</Typography>
         {currentStats.topItems.length === 0 ? (
-          <p className="no-data">No items sold in this period</p>
+          <Typography color="text.secondary">No items sold in this period</Typography>
         ) : (
-          <div className="top-items-chart">
+          <Stack spacing={2}>
             {currentStats.topItems.map((item, idx) => (
-              <div key={item.name} className={`chart-bar-container ${idx === 0 ? 'top-seller' : ''}`}>
-                <div className="chart-label">
-                  <span className="rank">#{idx + 1}</span>
-                  <span className="item-name">{item.name}</span>
-                  {idx === 0 && <span className="top-badge">🏆</span>}
-                </div>
-                <div className="chart-bar-wrapper">
-                  <div 
-                    className={`chart-bar ${idx === 0 ? 'top-seller-bar' : ''}`}
-                    style={{ width: `${(item.quantity / getMaxQuantity()) * 100}%` }}
-                  >
-                    <span className="bar-value">{item.quantity} units</span>
-                  </div>
-                </div>
-                <div className="chart-revenue">{formatPrice(item.revenue)}</div>
-              </div>
+              <Box key={item.name}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
+                    #{idx + 1} {item.name} {idx === 0 && '🏆'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formatPrice(item.revenue)}
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(item.quantity / getMaxQuantity()) * 100}
+                      sx={{ 
+                        height: 20, 
+                        borderRadius: 1,
+                        bgcolor: 'grey.200',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: idx === 0 ? 'success.main' : 'primary.main',
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{ minWidth: 60 }}>
+                    {item.quantity} units
+                  </Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Stack>
         )}
-      </div>
+      </Grid>
 
-      <div className="analytics-section">
-        <h3>Top Items by Revenue</h3>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" gutterBottom>Top Items by Revenue</Typography>
         {currentStats.topItemsByRevenue.length === 0 ? (
-          <p className="no-data">No items sold in this period</p>
+          <Typography color="text.secondary">No items sold in this period</Typography>
         ) : (
-          <div className="top-items-chart">
+          <Stack spacing={2}>
             {currentStats.topItemsByRevenue.map((item, idx) => (
-              <div key={item.name} className={`chart-bar-container ${idx === 0 ? 'top-revenue' : ''}`}>
-                <div className="chart-label">
-                  <span className="rank">#{idx + 1}</span>
-                  <span className="item-name">{item.name}</span>
-                  {idx === 0 && <span className="top-badge">💰</span>}
-                </div>
-                <div className="chart-bar-wrapper">
-                  <div 
-                    className={`chart-bar revenue-bar ${idx === 0 ? 'top-revenue-bar' : ''}`}
-                    style={{ width: `${(item.revenue / getMaxRevenue()) * 100}%` }}
-                  >
-                    <span className="bar-value">{formatPrice(item.revenue)}</span>
-                  </div>
-                </div>
-                <div className="chart-quantity">{item.quantity} units</div>
-              </div>
+              <Box key={item.name}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
+                    #{idx + 1} {item.name} {idx === 0 && '💰'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {item.quantity} units
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(item.revenue / getMaxRevenue()) * 100}
+                      sx={{ 
+                        height: 20, 
+                        borderRadius: 1,
+                        bgcolor: 'grey.200',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: idx === 0 ? 'warning.main' : 'secondary.main',
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{ minWidth: 80 }}>
+                    {formatPrice(item.revenue)}
+                  </Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Grid>
+    </Grid>
   );
 
   const renderCustomersView = () => (
-    <div className="analytics-sections">
-      <div className="analytics-section">
-        <h3>Top Customers by Order Count</h3>
+    <Grid container spacing={3}>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" gutterBottom>Top Customers by Order Count</Typography>
         {currentStats.topCustomersByOrders.length === 0 ? (
-          <p className="no-data">No customers in this period</p>
+          <Typography color="text.secondary">No customers in this period</Typography>
         ) : (
-          <div className="customer-chart">
+          <Stack spacing={2}>
             {currentStats.topCustomersByOrders.map((customer, idx) => (
-              <div key={customer.customerId} className={`customer-bar-container ${idx === 0 ? 'top-customer' : ''}`}>
-                <div className="customer-info">
-                  <span className="rank">#{idx + 1}</span>
-                  <span className="customer-name">{customer.customerName}</span>
-                  {idx === 0 && <span className="top-badge">👤</span>}
-                </div>
-                <div className="customer-id-cell">{customer.customerId}</div>
-                <div className="chart-bar-wrapper">
-                  <div 
-                    className={`chart-bar customer-bar ${idx === 0 ? 'top-customer-bar' : ''}`}
-                    style={{ width: `${(customer.orderCount / getMaxCustomerOrders()) * 100}%` }}
-                  >
-                    <span className="bar-value">{customer.orderCount} orders</span>
-                  </div>
-                </div>
-                <div className="customer-spent">{formatPrice(customer.totalSpent)}</div>
-              </div>
+              <Box key={customer.customerId}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
+                    #{idx + 1} {customer.customerName} {idx === 0 && '👤'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formatPrice(customer.totalSpent)}
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                  {customer.customerId}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(customer.orderCount / getMaxCustomerOrders()) * 100}
+                      sx={{ 
+                        height: 16, 
+                        borderRadius: 1,
+                        bgcolor: 'grey.200',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: idx === 0 ? 'info.main' : 'primary.main',
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{ minWidth: 70 }}>
+                    {customer.orderCount} orders
+                  </Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Stack>
         )}
-      </div>
+      </Grid>
 
-      <div className="analytics-section">
-        <h3>Top Customers by Revenue</h3>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Typography variant="h6" gutterBottom>Top Customers by Revenue</Typography>
         {currentStats.topCustomersByRevenue.length === 0 ? (
-          <p className="no-data">No customers in this period</p>
+          <Typography color="text.secondary">No customers in this period</Typography>
         ) : (
-          <div className="customer-chart">
+          <Stack spacing={2}>
             {currentStats.topCustomersByRevenue.map((customer, idx) => (
-              <div key={customer.customerId} className={`customer-bar-container ${idx === 0 ? 'top-revenue-customer' : ''}`}>
-                <div className="customer-info">
-                  <span className="rank">#{idx + 1}</span>
-                  <span className="customer-name">{customer.customerName}</span>
-                  {idx === 0 && <span className="top-badge">💰</span>}
-                </div>
-                <div className="customer-id-cell">{customer.customerId}</div>
-                <div className="chart-bar-wrapper">
-                  <div 
-                    className={`chart-bar revenue-bar ${idx === 0 ? 'top-revenue-bar' : ''}`}
-                    style={{ width: `${(customer.totalSpent / getMaxCustomerRevenue()) * 100}%` }}
-                  >
-                    <span className="bar-value">{formatPrice(customer.totalSpent)}</span>
-                  </div>
-                </div>
-                <div className="customer-orders">{customer.orderCount} orders</div>
-              </div>
+              <Box key={customer.customerId}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
+                    #{idx + 1} {customer.customerName} {idx === 0 && '💰'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {customer.orderCount} orders
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                  {customer.customerId}
+                </Typography>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(customer.totalSpent / getMaxCustomerRevenue()) * 100}
+                      sx={{ 
+                        height: 16, 
+                        borderRadius: 1,
+                        bgcolor: 'grey.200',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: idx === 0 ? 'warning.main' : 'secondary.main',
+                        }
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{ minWidth: 80 }}>
+                    {formatPrice(customer.totalSpent)}
+                  </Typography>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Stack>
         )}
-      </div>
-    </div>
+      </Grid>
+    </Grid>
   );
 
   const renderSourceView = () => (
-    <div className="analytics-sections full-width">
-      <div className="analytics-section">
-        <h3>Orders by Source</h3>
-        {Object.keys(currentStats.sourceBreakdown).length === 0 ? (
-          <p className="no-data">No orders in this period</p>
-        ) : (
-          <div className="source-breakdown">
-            {Object.entries(currentStats.sourceBreakdown)
-              .sort((a, b) => b[1].count - a[1].count)
-              .map(([source, data]) => (
-                <div key={source} className="source-row">
-                  <div className="source-info">
-                    <span className="source-name">{source}</span>
-                    <span className="source-count">{data.count} orders</span>
-                  </div>
-                  <div className="source-bar-wrapper">
-                    <div 
-                      className="source-bar"
-                      style={{ width: `${(data.count / getMaxSourceCount()) * 100}%` }}
+    <Box>
+      <Typography variant="h6" gutterBottom>Orders by Source</Typography>
+      {Object.keys(currentStats.sourceBreakdown).length === 0 ? (
+        <Typography color="text.secondary">No orders in this period</Typography>
+      ) : (
+        <Stack spacing={2}>
+          {Object.entries(currentStats.sourceBreakdown)
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(([source, data]) => (
+              <Box key={source}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                  <Typography variant="body2" fontWeight={500}>{source}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {formatPrice(data.revenue)}
+                  </Typography>
+                </Box>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={(data.count / getMaxSourceCount()) * 100}
+                      sx={{ 
+                        height: 20, 
+                        borderRadius: 1,
+                        bgcolor: 'grey.200',
+                      }}
                     />
-                  </div>
-                  <div className="source-revenue">{formatPrice(data.revenue)}</div>
-                </div>
-              ))}
-          </div>
-        )}
-      </div>
-    </div>
+                  </Box>
+                  <Typography variant="caption" sx={{ minWidth: 70 }}>
+                    {data.count} orders
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+        </Stack>
+      )}
+    </Box>
   );
 
   return (
-    <div className="panel sales-report-panel">
-      <h2>Sales Report & Analytics</h2>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+      <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+        Sales Report & Analytics
+      </Typography>
 
-      <div className="report-controls">
-        <div className="time-range-selector">
-          {TIME_RANGES.map(range => (
-            <button
-              key={range.key}
-              className={`range-btn ${selectedRange === range.key ? 'active' : ''}`}
-              onClick={() => handleRangeChange(range.key)}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2 }}>
+          {isMobile ? (
+            <FormControl fullWidth size="small">
+              <InputLabel>Time Range</InputLabel>
+              <Select
+                value={selectedRange}
+                label="Time Range"
+                onChange={(e) => handleRangeChange(e.target.value)}
+              >
+                {TIME_RANGES.map(range => (
+                  <MenuItem key={range.key} value={range.key}>{range.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          ) : (
+            <ButtonGroup variant="outlined" size="small">
+              {TIME_RANGES.map(range => (
+                <Button
+                  key={range.key}
+                  variant={selectedRange === range.key ? 'contained' : 'outlined'}
+                  onClick={() => handleRangeChange(range.key)}
+                >
+                  {range.label}
+                </Button>
+              ))}
+            </ButtonGroup>
+          )}
+
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel id="view-select-label">View</InputLabel>
+            <Select 
+              labelId="view-select-label"
+              id="viewSelect"
+              value={selectedView} 
+              label="View"
+              onChange={(e) => handleViewChange(e.target.value)}
             >
-              {range.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="view-selector">
-          <label htmlFor="viewSelect">View:</label>
-          <select 
-            id="viewSelect"
-            value={selectedView} 
-            onChange={(e) => handleViewChange(e.target.value)}
-            className="view-select"
-          >
-            {VIEW_OPTIONS.map(option => (
-              <option key={option.key} value={option.key}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+              {VIEW_OPTIONS.map(option => (
+                <MenuItem key={option.key} value={option.key}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
 
       {selectedView === 'overview' && renderOverviewView()}
       {selectedView === 'byItem' && renderItemsView()}
       {selectedView === 'byCustomer' && renderCustomersView()}
       {selectedView === 'bySource' && renderSourceView()}
-    </div>
+    </Paper>
   );
 }
 

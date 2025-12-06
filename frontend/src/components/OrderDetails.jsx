@@ -1,5 +1,36 @@
 import { useState, useEffect } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Grid from '@mui/material/Grid';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Divider from '@mui/material/Divider';
+import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SaveIcon from '@mui/icons-material/Save';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { getOrder, updateOrder } from '../services/api';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import {
@@ -12,6 +43,7 @@ import {
 
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
+  const { showSuccess, showError } = useNotification();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -133,8 +165,10 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
       setOrder(updatedOrder);
       setIsEditing(false);
       if (onOrderUpdated) onOrderUpdated();
+      showSuccess(`Order ${updatedOrder.orderId} updated successfully!`);
     } catch (err) {
       setError(err.message || 'Failed to update order');
+      showError(err.message || 'Failed to update order');
     } finally {
       setSaving(false);
     }
@@ -160,378 +194,445 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     }
   };
 
-  const getStatusClass = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'status-pending';
-      case 'processing': return 'status-processing';
-      case 'completed': return 'status-completed';
-      case 'cancelled': return 'status-cancelled';
-      default: return 'status-pending';
+      case 'pending': return 'warning';
+      case 'processing': return 'info';
+      case 'completed': return 'success';
+      case 'cancelled': return 'error';
+      default: return 'default';
     }
   };
 
-  if (loading) {
-    return (
-      <div className="order-details-overlay">
-        <div className="order-details-modal">
-          <p className="loading-text">Loading order details...</p>
-        </div>
-      </div>
-    );
-  }
+  const getPriorityColor = (priorityData) => {
+    if (!priorityData) return 'default';
+    if (priorityData.className.includes('overdue')) return 'error';
+    if (priorityData.className.includes('due-today')) return 'warning';
+    if (priorityData.className.includes('urgent')) return 'warning';
+    return 'success';
+  };
 
-  if (error && !order) {
-    return (
-      <div className="order-details-overlay">
-        <div className="order-details-modal">
-          <div className="order-details-header">
-            <h2>Error</h2>
-            <button className="close-btn" onClick={onClose}>×</button>
-          </div>
-          <p className="error">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!order) {
-    return null;
-  }
-
-  const priority = getPriorityStatus(order.expectedDeliveryDate);
+  const priority = order ? getPriorityStatus(order.expectedDeliveryDate) : null;
 
   return (
-    <div className="order-details-overlay" onClick={onClose}>
-      <div className="order-details-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="order-details-header">
-          <div className="order-details-title">
-            <h2>Order {order.orderId}</h2>
-            <div className="order-badges">
+    <Dialog 
+      open={true} 
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="order-details-dialog-title"
+    >
+      <DialogTitle 
+        id="order-details-dialog-title"
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 1,
+          pb: 1,
+        }}
+      >
+        {loading ? (
+          <Typography variant="h6">Loading...</Typography>
+        ) : error && !order ? (
+          <Typography variant="h6">Error</Typography>
+        ) : order ? (
+          <Box>
+            <Typography variant="h6" component="span">
+              Order {order.orderId}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
               {priority && (
-                <span className={`priority-badge ${priority.className}`}>
-                  {priority.label}
-                </span>
+                <Chip 
+                  label={priority.label} 
+                  color={getPriorityColor(priority)} 
+                  size="small"
+                />
               )}
-              <span className={`status-badge ${getStatusClass(order.status)}`}>
-                {order.status || 'Pending'}
-              </span>
-            </div>
-          </div>
-          <div className="order-header-actions">
-            {!isEditing && (
-              <>
-                <button className="edit-btn" onClick={() => setIsEditing(true)}>
-                  Edit
-                </button>
-                {onDuplicateOrder && (
-                  <button 
-                    className="duplicate-btn" 
-                    onClick={() => {
-                      onDuplicateOrder(orderId);
-                      onClose();
-                    }}
-                    title="Create a new order with the same items and customer"
-                  >
-                    📋 Duplicate
-                  </button>
-                )}
-              </>
-            )}
-            <button className="close-btn" onClick={onClose}>×</button>
-          </div>
-        </div>
-
-        <div className="order-details-content">
-          {error && <p className="error">{error}</p>}
-
-          {isEditing ? (
+              <Chip 
+                label={order.status || 'Pending'} 
+                color={getStatusColor(order.status)} 
+                size="small"
+              />
+            </Stack>
+          </Box>
+        ) : null}
+        <Box display="flex" alignItems="center" gap={1}>
+          {order && !isEditing && (
             <>
-              <div className="order-details-section">
-                <h3>Customer Information</h3>
-                <div className="form-group">
-                  <label>Customer Name *</label>
-                  <input
-                    type="text"
-                    value={editForm.customerName}
-                    onChange={(e) => handleEditChange('customerName', e.target.value)}
-                    placeholder="Customer name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Customer ID *</label>
-                  <input
-                    type="text"
-                    value={editForm.customerId}
-                    onChange={(e) => handleEditChange('customerId', e.target.value)}
-                    placeholder="Customer ID"
-                  />
-                </div>
-              </div>
-
-              <div className="order-details-section">
-                <h3>Order Information</h3>
-                <div className="form-group">
-                  <label>Order Source</label>
-                  <select
-                    value={editForm.orderFrom}
-                    onChange={(e) => handleEditChange('orderFrom', e.target.value)}
-                    className="status-select"
-                  >
-                    {ORDER_SOURCES.map(source => (
-                      <option key={source.value} value={source.value}>
-                        {source.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => handleEditChange('status', e.target.value)}
-                    className="status-select"
-                  >
-                    {ORDER_STATUSES.map(status => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Confirmation Status</label>
-                  <select
-                    value={editForm.confirmationStatus}
-                    onChange={(e) => handleEditChange('confirmationStatus', e.target.value)}
-                    className="status-select"
-                  >
-                    {CONFIRMATION_STATUSES.map(status => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Expected Delivery Date</label>
-                  <input
-                    type="date"
-                    value={editForm.expectedDeliveryDate}
-                    onChange={(e) => handleEditChange('expectedDeliveryDate', e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Priority Level</label>
-                  <select
-                    value={editForm.priority}
-                    onChange={(e) => handleEditChange('priority', parseInt(e.target.value, 10))}
-                    className="status-select"
-                  >
-                    {PRIORITY_LEVELS.map(level => (
-                      <option key={level.value} value={level.value}>
-                        {level.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="order-details-section">
-                <h3>Payment Information</h3>
-                <div className="form-group">
-                  <label>Payment Status</label>
-                  <select
-                    value={editForm.paymentStatus}
-                    onChange={(e) => handleEditChange('paymentStatus', e.target.value)}
-                    className="status-select"
-                  >
-                    {PAYMENT_STATUSES.map(status => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {editForm.paymentStatus === 'partially_paid' && (
-                  <div className="form-group">
-                    <label>Amount Paid</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editForm.paidAmount}
-                      onChange={(e) => handleEditChange('paidAmount', e.target.value)}
-                      placeholder="Enter amount paid"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="order-details-section">
-                <h3>Customer Notes</h3>
-                <div className="form-group">
-                  <textarea
-                    value={editForm.customerNotes}
-                    onChange={(e) => handleEditChange('customerNotes', e.target.value)}
-                    placeholder="Enter any notes about this customer or order"
-                    rows={3}
-                    className="customer-notes-input"
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" onClick={handleCancelEdit} className="cancel-btn">
-                  Cancel
-                </button>
-                <button type="button" onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="order-details-section">
-                <h3>Customer Information</h3>
-                <div className="detail-row">
-                  <span className="detail-label">Name:</span>
-                  <span className="detail-value">{order.customerName}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Customer ID:</span>
-                  <span className="detail-value">{order.customerId}</span>
-                </div>
-              </div>
-
-              <div className="order-details-section">
-                <h3>Order Information</h3>
-                <div className="detail-row">
-                  <span className="detail-label">Source:</span>
-                  <span className="detail-value">
-                    <span className="source-badge">{order.orderFrom}</span>
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Status:</span>
-                  <span className="detail-value">
-                    <span className={`status-badge ${getStatusClass(order.status)}`}>
-                      {order.status || 'Pending'}
-                    </span>
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Confirmation:</span>
-                  <span className="detail-value">
-                    <span className={`confirmation-badge confirmation-${order.confirmationStatus || 'unconfirmed'}`}>
-                      {CONFIRMATION_STATUSES.find(s => s.value === order.confirmationStatus)?.label || 'Unconfirmed'}
-                    </span>
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Priority:</span>
-                  <span className="detail-value">
-                    <span className={`priority-level priority-level-${order.priority || 0}`}>
-                      {PRIORITY_LEVELS.find(l => l.value === (order.priority || 0))?.label || 'Normal'}
-                    </span>
-                  </span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Created:</span>
-                  <span className="detail-value">{formatDate(order.createdAt)}</span>
-                </div>
-                <div className="detail-row">
-                  <span className="detail-label">Expected Delivery:</span>
-                  <span className="detail-value">
-                    {formatDeliveryDate(order.expectedDeliveryDate)}
-                    {priority && (
-                      <span className={`priority-indicator ${priority.className}`}>
-                        ({priority.label})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <div className="order-details-section">
-                <h3>Payment Information</h3>
-                <div className="detail-row">
-                  <span className="detail-label">Payment Status:</span>
-                  <span className="detail-value">
-                    <span className={`payment-badge payment-${order.paymentStatus || 'unpaid'}`}>
-                      {PAYMENT_STATUSES.find(s => s.value === order.paymentStatus)?.label || 'Unpaid'}
-                    </span>
-                  </span>
-                </div>
-                {order.paymentStatus === 'partially_paid' && (
-                  <div className="detail-row">
-                    <span className="detail-label">Amount Paid:</span>
-                    <span className="detail-value">{formatPrice(order.paidAmount || 0)}</span>
-                  </div>
-                )}
-                {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'partially_paid') && (
-                  <div className="detail-row">
-                    <span className="detail-label">Balance Due:</span>
-                    <span className="detail-value">
-                      {formatPrice(order.totalPrice - (order.paidAmount || 0))}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {order.customerNotes && (
-                <div className="order-details-section">
-                  <h3>Customer Notes</h3>
-                  <div className="customer-notes-display">
-                    {order.customerNotes}
-                  </div>
-                </div>
+              <Button 
+                size="small" 
+                startIcon={<EditIcon />}
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </Button>
+              {onDuplicateOrder && (
+                <Button 
+                  size="small"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => {
+                    onDuplicateOrder(orderId);
+                    onClose();
+                  }}
+                >
+                  Duplicate
+                </Button>
               )}
-
-              <div className="order-details-section">
-                <h3>Order Items</h3>
-                <div className="order-items-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Price</th>
-                        <th>Qty</th>
-                        <th>Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {order.items.map((item, index) => (
-                        <tr key={index}>
-                          <td>
-                            <div className="item-name-col">
-                              {item.name}
-                              {item.customizationRequest && (
-                                <span className="customization-note">
-                                  Customization: {item.customizationRequest}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td>{formatPrice(item.price)}</td>
-                          <td>{item.quantity}</td>
-                          <td>{formatPrice(item.price * item.quantity)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan="3" className="total-label">Total:</td>
-                        <td className="total-value">{formatPrice(order.totalPrice)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
             </>
           )}
-        </div>
-      </div>
-    </div>
+          <IconButton onClick={onClose} aria-label="Close dialog">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
+
+      <DialogContent dividers>
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={4}>
+            <CircularProgress />
+          </Box>
+        ) : error && !order ? (
+          <Alert severity="error">{error}</Alert>
+        ) : order ? (
+          <>
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+            {isEditing ? (
+              <Box component="form" id="order-edit-form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                <Stack spacing={3}>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Customer Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          label="Customer Name"
+                          value={editForm.customerName}
+                          onChange={(e) => handleEditChange('customerName', e.target.value)}
+                          fullWidth
+                          required
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          label="Customer ID"
+                          value={editForm.customerId}
+                          onChange={(e) => handleEditChange('customerId', e.target.value)}
+                          fullWidth
+                          required
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Order Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Order Source</InputLabel>
+                          <Select
+                            value={editForm.orderFrom}
+                            label="Order Source"
+                            onChange={(e) => handleEditChange('orderFrom', e.target.value)}
+                          >
+                            {ORDER_SOURCES.map(source => (
+                              <MenuItem key={source.value} value={source.value}>
+                                {source.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Status</InputLabel>
+                          <Select
+                            value={editForm.status}
+                            label="Status"
+                            onChange={(e) => handleEditChange('status', e.target.value)}
+                          >
+                            {ORDER_STATUSES.map(status => (
+                              <MenuItem key={status.value} value={status.value}>
+                                {status.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Confirmation Status</InputLabel>
+                          <Select
+                            value={editForm.confirmationStatus}
+                            label="Confirmation Status"
+                            onChange={(e) => handleEditChange('confirmationStatus', e.target.value)}
+                          >
+                            {CONFIRMATION_STATUSES.map(status => (
+                              <MenuItem key={status.value} value={status.value}>
+                                {status.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          label="Expected Delivery Date"
+                          type="date"
+                          value={editForm.expectedDeliveryDate}
+                          onChange={(e) => handleEditChange('expectedDeliveryDate', e.target.value)}
+                          slotProps={{ inputLabel: { shrink: true } }}
+                          fullWidth
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Priority Level</InputLabel>
+                          <Select
+                            value={editForm.priority}
+                            label="Priority Level"
+                            onChange={(e) => handleEditChange('priority', parseInt(e.target.value, 10))}
+                          >
+                            {PRIORITY_LEVELS.map(level => (
+                              <MenuItem key={level.value} value={level.value}>
+                                {level.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Payment Information
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>Payment Status</InputLabel>
+                          <Select
+                            value={editForm.paymentStatus}
+                            label="Payment Status"
+                            onChange={(e) => handleEditChange('paymentStatus', e.target.value)}
+                          >
+                            {PAYMENT_STATUSES.map(status => (
+                              <MenuItem key={status.value} value={status.value}>
+                                {status.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      {editForm.paymentStatus === 'partially_paid' && (
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            label="Amount Paid"
+                            type="number"
+                            inputProps={{ min: 0, step: 0.01 }}
+                            value={editForm.paidAmount}
+                            onChange={(e) => handleEditChange('paidAmount', e.target.value)}
+                            fullWidth
+                          />
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Customer Notes
+                    </Typography>
+                    <TextField
+                      value={editForm.customerNotes}
+                      onChange={(e) => handleEditChange('customerNotes', e.target.value)}
+                      placeholder="Enter any notes about this customer or order"
+                      fullWidth
+                      multiline
+                      rows={2}
+                    />
+                  </Box>
+                </Stack>
+              </Box>
+            ) : (
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Customer Information
+                  </Typography>
+                  <Grid container spacing={1}>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Name:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2">{order.customerName}</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Customer ID:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2">{order.customerId}</Typography></Grid>
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Order Information
+                  </Typography>
+                  <Grid container spacing={1} alignItems="center">
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Source:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Chip label={order.orderFrom} size="small" color="primary" /></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Status:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Chip label={order.status || 'Pending'} size="small" color={getStatusColor(order.status)} /></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Confirmation:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Chip 
+                        label={CONFIRMATION_STATUSES.find(s => s.value === order.confirmationStatus)?.label || 'Unconfirmed'} 
+                        size="small" 
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Priority:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Chip 
+                        label={PRIORITY_LEVELS.find(l => l.value === (order.priority || 0))?.label || 'Normal'} 
+                        size="small" 
+                        variant="outlined"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Created:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2">{formatDate(order.createdAt)}</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Expected Delivery:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Typography variant="body2">
+                        {formatDeliveryDate(order.expectedDeliveryDate)}
+                        {priority && (
+                          <Chip 
+                            label={priority.label} 
+                            size="small" 
+                            color={getPriorityColor(priority)}
+                            sx={{ ml: 1 }}
+                          />
+                        )}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Divider />
+
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Payment Information
+                  </Typography>
+                  <Grid container spacing={1}>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Payment Status:</Typography></Grid>
+                    <Grid size={{ xs: 6 }}>
+                      <Chip 
+                        label={PAYMENT_STATUSES.find(s => s.value === order.paymentStatus)?.label || 'Unpaid'} 
+                        size="small"
+                        color={order.paymentStatus === 'paid' ? 'success' : order.paymentStatus === 'partially_paid' ? 'warning' : 'default'}
+                      />
+                    </Grid>
+                    {order.paymentStatus === 'partially_paid' && (
+                      <>
+                        <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Amount Paid:</Typography></Grid>
+                        <Grid size={{ xs: 6 }}><Typography variant="body2">{formatPrice(order.paidAmount || 0)}</Typography></Grid>
+                      </>
+                    )}
+                    {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'partially_paid') && (
+                      <>
+                        <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Balance Due:</Typography></Grid>
+                        <Grid size={{ xs: 6 }}><Typography variant="body2" fontWeight={600} color="error.main">{formatPrice(order.totalPrice - (order.paidAmount || 0))}</Typography></Grid>
+                      </>
+                    )}
+                  </Grid>
+                </Box>
+
+                {order.customerNotes && (
+                  <>
+                    <Divider />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Customer Notes
+                      </Typography>
+                      <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <Typography variant="body2">{order.customerNotes}</Typography>
+                      </Paper>
+                    </Box>
+                  </>
+                )}
+
+                <Divider />
+
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Order Items
+                  </Typography>
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Item</TableCell>
+                          <TableCell align="right">Price</TableCell>
+                          <TableCell align="right">Qty</TableCell>
+                          <TableCell align="right">Subtotal</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {order.items.map((item, index) => (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <Typography variant="body2">{item.name}</Typography>
+                              {item.customizationRequest && (
+                                <Typography variant="caption" color="info.main" fontStyle="italic">
+                                  Customization: {item.customizationRequest}
+                                </Typography>
+                              )}
+                            </TableCell>
+                            <TableCell align="right">{formatPrice(item.price)}</TableCell>
+                            <TableCell align="right">{item.quantity}</TableCell>
+                            <TableCell align="right">{formatPrice(item.price * item.quantity)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow>
+                          <TableCell colSpan={3} align="right">
+                            <Typography variant="subtitle2">Total:</Typography>
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography variant="subtitle1" fontWeight={600} color="primary.main">
+                              {formatPrice(order.totalPrice)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
+              </Stack>
+            )}
+          </>
+        ) : null}
+      </DialogContent>
+
+      {order && isEditing && (
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleCancelEdit} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      )}
+    </Dialog>
   );
 }
 
