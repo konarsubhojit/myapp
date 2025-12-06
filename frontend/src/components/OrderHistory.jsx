@@ -1,5 +1,29 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Grid from '@mui/material/Grid2';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TableSortLabel from '@mui/material/TableSortLabel';
+import Pagination from '@mui/material/Pagination';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
 import { getPriorityStatus } from '../utils/priorityUtils';
@@ -232,260 +256,379 @@ function OrderHistory({ onDuplicateOrder }) {
     });
   };
 
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return '↕';
-    return sortConfig.direction === 'asc' ? '↑' : '↓';
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return 'warning';
+      case 'processing': return 'info';
+      case 'completed': return 'success';
+      case 'cancelled': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const getPriorityColor = (priorityData) => {
+    if (!priorityData) return 'default';
+    if (priorityData.className.includes('overdue')) return 'error';
+    if (priorityData.className.includes('due-today')) return 'warning';
+    if (priorityData.className.includes('urgent')) return 'warning';
+    return 'success';
+  };
+
+  const getPaymentColor = (status) => {
+    switch (status) {
+      case 'paid': return 'success';
+      case 'partially_paid': return 'warning';
+      case 'unpaid': return 'default';
+      default: return 'default';
+    }
   };
 
   if (initialLoading) {
     return (
-      <div className="panel order-history-panel">
-        <h2>Order History</h2>
-        <p className="loading-text">Loading orders...</p>
-      </div>
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+        <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+          Order History
+        </Typography>
+        <Box display="flex" justifyContent="center" py={4}>
+          <CircularProgress />
+        </Box>
+      </Paper>
     );
   }
 
   return (
-    <div className="panel order-history-panel">
-      <h2>Order History</h2>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+      <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+        Order History
+      </Typography>
       
-      {error && <p className="error">{error}</p>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       
       {/* Priority Legend */}
-      <div className="priority-legend">
-        <span className="legend-title">Priority Indicators:</span>
-        <div className="legend-items">
-          <span className="legend-item">
-            <span className="legend-badge priority-overdue">Overdue</span>
-            <span className="legend-desc">Past delivery date</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge priority-due-today">Due Today</span>
-            <span className="legend-desc">Deliver today</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge priority-urgent">1-3d</span>
-            <span className="legend-desc">Due within 3 days</span>
-          </span>
-          <span className="legend-item">
-            <span className="legend-badge priority-normal">Normal</span>
-            <span className="legend-desc">Due later</span>
-          </span>
-        </div>
-      </div>
+      <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Priority Indicators:
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Overdue" color="error" size="small" />
+            <Typography variant="caption" color="text.secondary">Past</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Due Today" color="warning" size="small" />
+            <Typography variant="caption" color="text.secondary">Today</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="1-3d" color="warning" variant="outlined" size="small" />
+            <Typography variant="caption" color="text.secondary">Soon</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="Normal" color="success" size="small" />
+            <Typography variant="caption" color="text.secondary">Later</Typography>
+          </Box>
+        </Box>
+      </Box>
       
-      <div className="filters-section">
-        <h4>Filters</h4>
-        <div className="filters-row">
-          <input
-            type="text"
-            placeholder="Filter by Order ID"
-            value={filters.orderId}
-            onChange={(e) => handleFilterChange('orderId', e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Filter by Customer Name"
-            value={filters.customerName}
-            onChange={(e) => handleFilterChange('customerName', e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Filter by Customer ID"
-            value={filters.customerId}
-            onChange={(e) => handleFilterChange('customerId', e.target.value)}
-          />
-          <select
-            value={filters.orderFrom}
-            onChange={(e) => handleFilterChange('orderFrom', e.target.value)}
-          >
-            <option value="">All Sources</option>
-            {ORDER_SOURCES.map(source => (
-              <option key={source.value} value={source.value}>
-                {source.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.confirmationStatus}
-            onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
-          >
-            <option value="">All Confirmations</option>
-            {CONFIRMATION_STATUSES.map(status => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.paymentStatus}
-            onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
-          >
-            <option value="">All Payments</option>
-            {PAYMENT_STATUSES.map(status => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-          <button 
-            className="clear-filters-btn"
-            onClick={handleClearFilters}
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
+      {/* Filters Section */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Filters
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Filter by Order ID"
+              value={filters.orderId}
+              onChange={(e) => handleFilterChange('orderId', e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+              aria-label="Filter by Order ID"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Filter by Customer Name"
+              value={filters.customerName}
+              onChange={(e) => handleFilterChange('customerName', e.target.value)}
+              aria-label="Filter by Customer Name"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Filter by Customer ID"
+              value={filters.customerId}
+              onChange={(e) => handleFilterChange('customerId', e.target.value)}
+              aria-label="Filter by Customer ID"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Source</InputLabel>
+              <Select
+                value={filters.orderFrom}
+                label="Source"
+                onChange={(e) => handleFilterChange('orderFrom', e.target.value)}
+              >
+                <MenuItem value="">All Sources</MenuItem>
+                {ORDER_SOURCES.map(source => (
+                  <MenuItem key={source.value} value={source.value}>
+                    {source.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={filters.confirmationStatus}
+                label="Status"
+                onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                {CONFIRMATION_STATUSES.map(status => (
+                  <MenuItem key={status.value} value={status.value}>
+                    {status.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Payment</InputLabel>
+              <Select
+                value={filters.paymentStatus}
+                label="Payment"
+                onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
+              >
+                <MenuItem value="">All Payments</MenuItem>
+                {PAYMENT_STATUSES.map(status => (
+                  <MenuItem key={status.value} value={status.value}>
+                    {status.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Button 
+              variant="outlined" 
+              startIcon={<ClearIcon />}
+              onClick={handleClearFilters}
+              fullWidth
+            >
+              Clear Filters
+            </Button>
+          </Grid>
+        </Grid>
+      </Paper>
 
-      <div className="pagination-controls">
-        <div className="page-size-selector">
-          <label htmlFor="pageSize">Items per page:</label>
-          <select
+      {/* Pagination Controls */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id="page-size-label">Per page</InputLabel>
+          <Select
+            labelId="page-size-label"
             id="pageSize"
             value={pagination.limit}
+            label="Per page"
             onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
           >
             {PAGE_SIZE_OPTIONS.map(size => (
-              <option key={size} value={size}>{size}</option>
+              <MenuItem key={size} value={size}>{size}</MenuItem>
             ))}
-          </select>
-        </div>
-      </div>
+          </Select>
+        </FormControl>
+        <Typography variant="body2" color="text.secondary">
+          Showing {sortedOrders.length} of {pagination.total} orders
+        </Typography>
+      </Box>
 
-      {loading && <p className="loading-text">Loading...</p>}
-
-      {!loading && sortedOrders.length === 0 ? (
-        <p className="no-orders">No orders found</p>
-      ) : (
-        <div className="orders-table-container">
-          <table className="orders-table">
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('orderId')} className="sortable">
-                  Order ID {getSortIcon('orderId')}
-                </th>
-                <th onClick={() => handleSort('customerName')} className="sortable">
-                  Customer {getSortIcon('customerName')}
-                </th>
-                <th onClick={() => handleSort('orderFrom')} className="sortable">
-                  Source {getSortIcon('orderFrom')}
-                </th>
-                <th onClick={() => handleSort('confirmationStatus')} className="sortable">
-                  Confirmation {getSortIcon('confirmationStatus')}
-                </th>
-                <th onClick={() => handleSort('status')} className="sortable">
-                  Status {getSortIcon('status')}
-                </th>
-                <th onClick={() => handleSort('paymentStatus')} className="sortable">
-                  Payment {getSortIcon('paymentStatus')}
-                </th>
-                <th onClick={() => handleSort('totalPrice')} className="sortable">
-                  Total {getSortIcon('totalPrice')}
-                </th>
-                <th onClick={() => handleSort('expectedDeliveryDate')} className="sortable">
-                  Delivery {getSortIcon('expectedDeliveryDate')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedOrders.map(order => {
-                const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true });
-                const getStatusClass = (status) => {
-                  switch (status) {
-                    case 'pending': return 'status-pending';
-                    case 'processing': return 'status-processing';
-                    case 'completed': return 'status-completed';
-                    case 'cancelled': return 'status-cancelled';
-                    default: return 'status-pending';
-                  }
-                };
-                return (
-                  <tr 
-                    key={order._id} 
-                    onClick={() => handleOrderClick(order._id)}
-                    className={`order-row clickable ${priority ? priority.className : ''}`}
-                  >
-                    <td className="order-id-cell">{order.orderId}</td>
-                    <td>
-                      <div>{order.customerName}</div>
-                      <div className="customer-id-small">{order.customerId}</div>
-                    </td>
-                    <td>
-                      <span className="source-badge">
-                        {order.orderFrom}
-                      </span>
-                    </td>
-                    <td className="confirmation-cell">
-                      <span className={`confirmation-badge confirmation-${order.confirmationStatus || 'unconfirmed'}`}>
-                        {getConfirmationStatusLabel(order.confirmationStatus)}
-                      </span>
-                    </td>
-                    <td className="status-cell">
-                      <span className={`status-badge ${getStatusClass(order.status)}`}>
-                        {order.status || 'pending'}
-                      </span>
-                    </td>
-                    <td className="payment-cell">
-                      <span className={`payment-badge payment-${order.paymentStatus || 'unpaid'}`}>
-                        {getPaymentStatusLabel(order.paymentStatus)}
-                      </span>
-                    </td>
-                    <td className="total-cell">{formatPrice(order.totalPrice)}</td>
-                    <td className="delivery-cell">
-                      <span className="delivery-date">
-                        {formatDeliveryDate(order.expectedDeliveryDate)}
-                      </span>
-                      {priority && (
-                        <span className={`priority-badge-small ${priority.className}`}>
-                          {priority.label}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {loading && (
+        <Box display="flex" justifyContent="center" py={4}>
+          <CircularProgress />
+        </Box>
       )}
 
-      <div className="pagination-footer">
-        <div className="pagination-info">
-          Showing {sortedOrders.length} of {pagination.total} orders (Page {pagination.page} of {pagination.totalPages})
-        </div>
-        <div className="pagination-buttons">
-          <button
-            className="pagination-btn"
-            onClick={() => handlePageChange(1)}
-            disabled={pagination.page === 1}
-          >
-            First
-          </button>
-          <button
-            className="pagination-btn"
-            onClick={() => handlePageChange(pagination.page - 1)}
-            disabled={pagination.page === 1}
-          >
-            Previous
-          </button>
-          <span className="page-indicator">Page {pagination.page}</span>
-          <button
-            className="pagination-btn"
-            onClick={() => handlePageChange(pagination.page + 1)}
-            disabled={pagination.page === pagination.totalPages}
-          >
-            Next
-          </button>
-          <button
-            className="pagination-btn"
-            onClick={() => handlePageChange(pagination.totalPages)}
-            disabled={pagination.page === pagination.totalPages}
-          >
-            Last
-          </button>
-        </div>
-      </div>
+      {!loading && sortedOrders.length === 0 ? (
+        <Typography color="text.secondary" textAlign="center" py={4}>
+          No orders found
+        </Typography>
+      ) : !loading && (
+        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+          <Table size="small" aria-label="Orders table">
+            <TableHead>
+              <TableRow>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'orderId'}
+                    direction={sortConfig.key === 'orderId' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('orderId')}
+                  >
+                    Order ID
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'customerName'}
+                    direction={sortConfig.key === 'customerName' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('customerName')}
+                  >
+                    Customer
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'orderFrom'}
+                    direction={sortConfig.key === 'orderFrom' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('orderFrom')}
+                  >
+                    Source
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'confirmationStatus'}
+                    direction={sortConfig.key === 'confirmationStatus' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('confirmationStatus')}
+                  >
+                    Confirmation
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'status'}
+                    direction={sortConfig.key === 'status' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('status')}
+                  >
+                    Status
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'paymentStatus'}
+                    direction={sortConfig.key === 'paymentStatus' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('paymentStatus')}
+                  >
+                    Payment
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell align="right">
+                  <TableSortLabel
+                    active={sortConfig.key === 'totalPrice'}
+                    direction={sortConfig.key === 'totalPrice' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('totalPrice')}
+                  >
+                    Total
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell>
+                  <TableSortLabel
+                    active={sortConfig.key === 'expectedDeliveryDate'}
+                    direction={sortConfig.key === 'expectedDeliveryDate' ? sortConfig.direction : 'asc'}
+                    onClick={() => handleSort('expectedDeliveryDate')}
+                  >
+                    Delivery
+                  </TableSortLabel>
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sortedOrders.map(order => {
+                const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true });
+                return (
+                  <TableRow 
+                    key={order._id} 
+                    onClick={() => handleOrderClick(order._id)}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={600} color="primary">
+                        {order.orderId}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{order.customerName}</Typography>
+                      <Typography variant="caption" color="text.secondary">{order.customerId}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={order.orderFrom} size="small" color="primary" variant="outlined" />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getConfirmationStatusLabel(order.confirmationStatus)} 
+                        size="small" 
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={order.status || 'pending'} 
+                        size="small" 
+                        color={getStatusColor(order.status)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getPaymentStatusLabel(order.paymentStatus)} 
+                        size="small" 
+                        color={getPaymentColor(order.paymentStatus)}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" fontWeight={500}>
+                        {formatPrice(order.totalPrice)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatDeliveryDate(order.expectedDeliveryDate)}
+                      </Typography>
+                      {priority && (
+                        <Chip 
+                          label={priority.label} 
+                          size="small" 
+                          color={getPriorityColor(priority)}
+                          sx={{ mt: 0.5 }}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Pagination Footer */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Pagination
+          count={pagination.totalPages || 1}
+          page={pagination.page}
+          onChange={(event, page) => handlePageChange(page)}
+          color="primary"
+          showFirstButton
+          showLastButton
+        />
+        <Typography variant="caption" color="text.secondary">
+          Page {pagination.page} of {pagination.totalPages}
+        </Typography>
+      </Box>
 
       {selectedOrderId && (
         <OrderDetails 
@@ -495,7 +638,7 @@ function OrderHistory({ onDuplicateOrder }) {
           onDuplicateOrder={onDuplicateOrder}
         />
       )}
-    </div>
+    </Paper>
   );
 }
 

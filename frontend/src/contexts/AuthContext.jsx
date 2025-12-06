@@ -80,6 +80,7 @@ export function AuthProvider({ children }) {
         id: payload.sub,
         email: payload.email,
         name: payload.name || payload.email,
+        picture: payload.picture || null,
         provider: 'google',
       };
       setGoogleUser(userData);
@@ -88,6 +89,16 @@ export function AuthProvider({ children }) {
       // Store in sessionStorage for persistence
       sessionStorage.setItem('googleUser', JSON.stringify(userData));
       sessionStorage.setItem('googleToken', token);
+      
+      // Check for redirect after login (deeplink support)
+      const redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        // Use setTimeout to ensure state is updated before navigation
+        setTimeout(() => {
+          window.location.href = redirectPath;
+        }, 100);
+      }
     } catch (parseError) {
       console.error('[Auth] Failed to parse Google token:', parseError);
       setError('Failed to process Google login');
