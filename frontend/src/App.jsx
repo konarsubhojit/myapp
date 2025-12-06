@@ -37,8 +37,6 @@ const TAB_ROUTES = [
 ]
 
 function AppContent() {
-  // TEMPORARY: Commented out auth for UI development
-  // eslint-disable-next-line no-unused-vars
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth()
   const [items, setItems] = useState([])
   const [orders, setOrders] = useState([])
@@ -77,11 +75,10 @@ function AppContent() {
     let isMounted = true;
     
     const loadData = async () => {
-      // TEMPORARY: Skip auth check for UI development
-      // if (!isAuthenticated) {
-      //   if (isMounted) setLoading(false)
-      //   return
-      // }
+      if (!isAuthenticated) {
+        if (isMounted) setLoading(false)
+        return
+      }
       
       if (isMounted) setLoading(true)
       await Promise.all([fetchItems(), fetchOrders()])
@@ -93,7 +90,7 @@ function AppContent() {
     return () => {
       isMounted = false
     }
-  }, [fetchItems, fetchOrders])
+  }, [isAuthenticated, fetchItems, fetchOrders])
 
   // Get current tab value based on path
   const getCurrentTabValue = () => {
@@ -109,33 +106,36 @@ function AppContent() {
     navigate(TAB_ROUTES[newValue].path)
   }
 
-  // TEMPORARY: Comment out auth checks for UI development
   // Show loading while checking auth
-  // if (authLoading) {
-  //   return (
-  //     <Box 
-  //       display="flex" 
-  //       flexDirection="column" 
-  //       alignItems="center" 
-  //       justifyContent="center" 
-  //       minHeight="100vh"
-  //       gap={2}
-  //       role="status"
-  //       aria-label="Checking authentication"
-  //     >
-  //       <CircularProgress size={48} />
-  //       <Typography variant="body1" color="text.secondary">
-  //         Checking authentication...
-  //       </Typography>
-  //     </Box>
-  //   )
-  // }
+  if (authLoading) {
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+        gap={2}
+        role="status"
+        aria-label="Checking authentication"
+      >
+        <CircularProgress size={48} />
+        <Typography variant="body1" color="text.secondary">
+          Checking authentication...
+        </Typography>
+      </Box>
+    )
+  }
 
-  // TEMPORARY: Comment out login redirect for UI development
-  // Show login if not authenticated
-  // if (!isAuthenticated) {
-  //   return <Login />
-  // }
+  // Show login if not authenticated - store current path for redirect after login
+  if (!isAuthenticated) {
+    // Store the intended destination for deeplink support
+    const currentPath = location.pathname + location.search
+    if (currentPath !== '/' && currentPath !== '/orders/new') {
+      sessionStorage.setItem('redirectAfterLogin', currentPath)
+    }
+    return <Login />
+  }
 
   if (loading) {
     return (

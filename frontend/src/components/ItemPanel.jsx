@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import imageCompression from 'browser-image-compression';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -42,7 +43,39 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB max upload size
+const TARGET_IMAGE_SIZE = 2 * 1024 * 1024; // Compress to 2MB max
+
+// Image compression options
+const compressionOptions = {
+  maxSizeMB: 2,
+  maxWidthOrHeight: 1920,
+  useWebWorker: true,
+  fileType: 'image/jpeg',
+};
+
+// Compress image if needed
+const compressImage = async (file) => {
+  // If file is already small enough, just convert to base64
+  if (file.size <= TARGET_IMAGE_SIZE) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Compress the image
+  const compressedFile = await imageCompression(file, compressionOptions);
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(compressedFile);
+  });
+};
 
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
@@ -154,7 +187,10 @@ function ItemPanel({ onItemsChange }) {
     }
   }, [showDeleted, fetchDeletedItems]);
 
-  const handleImageChange = (e) => {
+  // State for image processing
+  const [imageProcessing, setImageProcessing] = useState(false);
+
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) {
       setImage('');
@@ -168,18 +204,28 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    // Check file size
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError('Image size should be less than 2MB');
+    // Check file size - now allowing up to 5MB with compression
+    if (file.size > MAX_UPLOAD_SIZE) {
+      setError('Image size should be less than 5MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImage(reader.result);
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
+    setImageProcessing(true);
+    setError('');
+    
+    try {
+      const base64Image = await compressImage(file);
+      setImage(base64Image);
+      setImagePreview(base64Image);
+      if (file.size > TARGET_IMAGE_SIZE) {
+        showSuccess('Image was compressed for optimal upload');
+      }
+    } catch (err) {
+      setError('Failed to process image. Please try a different file.');
+      console.error('Image compression error:', err);
+    } finally {
+      setImageProcessing(false);
+    }
   };
 
   const clearImage = () => {
@@ -316,7 +362,10 @@ function ItemPanel({ onItemsChange }) {
     if (fileInput) fileInput.value = '';
   };
 
-  const handleEditImageChange = (e) => {
+  // State for edit image processing
+  const [editImageProcessing, setEditImageProcessing] = useState(false);
+
+  const handleEditImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -325,21 +374,31 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setError('Image size should be less than 2MB');
+    if (file.size > MAX_UPLOAD_SIZE) {
+      setError('Image size should be less than 5MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
+    setEditImageProcessing(true);
+    setError('');
+    
+    try {
+      const base64Image = await compressImage(file);
       setEditingItem(prev => ({
         ...prev,
-        editImage: reader.result,
-        editImagePreview: reader.result,
+        editImage: base64Image,
+        editImagePreview: base64Image,
         removeImage: false
       }));
-    };
-    reader.readAsDataURL(file);
+      if (file.size > TARGET_IMAGE_SIZE) {
+        showSuccess('Image was compressed for optimal upload');
+      }
+    } catch (err) {
+      setError('Failed to process image. Please try a different file.');
+      console.error('Image compression error:', err);
+    } finally {
+      setEditImageProcessing(false);
+    }
   };
 
   const clearEditImage = () => {
@@ -571,15 +630,16 @@ function ItemPanel({ onItemsChange }) {
 
           <Grid size={{ xs: 12 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Item Image (Max size: 2MB)
+              Item Image (Max size: 5MB, auto-compressed)
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Button
                 variant="outlined"
                 component="label"
-                startIcon={<ImageIcon />}
+                startIcon={imageProcessing ? <CircularProgress size={16} /> : <ImageIcon />}
+                disabled={imageProcessing}
               >
-                Upload Image
+                {imageProcessing ? 'Processing...' : 'Upload Image'}
                 <input
                   id="itemImage"
                   type="file"
@@ -945,15 +1005,16 @@ function ItemPanel({ onItemsChange }) {
 
                 <Box>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Item Image (Max size: 2MB)
+                    Item Image (Max size: 5MB, auto-compressed)
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                     <Button
                       variant="outlined"
                       component="label"
-                      startIcon={<ImageIcon />}
+                      startIcon={editImageProcessing ? <CircularProgress size={16} /> : <ImageIcon />}
+                      disabled={editImageProcessing}
                     >
-                      Upload Image
+                      {editImageProcessing ? 'Processing...' : 'Upload Image'}
                       <input
                         id="editItemImage"
                         type="file"
