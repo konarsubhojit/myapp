@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
@@ -13,6 +13,23 @@ import {
 } from '../constants/orderConstants';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+// Build URL params string for comparison
+const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => {
+  const parts = [];
+  if (pagination.page > 1) parts.push(`page=${pagination.page}`);
+  if (pagination.limit !== 10) parts.push(`limit=${pagination.limit}`);
+  if (filters.customerName) parts.push(`customerName=${filters.customerName}`);
+  if (filters.customerId) parts.push(`customerId=${filters.customerId}`);
+  if (filters.orderFrom) parts.push(`orderFrom=${filters.orderFrom}`);
+  if (filters.orderId) parts.push(`orderId=${filters.orderId}`);
+  if (filters.confirmationStatus) parts.push(`confirmationStatus=${filters.confirmationStatus}`);
+  if (filters.paymentStatus) parts.push(`paymentStatus=${filters.paymentStatus}`);
+  if (sortConfig.key !== 'expectedDeliveryDate') parts.push(`sortKey=${sortConfig.key}`);
+  if (sortConfig.direction !== 'asc') parts.push(`sortDir=${sortConfig.direction}`);
+  if (selectedOrderId) parts.push(`order=${selectedOrderId}`);
+  return parts.join('&');
+};
 
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
@@ -60,6 +77,9 @@ function OrderHistory({ onDuplicateOrder }) {
   const [selectedOrderId, setSelectedOrderId] = useState(initialState.selectedOrderId);
   const [filters, setFilters] = useState(initialState.filters);
   const [sortConfig, setSortConfig] = useState(initialState.sortConfig);
+  
+  // Track previous URL params to avoid unnecessary updates
+  const prevParamsRef = useRef('');
 
   // Update URL when state changes
   const updateUrl = useCallback((newFilters, newPagination, newSortConfig, newSelectedOrderId) => {
@@ -103,10 +123,16 @@ function OrderHistory({ onDuplicateOrder }) {
     fetchOrders(pagination.page, pagination.limit);
   }, [pagination.page, pagination.limit, fetchOrders]);
 
-  // Update URL when state changes
+  // Update URL when state changes - only if params actually changed
   useEffect(() => {
     const paginationForUrl = { page: pagination.page, limit: pagination.limit };
-    updateUrl(filters, paginationForUrl, sortConfig, selectedOrderId);
+    const newParamsString = buildParamsString(filters, paginationForUrl, sortConfig, selectedOrderId);
+    
+    // Only update URL if params actually changed
+    if (newParamsString !== prevParamsRef.current) {
+      prevParamsRef.current = newParamsString;
+      updateUrl(filters, paginationForUrl, sortConfig, selectedOrderId);
+    }
   }, [filters, pagination.page, pagination.limit, sortConfig, selectedOrderId, updateUrl]);
 
   const handleFilterChange = (field, value) => {

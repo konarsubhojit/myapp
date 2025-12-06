@@ -65,14 +65,18 @@ function OrderForm({ items, onOrderCreated }) {
         setConfirmationStatus('unconfirmed');
         setExpectedDeliveryDate('');
         
+        // Create lookup maps for efficient item matching
+        const itemsByIdMap = new Map(items.map(i => [String(i._id), i]));
+        const itemsByNameMap = new Map(items.map(i => [i.name.toLowerCase(), i]));
+        
         // Map order items - try to match by itemId first, then by name
         const mappedItems = order.items.map(orderItem => {
           // Try to find the item by ID first
-          let matchedItem = items.find(i => String(i._id) === String(orderItem.item));
+          let matchedItem = itemsByIdMap.get(String(orderItem.item));
           
           // If not found by ID, try to match by name (for cases where same item exists)
           if (!matchedItem) {
-            matchedItem = items.find(i => i.name.toLowerCase() === orderItem.name.toLowerCase());
+            matchedItem = itemsByNameMap.get(orderItem.name.toLowerCase());
           }
           
           return {
