@@ -174,7 +174,7 @@ function AppContent() {
             sx={{ 
               fontWeight: 700,
               letterSpacing: '-0.02em',
-              fontSize: { xs: '0.9rem', sm: '1.25rem' },
+              fontSize: { xs: '1rem', sm: '1.25rem' },
               flexShrink: 1,
               minWidth: 0,
               whiteSpace: 'nowrap',

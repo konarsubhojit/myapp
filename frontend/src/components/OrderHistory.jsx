@@ -392,13 +392,13 @@ function OrderHistory({ onDuplicateOrder }) {
           </Grid>
           <Grid size={{ xs: 6, sm: 6, md: 3 }}>
             <FormControl size="small" fullWidth>
-              <InputLabel>Confirm</InputLabel>
+              <InputLabel>Status</InputLabel>
               <Select
                 value={filters.confirmationStatus}
-                label="Confirm"
+                label="Status"
                 onChange={(e) => handleFilterChange('confirmationStatus', e.target.value)}
               >
-                <MenuItem value="">All</MenuItem>
+                <MenuItem value="">All Statuses</MenuItem>
                 {CONFIRMATION_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
                     {status.label}
@@ -415,7 +415,7 @@ function OrderHistory({ onDuplicateOrder }) {
                 label="Payment"
                 onChange={(e) => handleFilterChange('paymentStatus', e.target.value)}
               >
-                <MenuItem value="">All</MenuItem>
+                <MenuItem value="">All Payments</MenuItem>
                 {PAYMENT_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
                     {status.label}
