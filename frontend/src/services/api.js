@@ -143,6 +143,17 @@ export const restoreItem = async (id) => {
   return response.json();
 };
 
+export const permanentlyDeleteItem = async (id) => {
+  const response = await authFetch(`${API_BASE_URL}/items/${id}/permanent`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to permanently delete item');
+  }
+  return response.json();
+};
+
 // Orders API
 export const getOrders = async () => {
   const response = await authFetch(`${API_BASE_URL}/orders`);

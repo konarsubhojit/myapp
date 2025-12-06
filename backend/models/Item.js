@@ -174,6 +174,20 @@ const Item = {
       items: result.map(transformItem),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     };
+  },
+
+  async permanentlyRemoveImage(id) {
+    const db = getDatabase();
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    
+    const result = await db.update(items)
+      .set({ imageUrl: null })
+      .where(eq(items.id, numericId))
+      .returning();
+    if (result.length === 0) return null;
+    
+    return transformItem(result[0]);
   }
 };
 
