@@ -220,7 +220,7 @@ router.delete('/:id/permanent', async (req, res) => {
 
     // Check if item is soft deleted
     if (!item.deletedAt) {
-      return res.status(400).json({ message: 'Item must be soft deleted before permanent deletion' });
+      return res.status(400).json({ message: 'Item must be soft-deleted before permanent image removal' });
     }
 
     const imageUrl = item.imageUrl;

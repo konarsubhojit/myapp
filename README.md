@@ -11,6 +11,7 @@ A full-stack application for managing orders with React frontend and Node.js/Pos
 - **Sales Analytics**: Comprehensive sales reports by time period, item, customer, and source
 - **Authentication**: Google OAuth integration
 - **Soft Delete**: Items can be soft-deleted and restored
+- **Permanent Image Deletion**: Remove images from soft-deleted items while preserving records for historical orders
 
 ## Tech Stack
 
@@ -68,6 +69,7 @@ Frontend will run on http://localhost:5173
 - `PUT /api/items/:id` - Update an item
 - `DELETE /api/items/:id` - Soft delete an item
 - `POST /api/items/:id/restore` - Restore a soft-deleted item
+- `DELETE /api/items/:id/permanent` - Permanently remove image from a soft-deleted item
 
 ### Orders
 - `GET /api/orders` - Get all orders (supports pagination)

@@ -331,7 +331,6 @@ function ItemPanel({ onItemsChange }) {
 
     try {
       await permanentlyDeleteItem(id);
-      onItemsChange();
       fetchDeletedItems();
       showSuccess(`Image for item "${itemName}" has been permanently removed.`);
     } catch (err) {
