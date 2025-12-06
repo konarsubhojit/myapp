@@ -11,11 +11,6 @@ if (!cached) {
   cached = global.neonDb = { db: null };
 }
 
-/**
- * Get Drizzle database connection for Neon PostgreSQL.
- * Optimized for serverless environments like Vercel.
- * @returns {Object} Drizzle database instance
- */
 function getDatabase() {
   const uri = process.env.NEON_DATABASE_URL;
 
@@ -43,10 +38,6 @@ function getDatabase() {
   }
 }
 
-/**
- * Connect to the database (for backwards compatibility with server.js)
- * @returns {Promise<Object>} Database connection
- */
 async function connectToDatabase() {
   return getDatabase();
 }

@@ -13,24 +13,19 @@ const {
 } = require('../constants/orderConstants');
 
 const logger = createLogger('OrdersRoute');
+const ALLOWED_LIMITS = [10, 20, 50];
 
 router.get('/', async (req, res) => {
   try {
     const parsedPage = parseInt(req.query.page, 10);
     const parsedLimit = parseInt(req.query.limit, 10);
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = Number.isNaN(parsedLimit) ? 10 : parsedLimit;
+    const limit = ALLOWED_LIMITS.includes(parsedLimit) ? parsedLimit : 10;
     
-    // Validate limit to be one of allowed values
-    const allowedLimits = [10, 20, 50];
-    const validLimit = allowedLimits.includes(limit) ? limit : 10;
-    
-    // If page and limit params are provided, use paginated find
     if (req.query.page || req.query.limit) {
-      const result = await Order.findPaginated({ page, limit: validLimit });
+      const result = await Order.findPaginated({ page, limit });
       res.json(result);
     } else {
-      // Legacy: return all orders for backwards compatibility (used by sales report)
       const orders = await Order.find();
       res.json(orders);
     }
@@ -44,7 +39,6 @@ router.post('/', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
-    // Validate customerNotes length
     if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
       return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
     }
@@ -56,7 +50,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'At least one item is required' });
     }
 
-    // Validate expectedDeliveryDate if provided
     let parsedDeliveryDate = null;
     if (expectedDeliveryDate) {
       parsedDeliveryDate = new Date(expectedDeliveryDate);
@@ -64,7 +57,6 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ message: 'Invalid expected delivery date' });
       }
       
-      // Ensure the delivery date is not in the past
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const deliveryDate = new Date(parsedDeliveryDate);
@@ -75,17 +67,14 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Validate payment status if provided
     if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
       return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
     }
 
-    // Validate confirmation status if provided
     if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
       return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
     }
 
-    // Validate paid amount if provided
     let parsedPaidAmount = 0;
     if (paidAmount !== undefined && paidAmount !== null) {
       parsedPaidAmount = parseFloat(paidAmount);
@@ -94,7 +83,6 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Validate priority if provided
     let parsedPriority = 0;
     if (priority !== undefined && priority !== null) {
       parsedPriority = parseInt(priority, 10);
@@ -128,15 +116,11 @@ router.post('/', async (req, res) => {
       totalPrice += item.price * quantity;
     }
 
-    // Validate paid amount against total price
     if (parsedPaidAmount > totalPrice) {
       return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
     }
-    // Additional validation for 'partially_paid' status
-    if (
-      paymentStatus === 'partially_paid' &&
-      (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)
-    ) {
+    
+    if (paymentStatus === 'partially_paid' && (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)) {
       return res.status(400).json({
         message: 'Partially paid orders must have a paid amount greater than 0 and less than the total price'
       });
@@ -177,16 +161,14 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Update an existing order
 router.put('/:id', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
-    // Validate customerNotes length if provided
     if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
       return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
     }
-    // Validate required fields if provided
+    
     if (customerName !== undefined && (!customerName || !customerName.trim())) {
       return res.status(400).json({ message: 'Customer name cannot be empty' });
     }
@@ -195,22 +177,18 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: 'Customer ID cannot be empty' });
     }
 
-    // Validate status if provided
     if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` });
     }
 
-    // Validate payment status if provided
     if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
       return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
     }
 
-    // Validate confirmation status if provided
     if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
       return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
     }
 
-    // Validate paid amount if provided
     let parsedPaidAmount;
     if (paidAmount !== undefined) {
       parsedPaidAmount = parseFloat(paidAmount);
@@ -219,7 +197,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Validate priority if provided
     let parsedPriority;
     if (priority !== undefined) {
       parsedPriority = parseInt(priority, 10);
@@ -228,7 +205,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Validate expectedDeliveryDate if provided
     let parsedDeliveryDate = undefined;
     if (expectedDeliveryDate !== undefined) {
       if (expectedDeliveryDate === null || expectedDeliveryDate === '') {
@@ -241,7 +217,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // If items are provided, validate and calculate new total
     let orderItems = undefined;
     let totalPrice = undefined;
     
@@ -276,9 +251,7 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Validate paid amount against total price
     if (parsedPaidAmount !== undefined) {
-      // Get existing order to validate against its total price if items not being updated
       const existingOrder = await Order.findById(req.params.id);
       if (!existingOrder) {
         return res.status(404).json({ message: 'Order not found' });
@@ -287,18 +260,14 @@ router.put('/:id', async (req, res) => {
       if (parsedPaidAmount > effectiveTotalPrice) {
         return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
       }
-      // Additional validation for 'partially_paid' status
-      if (
-        paymentStatus === 'partially_paid' &&
-        (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)
-      ) {
+      
+      if (paymentStatus === 'partially_paid' && (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)) {
         return res.status(400).json({
           message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
         });
       }
     }
 
-    // Build update data
     const updateData = {};
     if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
     if (customerName !== undefined) updateData.customerName = customerName;

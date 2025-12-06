@@ -1,5 +1,3 @@
-// Shared constants for order-related data
-
 export const ORDER_SOURCES = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'facebook', label: 'Facebook' },
@@ -39,19 +37,10 @@ export const PRIORITY_LEVELS = [
   { value: 5, label: 'Critical' },
 ];
 
-// Helper functions to get labels
-export const getPaymentStatusLabel = (status) => {
-  return PAYMENT_STATUSES.find(s => s.value === status)?.label || 'Unpaid';
-};
+const findLabel = (array, value, defaultLabel) => 
+  array.find(s => s.value === value)?.label || defaultLabel;
 
-export const getConfirmationStatusLabel = (status) => {
-  return CONFIRMATION_STATUSES.find(s => s.value === status)?.label || 'Unconfirmed';
-};
-
-export const getPriorityLabel = (priority) => {
-  return PRIORITY_LEVELS.find(l => l.value === priority)?.label || 'Normal';
-};
-
-export const getOrderStatusLabel = (status) => {
-  return ORDER_STATUSES.find(s => s.value === status)?.label || 'Pending';
-};
+export const getPaymentStatusLabel = (status) => findLabel(PAYMENT_STATUSES, status, 'Unpaid');
+export const getConfirmationStatusLabel = (status) => findLabel(CONFIRMATION_STATUSES, status, 'Unconfirmed');
+export const getPriorityLabel = (priority) => findLabel(PRIORITY_LEVELS, priority, 'Normal');
+export const getOrderStatusLabel = (status) => findLabel(ORDER_STATUSES, status, 'Pending');

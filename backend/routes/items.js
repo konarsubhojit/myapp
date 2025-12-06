@@ -7,7 +7,30 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('ItemsRoute');
 
 const ALLOWED_LIMITS = [10, 20, 50];
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
+async function uploadImage(image) {
+  const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
+  if (!matches) {
+    throw new Error('Invalid image format');
+  }
+  
+  const extension = matches[1];
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, 'base64');
+  
+  if (buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error('Image size should be less than 2MB');
+  }
+  
+  const filename = `items/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
+  const blob = await put(filename, buffer, { 
+    access: 'public',
+    contentType: `image/${extension}`
+  });
+  
+  return blob.url;
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -15,7 +38,6 @@ router.get('/', async (req, res) => {
     const parsedLimit = parseInt(req.query.limit, 10);
     const search = req.query.search || '';
     
-    // If pagination params are provided, use paginated find
     if (req.query.page || req.query.limit) {
       const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
       const limit = ALLOWED_LIMITS.includes(parsedLimit) ? parsedLimit : 10;
@@ -23,7 +45,6 @@ router.get('/', async (req, res) => {
       const result = await Item.findPaginated({ page, limit, search });
       res.json(result);
     } else {
-      // Legacy: return all items for backwards compatibility
       const items = await Item.find();
       res.json(items);
     }
@@ -33,7 +54,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get deleted items (for restore functionality)
 router.get('/deleted', async (req, res) => {
   try {
     const parsedPage = parseInt(req.query.page, 10);
@@ -66,38 +86,13 @@ router.post('/', async (req, res) => {
 
     let imageUrl = '';
     
-    // Upload image to Vercel Blob if provided
     if (image && typeof image === 'string' && image.startsWith('data:image/')) {
       try {
-        // Extract base64 data and mime type
-        const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (!matches) {
-          return res.status(400).json({ message: 'Invalid image format' });
-        }
-        
-        const extension = matches[1];
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-        
-        // Check file size
-        if (buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ message: 'Image size should be less than 2MB' });
-        }
-        
-        // Generate unique filename
-        const filename = `items/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-        
-        // Upload to Vercel Blob
-        const blob = await put(filename, buffer, { 
-          access: 'public',
-          contentType: `image/${extension}`
-        });
-        
-        imageUrl = blob.url;
+        imageUrl = await uploadImage(image);
         logger.info('Image uploaded to blob storage', { url: imageUrl });
       } catch (uploadError) {
         logger.error('Failed to upload image to blob storage', uploadError);
-        return res.status(500).json({ message: 'Failed to upload image' });
+        return res.status(400).json({ message: uploadError.message });
       }
     }
 
@@ -118,17 +113,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update an existing item
 router.put('/:id', async (req, res) => {
   try {
     const { name, price, color, fabric, specialFeatures, image } = req.body;
 
-    // Validate name if provided
     if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
       return res.status(400).json({ message: 'Item name cannot be empty' });
     }
 
-    // Validate price if provided
     let parsedPrice;
     if (price !== undefined) {
       parsedPrice = parseFloat(price);
@@ -137,7 +129,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    // Get existing item to check for old image
     const existingItem = await Item.findById(req.params.id);
     if (!existingItem) {
       return res.status(404).json({ message: 'Item not found' });
@@ -146,47 +137,20 @@ router.put('/:id', async (req, res) => {
     let imageUrl = existingItem.imageUrl;
     let oldImageUrl = null;
 
-    // Upload new image to Vercel Blob if provided
     if (image && typeof image === 'string' && image.startsWith('data:image/')) {
       try {
-        // Extract base64 data and mime type
-        const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (!matches) {
-          return res.status(400).json({ message: 'Invalid image format' });
-        }
-        
-        const extension = matches[1];
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-        
-        // Check file size
-        if (buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ message: 'Image size should be less than 2MB' });
-        }
-        
-        // Generate unique filename
-        const filename = `items/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-        
-        // Upload to Vercel Blob
-        const blob = await put(filename, buffer, { 
-          access: 'public',
-          contentType: `image/${extension}`
-        });
-        
-        oldImageUrl = existingItem.imageUrl; // Store old URL for deletion
-        imageUrl = blob.url;
+        oldImageUrl = existingItem.imageUrl;
+        imageUrl = await uploadImage(image);
         logger.info('New image uploaded to blob storage', { url: imageUrl });
       } catch (uploadError) {
         logger.error('Failed to upload image to blob storage', uploadError);
-        return res.status(500).json({ message: 'Failed to upload image' });
+        return res.status(400).json({ message: uploadError.message });
       }
     } else if (image === null || image === '') {
-      // User wants to remove the image
       oldImageUrl = existingItem.imageUrl;
       imageUrl = '';
     }
 
-    // Update the item
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
     if (parsedPrice !== undefined) updateData.price = parsedPrice;
@@ -200,13 +164,11 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    // Delete old image from blob storage if a new image was uploaded
     if (oldImageUrl) {
       try {
         await del(oldImageUrl);
         logger.info('Old image deleted from blob storage', { url: oldImageUrl });
       } catch (deleteError) {
-        // Log the error but don't fail the request
         logger.warn('Failed to delete old image from blob storage', { url: oldImageUrl, error: deleteError.message });
       }
     }
@@ -234,7 +196,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Restore a soft-deleted item
 router.post('/:id/restore', async (req, res) => {
   try {
     const item = await Item.restore(req.params.id);
