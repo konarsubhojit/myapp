@@ -1,5 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import AppBar from '@mui/material/AppBar'
+import Toolbar from '@mui/material/Toolbar'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
+import Container from '@mui/material/Container'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
+import Paper from '@mui/material/Paper'
+import CircularProgress from '@mui/material/CircularProgress'
+import Avatar from '@mui/material/Avatar'
+import Chip from '@mui/material/Chip'
+import LogoutIcon from '@mui/icons-material/Logout'
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import HistoryIcon from '@mui/icons-material/History'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import './App.css'
 import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
@@ -10,6 +29,13 @@ import { CurrencyProvider } from './contexts/CurrencyContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
 
+const TAB_ROUTES = [
+  { path: '/orders/new', label: 'Create Order', icon: <AddShoppingCartIcon /> },
+  { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
+  { path: '/history', label: 'Order History', icon: <HistoryIcon /> },
+  { path: '/sales', label: 'Sales Report', icon: <AssessmentIcon /> },
+]
+
 function AppContent() {
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth()
   const [items, setItems] = useState([])
@@ -18,6 +44,8 @@ function AppContent() {
   const [orderHistoryKey, setOrderHistoryKey] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
+  const muiTheme = useTheme()
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
 
   const fetchItems = useCallback(async () => {
     try {
@@ -64,9 +92,39 @@ function AppContent() {
     }
   }, [isAuthenticated, fetchItems, fetchOrders])
 
+  // Get current tab value based on path
+  const getCurrentTabValue = () => {
+    const path = location.pathname
+    if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 0
+    if (path.startsWith('/items')) return 1
+    if (path.startsWith('/history')) return 2
+    if (path.startsWith('/sales')) return 3
+    return 0
+  }
+
+  const handleTabChange = (event, newValue) => {
+    navigate(TAB_ROUTES[newValue].path)
+  }
+
   // Show loading while checking auth
   if (authLoading) {
-    return <div className="loading">Checking authentication...</div>
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+        gap={2}
+        role="status"
+        aria-label="Checking authentication"
+      >
+        <CircularProgress size={48} />
+        <Typography variant="body1" color="text.secondary">
+          Checking authentication...
+        </Typography>
+      </Box>
+    )
   }
 
   // Show login if not authenticated
@@ -75,49 +133,135 @@ function AppContent() {
   }
 
   if (loading) {
-    return <div className="loading">Loading your data...</div>
+    return (
+      <Box 
+        display="flex" 
+        flexDirection="column" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+        gap={2}
+        role="status"
+        aria-label="Loading data"
+      >
+        <CircularProgress size={48} />
+        <Typography variant="body1" color="text.secondary">
+          Loading your data...
+        </Typography>
+      </Box>
+    )
   }
 
   return (
-    <div className="app">
-      <header>
-        <h1>Order Management System</h1>
-        <div className="user-info">
-          <span className="user-name">{user?.name || user?.email}</span>
-          <button className="logout-button" onClick={logout}>
-            Sign Out
-          </button>
-        </div>
-      </header>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Header */}
+      <AppBar 
+        position="sticky" 
+        elevation={0}
+        sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="h1" 
+            sx={{ 
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              fontSize: { xs: '1.1rem', sm: '1.25rem' },
+            }}
+          >
+            Order Management System
+          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            {user?.picture ? (
+              <Avatar 
+                src={user.picture} 
+                alt={user?.name || 'User'}
+                sx={{ width: 32, height: 32 }}
+              />
+            ) : (
+              <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.2)' }}>
+                {(user?.name || user?.email || 'U')[0].toUpperCase()}
+              </Avatar>
+            )}
+            {!isMobile && (
+              <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.name || user?.email}
+              </Typography>
+            )}
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={logout}
+              startIcon={<LogoutIcon />}
+              sx={{ 
+                color: 'white', 
+                borderColor: 'rgba(255,255,255,0.5)',
+                '&:hover': {
+                  borderColor: 'white',
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                }
+              }}
+              aria-label="Sign out"
+            >
+              {isMobile ? '' : 'Sign Out'}
+            </Button>
+          </Box>
+        </Toolbar>
+      </AppBar>
 
-      <nav className="tabs">
-        <NavLink
-          to="/orders/new"
-          className={({ isActive }) => isActive || location.pathname.startsWith('/orders/new') || location.pathname.startsWith('/orders/duplicate') ? 'active' : ''}
-        >
-          Create Order
-        </NavLink>
-        <NavLink
-          to="/items"
-          className={({ isActive }) => isActive || location.pathname.startsWith('/items') ? 'active' : ''}
-        >
-          Manage Items
-        </NavLink>
-        <NavLink
-          to="/history"
-          className={({ isActive }) => isActive || location.pathname.startsWith('/history') ? 'active' : ''}
-        >
-          Order History
-        </NavLink>
-        <NavLink
-          to="/sales"
-          className={({ isActive }) => isActive || location.pathname.startsWith('/sales') ? 'active' : ''}
-        >
-          Sales Report
-        </NavLink>
-      </nav>
+      {/* Navigation Tabs */}
+      <Paper 
+        elevation={1}
+        sx={{ 
+          position: 'sticky',
+          top: { xs: 56, sm: 64 },
+          zIndex: 1000,
+          borderRadius: 0,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Tabs
+            value={getCurrentTabValue()}
+            onChange={handleTabChange}
+            variant={isMobile ? 'scrollable' : 'fullWidth'}
+            scrollButtons={isMobile ? 'auto' : false}
+            allowScrollButtonsMobile
+            aria-label="Main navigation"
+            sx={{
+              '& .MuiTab-root': {
+                minHeight: 56,
+              }
+            }}
+          >
+            {TAB_ROUTES.map((tab) => (
+              <Tab
+                key={tab.path}
+                icon={tab.icon}
+                label={isMobile ? undefined : tab.label}
+                aria-label={tab.label}
+                iconPosition="start"
+                sx={{ 
+                  gap: 1,
+                  flexDirection: 'row',
+                }}
+              />
+            ))}
+          </Tabs>
+        </Container>
+      </Paper>
 
-      <main>
+      {/* Main Content */}
+      <Container 
+        component="main" 
+        maxWidth="lg" 
+        sx={{ 
+          py: { xs: 2, sm: 3 },
+          px: { xs: 2, sm: 3 },
+        }}
+      >
         <Routes>
           <Route 
             path="/" 
@@ -168,8 +312,8 @@ function AppContent() {
             element={<Navigate to="/orders/new" replace />} 
           />
         </Routes>
-      </main>
-    </div>
+      </Container>
+    </Box>
   )
 }
 
