@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const TIME_RANGES = [
@@ -16,10 +17,35 @@ const VIEW_OPTIONS = [
   { key: 'bySource', label: 'By Source' },
 ];
 
+const VALID_RANGES = TIME_RANGES.map(r => r.key);
+const VALID_VIEWS = VIEW_OPTIONS.map(v => v.key);
+
 function SalesReport({ orders }) {
   const { formatPrice } = useCurrency();
-  const [selectedRange, setSelectedRange] = useState('month');
-  const [selectedView, setSelectedView] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get initial values from URL or use defaults
+  const rangeParam = searchParams.get('range');
+  const viewParam = searchParams.get('view');
+  
+  const selectedRange = VALID_RANGES.includes(rangeParam) ? rangeParam : 'month';
+  const selectedView = VALID_VIEWS.includes(viewParam) ? viewParam : 'overview';
+
+  // Update URL when state changes
+  const updateUrl = useCallback((range, view) => {
+    const params = new URLSearchParams();
+    if (range !== 'month') params.set('range', range);
+    if (view !== 'overview') params.set('view', view);
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
+
+  const handleRangeChange = (range) => {
+    updateUrl(range, selectedView);
+  };
+
+  const handleViewChange = (view) => {
+    updateUrl(selectedRange, view);
+  };
 
   const analytics = useMemo(() => {
     const now = new Date();
@@ -389,7 +415,7 @@ function SalesReport({ orders }) {
             <button
               key={range.key}
               className={`range-btn ${selectedRange === range.key ? 'active' : ''}`}
-              onClick={() => setSelectedRange(range.key)}
+              onClick={() => handleRangeChange(range.key)}
             >
               {range.label}
             </button>
@@ -401,7 +427,7 @@ function SalesReport({ orders }) {
           <select 
             id="viewSelect"
             value={selectedView} 
-            onChange={(e) => setSelectedView(e.target.value)}
+            onChange={(e) => handleViewChange(e.target.value)}
             className="view-select"
           >
             {VIEW_OPTIONS.map(option => (

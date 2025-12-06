@@ -1,12 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB max
 
+// Parse URL params to state
+const parseUrlParams = (searchParams) => {
+  const page = parseInt(searchParams.get('page'), 10);
+  const limit = parseInt(searchParams.get('limit'), 10);
+  
+  return {
+    page: Number.isNaN(page) || page < 1 ? 1 : page,
+    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
+    search: searchParams.get('search') || '',
+    showDeleted: searchParams.get('deleted') === 'true',
+  };
+};
+
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Parse initial state from URL
+  const initialState = parseUrlParams(searchParams);
+  
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [color, setColor] = useState('');
@@ -17,24 +36,42 @@ function ItemPanel({ onItemsChange }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Copy mode state - tracks if form is pre-filled from copying an item
+  const [copiedFrom, setCopiedFrom] = useState(null);
+  
   // Edit mode state
   const [editingItem, setEditingItem] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   
   // Pagination and search for active items
   const [activeItemsData, setActiveItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
-  const [activeSearch, setActiveSearch] = useState('');
-  const [activeSearchInput, setActiveSearchInput] = useState('');
-  const [activePagination, setActivePagination] = useState({ page: 1, limit: 10 });
+  const [activeSearch, setActiveSearch] = useState(initialState.search);
+  const [activeSearchInput, setActiveSearchInput] = useState(initialState.search);
+  const [activePagination, setActivePagination] = useState({ page: initialState.page, limit: initialState.limit });
   const [loadingActive, setLoadingActive] = useState(false);
   
   // Deleted items section
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(initialState.showDeleted);
   const [deletedItemsData, setDeletedItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
   const [deletedSearch, setDeletedSearch] = useState('');
   const [deletedSearchInput, setDeletedSearchInput] = useState('');
   const [deletedPagination, setDeletedPagination] = useState({ page: 1, limit: 10 });
   const [loadingDeleted, setLoadingDeleted] = useState(false);
+
+  // Update URL when state changes
+  const updateUrl = useCallback((search, pagination, deleted) => {
+    const params = new URLSearchParams();
+    if (pagination.page > 1) params.set('page', pagination.page);
+    if (pagination.limit !== 10) params.set('limit', pagination.limit);
+    if (search) params.set('search', search);
+    if (deleted) params.set('deleted', 'true');
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
+
+  // Update URL when state changes
+  useEffect(() => {
+    updateUrl(activeSearch, activePagination, showDeleted);
+  }, [activeSearch, activePagination, showDeleted, updateUrl]);
 
   const fetchActiveItems = useCallback(async () => {
     setLoadingActive(true);
@@ -146,6 +183,7 @@ function ItemPanel({ onItemsChange }) {
       setSpecialFeatures('');
       setImage('');
       setImagePreview('');
+      setCopiedFrom(null); // Clear copy mode
       // Reset file input
       const fileInput = document.getElementById('itemImage');
       if (fileInput) fileInput.value = '';
@@ -198,6 +236,38 @@ function ItemPanel({ onItemsChange }) {
       removeImage: false
     });
     setShowEditModal(true);
+  };
+
+  // Copy item - pre-fill the create form with existing item data
+  const handleCopy = (item) => {
+    setName(item.name);
+    setPrice(String(item.price));
+    setColor(item.color || '');
+    setFabric(item.fabric || '');
+    setSpecialFeatures(item.specialFeatures || '');
+    // Don't copy the image - user should upload a new one or leave blank
+    setImage('');
+    setImagePreview('');
+    setCopiedFrom(item.name);
+    setError('');
+    // Scroll to top of the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Cancel copy mode and clear form
+  const handleCancelCopy = () => {
+    setName('');
+    setPrice('');
+    setColor('');
+    setFabric('');
+    setSpecialFeatures('');
+    setImage('');
+    setImagePreview('');
+    setCopiedFrom(null);
+    setError('');
+    // Reset file input
+    const fileInput = document.getElementById('itemImage');
+    if (fileInput) fileInput.value = '';
   };
 
   const handleEditImageChange = (e) => {
@@ -384,6 +454,23 @@ function ItemPanel({ onItemsChange }) {
     <div className="panel">
       <h2>Item Management</h2>
       
+      {/* Copy mode notice */}
+      {copiedFrom && (
+        <div className="copy-notice">
+          <p>
+            <strong>📋 Creating variant of "{copiedFrom}"</strong> - 
+            Modify the color, fabric, or features to create a new item variant.
+          </p>
+          <button 
+            type="button" 
+            onClick={handleCancelCopy}
+            className="cancel-copy-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="form">
         <div className="form-group">
           <label htmlFor="itemName">Item Name *</label>
@@ -516,6 +603,13 @@ function ItemPanel({ onItemsChange }) {
                     )}
                   </div>
                   <div className="item-actions">
+                    <button 
+                      onClick={() => handleCopy(item)} 
+                      className="copy-btn"
+                      title="Copy this item to create a variant"
+                    >
+                      📋 Copy
+                    </button>
                     <button 
                       onClick={() => handleEdit(item)} 
                       className="edit-btn"

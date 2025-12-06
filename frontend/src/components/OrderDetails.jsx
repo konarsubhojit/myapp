@@ -10,7 +10,7 @@ import {
   PRIORITY_LEVELS,
 } from '../constants/orderConstants';
 
-function OrderDetails({ orderId, onClose, onOrderUpdated }) {
+function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -219,9 +219,23 @@ function OrderDetails({ orderId, onClose, onOrderUpdated }) {
           </div>
           <div className="order-header-actions">
             {!isEditing && (
-              <button className="edit-btn" onClick={() => setIsEditing(true)}>
-                Edit
-              </button>
+              <>
+                <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                  Edit
+                </button>
+                {onDuplicateOrder && (
+                  <button 
+                    className="duplicate-btn" 
+                    onClick={() => {
+                      onDuplicateOrder(orderId);
+                      onClose();
+                    }}
+                    title="Create a new order with the same items and customer"
+                  >
+                    📋 Duplicate
+                  </button>
+                )}
+              </>
             )}
             <button className="close-btn" onClick={onClose}>×</button>
           </div>

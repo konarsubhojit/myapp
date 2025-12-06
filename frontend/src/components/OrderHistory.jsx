@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getOrdersPaginated } from '../services/api';
 import { getPriorityStatus } from '../utils/priorityUtils';
@@ -13,23 +14,95 @@ import {
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function OrderHistory() {
+// Build URL params string for comparison
+const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => {
+  const parts = [];
+  if (pagination.page > 1) parts.push(`page=${pagination.page}`);
+  if (pagination.limit !== 10) parts.push(`limit=${pagination.limit}`);
+  if (filters.customerName) parts.push(`customerName=${filters.customerName}`);
+  if (filters.customerId) parts.push(`customerId=${filters.customerId}`);
+  if (filters.orderFrom) parts.push(`orderFrom=${filters.orderFrom}`);
+  if (filters.orderId) parts.push(`orderId=${filters.orderId}`);
+  if (filters.confirmationStatus) parts.push(`confirmationStatus=${filters.confirmationStatus}`);
+  if (filters.paymentStatus) parts.push(`paymentStatus=${filters.paymentStatus}`);
+  if (sortConfig.key !== 'expectedDeliveryDate') parts.push(`sortKey=${sortConfig.key}`);
+  if (sortConfig.direction !== 'asc') parts.push(`sortDir=${sortConfig.direction}`);
+  if (selectedOrderId) parts.push(`order=${selectedOrderId}`);
+  return parts.join('&');
+};
+
+// Parse URL params to state
+const parseUrlParams = (searchParams) => {
+  const page = parseInt(searchParams.get('page'), 10);
+  const limit = parseInt(searchParams.get('limit'), 10);
+  const sortKey = searchParams.get('sortKey');
+  const sortDir = searchParams.get('sortDir');
+  
+  return {
+    page: Number.isNaN(page) || page < 1 ? 1 : page,
+    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
+    filters: {
+      customerName: searchParams.get('customerName') || '',
+      customerId: searchParams.get('customerId') || '',
+      orderFrom: searchParams.get('orderFrom') || '',
+      orderId: searchParams.get('orderId') || '',
+      confirmationStatus: searchParams.get('confirmationStatus') || '',
+      paymentStatus: searchParams.get('paymentStatus') || '',
+    },
+    sortConfig: {
+      key: sortKey || 'expectedDeliveryDate',
+      direction: sortDir === 'desc' ? 'desc' : 'asc',
+    },
+    selectedOrderId: searchParams.get('order') || null,
+  };
+};
+
+function OrderHistory({ onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Parse initial state from URL
+  const initialState = parseUrlParams(searchParams);
+  
   const [orders, setOrders] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ 
+    page: initialState.page, 
+    limit: initialState.limit, 
+    total: 0, 
+    totalPages: 0 
+  });
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [filters, setFilters] = useState({
-    customerName: '',
-    customerId: '',
-    orderFrom: '',
-    orderId: '',
-    confirmationStatus: '',
-    paymentStatus: '',
-  });
-  const [sortConfig, setSortConfig] = useState({ key: 'expectedDeliveryDate', direction: 'asc' });
+  const [selectedOrderId, setSelectedOrderId] = useState(initialState.selectedOrderId);
+  const [filters, setFilters] = useState(initialState.filters);
+  const [sortConfig, setSortConfig] = useState(initialState.sortConfig);
+  
+  // Track previous URL params to avoid unnecessary updates
+  const prevParamsRef = useRef('');
+
+  // Update URL when state changes
+  const updateUrl = useCallback((newFilters, newPagination, newSortConfig, newSelectedOrderId) => {
+    const params = new URLSearchParams();
+    
+    // Only add non-default values to URL
+    if (newPagination.page > 1) params.set('page', newPagination.page);
+    if (newPagination.limit !== 10) params.set('limit', newPagination.limit);
+    
+    if (newFilters.customerName) params.set('customerName', newFilters.customerName);
+    if (newFilters.customerId) params.set('customerId', newFilters.customerId);
+    if (newFilters.orderFrom) params.set('orderFrom', newFilters.orderFrom);
+    if (newFilters.orderId) params.set('orderId', newFilters.orderId);
+    if (newFilters.confirmationStatus) params.set('confirmationStatus', newFilters.confirmationStatus);
+    if (newFilters.paymentStatus) params.set('paymentStatus', newFilters.paymentStatus);
+    
+    if (newSortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', newSortConfig.key);
+    if (newSortConfig.direction !== 'asc') params.set('sortDir', newSortConfig.direction);
+    
+    if (newSelectedOrderId) params.set('order', newSelectedOrderId);
+    
+    setSearchParams(params, { replace: true });
+  }, [setSearchParams]);
 
   const fetchOrders = useCallback(async (page, limit) => {
     setLoading(true);
@@ -49,6 +122,18 @@ function OrderHistory() {
   useEffect(() => {
     fetchOrders(pagination.page, pagination.limit);
   }, [pagination.page, pagination.limit, fetchOrders]);
+
+  // Update URL when state changes - only if params actually changed
+  useEffect(() => {
+    const paginationForUrl = { page: pagination.page, limit: pagination.limit };
+    const newParamsString = buildParamsString(filters, paginationForUrl, sortConfig, selectedOrderId);
+    
+    // Only update URL if params actually changed
+    if (newParamsString !== prevParamsRef.current) {
+      prevParamsRef.current = newParamsString;
+      updateUrl(filters, paginationForUrl, sortConfig, selectedOrderId);
+    }
+  }, [filters, pagination.page, pagination.limit, sortConfig, selectedOrderId, updateUrl]);
 
   const handleFilterChange = (field, value) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -77,6 +162,18 @@ function OrderHistory() {
 
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
+  };
+
+  const handleClearFilters = () => {
+    const clearedFilters = { 
+      customerName: '', 
+      customerId: '', 
+      orderFrom: '', 
+      orderId: '', 
+      confirmationStatus: '', 
+      paymentStatus: '' 
+    };
+    setFilters(clearedFilters);
   };
 
   const filteredOrders = useMemo(() => {
@@ -234,7 +331,7 @@ function OrderHistory() {
           </select>
           <button 
             className="clear-filters-btn"
-            onClick={() => setFilters({ customerName: '', customerId: '', orderFrom: '', orderId: '', confirmationStatus: '', paymentStatus: '' })}
+            onClick={handleClearFilters}
           >
             Clear Filters
           </button>
@@ -395,6 +492,7 @@ function OrderHistory() {
           orderId={selectedOrderId} 
           onClose={handleCloseDetails}
           onOrderUpdated={() => fetchOrders(pagination.page, pagination.limit)}
+          onDuplicateOrder={onDuplicateOrder}
         />
       )}
     </div>
