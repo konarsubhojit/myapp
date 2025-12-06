@@ -36,6 +36,9 @@ function ItemPanel({ onItemsChange }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
+  // Copy mode state - tracks if form is pre-filled from copying an item
+  const [copiedFrom, setCopiedFrom] = useState(null);
+  
   // Edit mode state
   const [editingItem, setEditingItem] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -180,6 +183,7 @@ function ItemPanel({ onItemsChange }) {
       setSpecialFeatures('');
       setImage('');
       setImagePreview('');
+      setCopiedFrom(null); // Clear copy mode
       // Reset file input
       const fileInput = document.getElementById('itemImage');
       if (fileInput) fileInput.value = '';
@@ -232,6 +236,38 @@ function ItemPanel({ onItemsChange }) {
       removeImage: false
     });
     setShowEditModal(true);
+  };
+
+  // Copy item - pre-fill the create form with existing item data
+  const handleCopy = (item) => {
+    setName(item.name);
+    setPrice(String(item.price));
+    setColor(item.color || '');
+    setFabric(item.fabric || '');
+    setSpecialFeatures(item.specialFeatures || '');
+    // Don't copy the image - user should upload a new one or leave blank
+    setImage('');
+    setImagePreview('');
+    setCopiedFrom(item.name);
+    setError('');
+    // Scroll to top of the form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Cancel copy mode and clear form
+  const handleCancelCopy = () => {
+    setName('');
+    setPrice('');
+    setColor('');
+    setFabric('');
+    setSpecialFeatures('');
+    setImage('');
+    setImagePreview('');
+    setCopiedFrom(null);
+    setError('');
+    // Reset file input
+    const fileInput = document.getElementById('itemImage');
+    if (fileInput) fileInput.value = '';
   };
 
   const handleEditImageChange = (e) => {
@@ -418,6 +454,23 @@ function ItemPanel({ onItemsChange }) {
     <div className="panel">
       <h2>Item Management</h2>
       
+      {/* Copy mode notice */}
+      {copiedFrom && (
+        <div className="copy-notice">
+          <p>
+            <strong>📋 Creating variant of "{copiedFrom}"</strong> - 
+            Modify the color, fabric, or features to create a new item variant.
+          </p>
+          <button 
+            type="button" 
+            onClick={handleCancelCopy}
+            className="cancel-copy-btn"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="form">
         <div className="form-group">
           <label htmlFor="itemName">Item Name *</label>
@@ -550,6 +603,13 @@ function ItemPanel({ onItemsChange }) {
                     )}
                   </div>
                   <div className="item-actions">
+                    <button 
+                      onClick={() => handleCopy(item)} 
+                      className="copy-btn"
+                      title="Copy this item to create a variant"
+                    >
+                      📋 Copy
+                    </button>
                     <button 
                       onClick={() => handleEdit(item)} 
                       className="edit-btn"
