@@ -9,9 +9,6 @@ const { authMiddleware } = require('./middleware/auth');
 const logger = createLogger('Server');
 const app = express();
 
-// Trust proxy - required when running behind reverse proxies (Vercel, AWS, etc.)
-// This allows express-rate-limit to correctly identify clients via X-Forwarded-For header
-// Using 1 to trust only the first proxy hop for security
 app.set('trust proxy', 1);
 
 const PORT = process.env.PORT || 5000;
@@ -22,10 +19,9 @@ logger.info('Starting application', {
   authEnabled: process.env.AUTH_DISABLED !== 'true'
 });
 
-// Rate limiting middleware
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: { message: 'Too many requests, please try again later.' }
 });
 
@@ -46,15 +42,12 @@ async function initializeDatabase() {
 
 initializeDatabase();
 
-// Routes
 const itemRoutes = require('./routes/items');
 const orderRoutes = require('./routes/orders');
 
-// Protected routes - require authentication
 app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 
-// Health check (public - no auth required)
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });

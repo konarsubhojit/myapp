@@ -1,12 +1,8 @@
-const { pgTable, serial, text, numeric, timestamp, integer, uuid, pgEnum } = require('drizzle-orm/pg-core');
+const { pgTable, serial, text, numeric, timestamp, integer, pgEnum } = require('drizzle-orm/pg-core');
 
-// Enum for order source
 const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
-
-// Enum for order status (kept for reference but using text for flexibility)
 const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
 
-// Items table
 const items = pgTable('items', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
@@ -19,9 +15,6 @@ const items = pgTable('items', {
   deletedAt: timestamp('deleted_at')
 });
 
-// Orders table
-// Note: paymentStatus, confirmationStatus, and status use text instead of enums
-// for flexibility - allows adding new values without database migrations
 const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   orderId: text('order_id').notNull().unique(),
@@ -29,17 +22,16 @@ const orders = pgTable('orders', {
   customerName: text('customer_name').notNull(),
   customerId: text('customer_id').notNull(),
   totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
-  status: text('status').default('pending'), // pending, processing, completed, cancelled
-  paymentStatus: text('payment_status').default('unpaid'), // unpaid, partially_paid, paid, cash_on_delivery, refunded
+  status: text('status').default('pending'),
+  paymentStatus: text('payment_status').default('unpaid'),
   paidAmount: numeric('paid_amount', { precision: 10, scale: 2 }).default('0'),
-  confirmationStatus: text('confirmation_status').default('unconfirmed'), // unconfirmed, pending_confirmation, confirmed, cancelled
+  confirmationStatus: text('confirmation_status').default('unconfirmed'),
   customerNotes: text('customer_notes'),
-  priority: integer('priority').default(0), // 0-5 scale
+  priority: integer('priority').default(0),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-// Order items table (for the items in each order)
 const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),

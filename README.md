@@ -5,15 +5,20 @@ A full-stack application for managing orders with React frontend and Node.js/Pos
 ## Features
 
 - **Order Management**: Create orders with customer information and multiple items
-- **Item Management**: Add and manage items with name and price
+- **Item Management**: Add and manage items with name, price, color, fabric, and image
 - **Order Tracking**: Auto-generated order IDs and total price calculation
-- **Order History**: View all past orders
+- **Order History**: View all past orders with filtering, sorting, and pagination
+- **Sales Analytics**: Comprehensive sales reports by time period, item, customer, and source
+- **Authentication**: Google OAuth integration
+- **Soft Delete**: Items can be soft-deleted and restored
 
 ## Tech Stack
 
-- **Frontend**: React (Vite)
-- **Backend**: Node.js, Express
-- **Database**: Neon PostgreSQL (with Drizzle ORM)
+- **Frontend**: React 19 with Vite
+- **Backend**: Node.js with Express
+- **Database**: Neon PostgreSQL with Drizzle ORM
+- **Image Storage**: Vercel Blob Storage
+- **Authentication**: Google OAuth
 - **Deployment**: Vercel
 
 ## Prerequisites
@@ -30,26 +35,14 @@ npm run install:all
 
 Or install separately:
 ```bash
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
-npm install
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
 2. Set up environment variables:
 ```bash
-# Copy the example env file
 cp backend/.env.example backend/.env
-# Edit backend/.env with your Neon PostgreSQL connection string
-```
-
-3. Run database migrations:
-```bash
-cd backend
-npm run migrate
+cp frontend/.env.example frontend/.env
 ```
 
 ## Running the Application
@@ -69,58 +62,84 @@ Frontend will run on http://localhost:5173
 ## API Endpoints
 
 ### Items
-- `GET /api/items` - Get all items
+- `GET /api/items` - Get all items (supports pagination with `page` and `limit` params)
+- `GET /api/items/deleted` - Get soft-deleted items
 - `POST /api/items` - Create a new item
-- `DELETE /api/items/:id` - Delete an item
+- `PUT /api/items/:id` - Update an item
+- `DELETE /api/items/:id` - Soft delete an item
+- `POST /api/items/:id/restore` - Restore a soft-deleted item
 
 ### Orders
-- `GET /api/orders` - Get all orders
+- `GET /api/orders` - Get all orders (supports pagination)
 - `POST /api/orders` - Create a new order
 - `GET /api/orders/:id` - Get a specific order
+- `PUT /api/orders/:id` - Update an order
 
-## Order Form Fields
-
-- **Order Source**: Instagram, Facebook, WhatsApp, Call, or Offline
-- **Customer Name**: Name of the customer
-- **Customer ID**: Instagram ID, phone number, etc.
-- **Items**: Select items with quantity
+### Health
+- `GET /api/health` - Health check endpoint (no auth required)
 
 ## Environment Variables
 
-For Vercel deployment, set the following environment variables:
+### Backend (`backend/.env`)
 
-- `NEON_DATABASE_URL` - Neon PostgreSQL connection string (pooled)
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEON_DATABASE_URL` | Neon PostgreSQL connection string | Yes |
+| `PORT` | Server port (default: 5000) | No |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob Storage token | Yes (for images) |
+| `AUTH_DISABLED` | Set to 'true' to disable auth (dev only) | No |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | Yes (for auth) |
 
-Example:
-```
-NEON_DATABASE_URL=postgresql://neondb_owner:xxxx@ep-xxx-pooler.aws.neon.tech/neondb?sslmode=require
-```
+### Frontend (`frontend/.env`)
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VITE_API_URL` | Backend API URL | No (defaults to localhost) |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID | Yes (for auth) |
 
 ## Project Structure
 
 ```
 ├── backend/
-│   ├── db/
-│   │   ├── connection.js  # Database connection (Neon/Drizzle)
-│   │   ├── schema.js      # Drizzle table schemas
-│   │   └── migrate.js     # Database migration script
-│   ├── models/
-│   │   ├── Item.js
-│   │   └── Order.js
-│   ├── routes/
-│   │   ├── items.js
-│   │   └── orders.js
-│   ├── server.js
-│   └── package.json
+│   ├── constants/         # Shared constants
+│   ├── db/                # Database connection and schema
+│   ├── middleware/        # Express middleware (auth)
+│   ├── models/            # Data models (Item, Order)
+│   ├── routes/            # API routes
+│   ├── utils/             # Utilities (logger)
+│   └── server.js          # Main server entry
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── ItemPanel.jsx
-│   │   │   └── OrderForm.jsx
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   ├── App.jsx
-│   │   └── main.jsx
+│   │   ├── components/    # React components
+│   │   ├── config/        # Configuration
+│   │   ├── constants/     # Shared constants
+│   │   ├── contexts/      # React contexts
+│   │   ├── services/      # API service layer
+│   │   ├── utils/         # Utility functions
+│   │   ├── App.jsx        # Main App component
+│   │   └── main.jsx       # Entry point
 │   └── package.json
-└── package.json
+├── docs/                  # Additional documentation
+└── package.json           # Root package.json with workspace scripts
 ```
+
+## Development Commands
+
+### Frontend
+```bash
+cd frontend
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run lint     # Run ESLint
+npm run preview  # Preview production build
+```
+
+### Backend
+```bash
+cd backend
+npm start        # Start the server
+```
+
+## Deployment
+
+For Azure deployment setup, see [docs/AZURE_DEPLOYMENT_SETUP.md](docs/AZURE_DEPLOYMENT_SETUP.md).
