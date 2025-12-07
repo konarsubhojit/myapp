@@ -13,14 +13,14 @@ const {
 } = require('../constants/orderConstants');
 
 const logger = createLogger('OrdersRoute');
-const ALLOWED_LIMITS = [10, 20, 50];
+const ALLOWED_LIMITS = new Set([10, 20, 50]);
 
 router.get('/', async (req, res) => {
   try {
-    const parsedPage = parseInt(req.query.page, 10);
-    const parsedLimit = parseInt(req.query.limit, 10);
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = ALLOWED_LIMITS.includes(parsedLimit) ? parsedLimit : 10;
+    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
     
     if (req.query.page || req.query.limit) {
       const result = await Order.findPaginated({ page, limit });
@@ -53,7 +53,7 @@ router.post('/', async (req, res) => {
     let parsedDeliveryDate = null;
     if (expectedDeliveryDate) {
       parsedDeliveryDate = new Date(expectedDeliveryDate);
-      if (isNaN(parsedDeliveryDate.getTime())) {
+      if (Number.isNaN(parsedDeliveryDate.getTime())) {
         return res.status(400).json({ message: 'Invalid expected delivery date' });
       }
       
@@ -77,16 +77,16 @@ router.post('/', async (req, res) => {
 
     let parsedPaidAmount = 0;
     if (paidAmount !== undefined && paidAmount !== null) {
-      parsedPaidAmount = parseFloat(paidAmount);
-      if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+      parsedPaidAmount = Number.parseFloat(paidAmount);
+      if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
         return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
       }
     }
 
     let parsedPriority = 0;
     if (priority !== undefined && priority !== null) {
-      parsedPriority = parseInt(priority, 10);
-      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+      parsedPriority = Number.parseInt(priority, 10);
+      if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
         return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
       }
     }
@@ -169,11 +169,11 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
     }
     
-    if (customerName !== undefined && (!customerName || !customerName.trim())) {
+    if (customerName !== undefined && !customerName?.trim()) {
       return res.status(400).json({ message: 'Customer name cannot be empty' });
     }
 
-    if (customerId !== undefined && (!customerId || !customerId.trim())) {
+    if (customerId !== undefined && !customerId?.trim()) {
       return res.status(400).json({ message: 'Customer ID cannot be empty' });
     }
 
@@ -191,34 +191,34 @@ router.put('/:id', async (req, res) => {
 
     let parsedPaidAmount;
     if (paidAmount !== undefined) {
-      parsedPaidAmount = parseFloat(paidAmount);
-      if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+      parsedPaidAmount = Number.parseFloat(paidAmount);
+      if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
         return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
       }
     }
 
     let parsedPriority;
     if (priority !== undefined) {
-      parsedPriority = parseInt(priority, 10);
-      if (isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+      parsedPriority = Number.parseInt(priority, 10);
+      if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
         return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
       }
     }
 
-    let parsedDeliveryDate = undefined;
+    let parsedDeliveryDate;
     if (expectedDeliveryDate !== undefined) {
       if (expectedDeliveryDate === null || expectedDeliveryDate === '') {
         parsedDeliveryDate = null;
       } else {
         parsedDeliveryDate = new Date(expectedDeliveryDate);
-        if (isNaN(parsedDeliveryDate.getTime())) {
+        if (Number.isNaN(parsedDeliveryDate.getTime())) {
           return res.status(400).json({ message: 'Invalid expected delivery date' });
         }
       }
     }
 
-    let orderItems = undefined;
-    let totalPrice = undefined;
+    let orderItems;
+    let totalPrice;
     
     if (items !== undefined) {
       if (!Array.isArray(items) || items.length === 0) {
@@ -234,7 +234,7 @@ router.put('/:id', async (req, res) => {
           return res.status(400).json({ message: `Item with id ${orderItem.itemId} not found` });
         }
         
-        const quantity = parseInt(orderItem.quantity, 10);
+        const quantity = Number.parseInt(orderItem.quantity, 10);
         if (!Number.isInteger(quantity) || quantity < 1) {
           return res.status(400).json({ message: 'Quantity must be a positive integer' });
         }
@@ -261,7 +261,7 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
       }
       
-      if (paymentStatus === 'partially_paid' && (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)) {
+      if (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice) {
         return res.status(400).json({
           message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
         });
