@@ -1,6 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import imageCompression from 'browser-image-compression';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -39,117 +37,18 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import ImageIcon from '@mui/icons-material/Image';
-import { createItem, deleteItem, updateItem, getItemsPaginated, getDeletedItems, restoreItem, permanentlyDeleteItem } from '../services/api';
+import { createItem, deleteItem, updateItem, restoreItem, permanentlyDeleteItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { useUrlSync } from '../hooks/useUrlSync';
+import { useItemForm } from '../hooks/useItemForm';
+import { useImageProcessing } from '../hooks/useImageProcessing';
+import { useItemsData } from '../hooks/useItemsData';
+import { useDeletedItems } from '../hooks/useDeletedItems';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB max upload size
-const TARGET_IMAGE_SIZE = 2 * 1024 * 1024; // Compress to 2MB max
 
-// Image compression options
-const compressionOptions = {
-  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB
-  maxWidthOrHeight: 1920,
-  useWebWorker: true,
-  fileType: 'image/jpeg',
-};
-
-// Helper to convert file to base64
-const fileToBase64 = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-// Compress image if needed
-const compressImage = async (file) => {
-  // If file is already small enough, just convert to base64
-  if (file.size <= TARGET_IMAGE_SIZE) {
-    return fileToBase64(file);
-  }
-
-  // Compress the image
-  const compressedFile = await imageCompression(file, compressionOptions);
-  return fileToBase64(compressedFile);
-};
-
-/**
- * Validates an image file for size and type
- * @param {File} file - The file to validate
- * @returns {Object} - Returns {valid: true} or {valid: false, error: string}
- */
-const validateImageFile = (file) => {
-  if (!file.type.startsWith('image/')) {
-    return { valid: false, error: 'Please select a valid image file' };
-  }
-
-  if (file.size > MAX_UPLOAD_SIZE) {
-    return { valid: false, error: 'Image size should be less than 5MB' };
-  }
-
-  return { valid: true };
-};
-
-/**
- * Process an image file upload with validation and compression
- * @param {File} file - The image file to process
- * @param {Function} [showSuccess] - Optional callback to show success notification
- * @returns {Promise<string>} - Base64 encoded image string
- * @throws {Error} - If validation fails or processing encounters an error
- */
-const processImageUpload = async (file, showSuccess) => {
-  const validation = validateImageFile(file);
-  if (!validation.valid) {
-    throw new Error(validation.error);
-  }
-
-  const base64Image = await compressImage(file);
-  const wasCompressed = file.size > TARGET_IMAGE_SIZE;
-  
-  if (wasCompressed && showSuccess) {
-    showSuccess('Image was compressed for optimal upload');
-  }
-  
-  return base64Image;
-};
-
-/**
- * Resets the item form to initial empty state
- */
-const resetItemForm = (setters, fileInputId) => {
-  setters.setName('');
-  setters.setPrice('');
-  setters.setColor('');
-  setters.setFabric('');
-  setters.setSpecialFeatures('');
-  setters.setImage('');
-  setters.setImagePreview('');
-  setters.setCopiedFrom(null);
-  setters.setError('');
-  const fileInput = document.getElementById(fileInputId);
-  if (fileInput) fileInput.value = '';
-};
-
-// Parse URL params to state
-const parseUrlParams = (searchParams) => {
-  const page = Number.parseInt(searchParams.get('page'), 10);
-  const limit = Number.parseInt(searchParams.get('limit'), 10);
-  
-  return {
-    page: Number.isNaN(page) || page < 1 ? 1 : page,
-    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
-    search: searchParams.get('search') || '',
-    showDeleted: searchParams.get('deleted') === 'true',
-  };
-};
-
-/**
- * Renders pagination controls for item lists
- */
+// Renders pagination controls for item lists
 const renderPaginationControls = (paginationData, onPageChange, onLimitChange) => (
   <Box 
     sx={{ 
@@ -195,165 +94,148 @@ const renderPaginationControls = (paginationData, onPageChange, onLimitChange) =
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
-  const [searchParams, setSearchParams] = useSearchParams();
   
-  // Parse initial state from URL
-  const initialState = parseUrlParams(searchParams);
+  // Use URL sync hook
+  const { getParam, getIntParam, getBoolParam, updateUrl } = useUrlSync();
   
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [color, setColor] = useState('');
-  const [fabric, setFabric] = useState('');
-  const [specialFeatures, setSpecialFeatures] = useState('');
-  const [image, setImage] = useState('');
-  const [imagePreview, setImagePreview] = useState('');
-  const [error, setError] = useState('');
+  // Use item form hook
+  const {
+    name,
+    price,
+    color,
+    fabric,
+    specialFeatures,
+    copiedFrom,
+    error: formError,
+    setName,
+    setPrice,
+    setColor,
+    setFabric,
+    setSpecialFeatures,
+    setError: setFormError,
+    validateForm,
+    getFormData,
+    resetForm,
+    setFormFromItem,
+  } = useItemForm();
+  
+  // Use image processing hook for create form
+  const {
+    image,
+    imagePreview,
+    imageProcessing,
+    imageError,
+    handleImageChange: handleImageChangeRaw,
+    clearImage,
+    resetImage,
+  } = useImageProcessing(showSuccess);
+  
+  // Use items data hook
+  const {
+    items: activeItems,
+    paginationData: activePaginationData,
+    search: activeSearch,
+    searchInput: activeSearchInput,
+    loading: loadingActive,
+    error: activeError,
+    setSearchInput: setActiveSearchInput,
+    handleSearch: handleActiveSearch,
+    clearSearch: clearActiveSearch,
+    handlePageChange: handleActivePageChange,
+    handleLimitChange: handleActiveLimitChange,
+    fetchItems: fetchActiveItems,
+    setError: setActiveError,
+  } = useItemsData(getParam, getIntParam);
+  
+  // Deleted items state
+  const [showDeleted, setShowDeleted] = useState(getBoolParam('deleted', false));
+  
+  // Use deleted items hook
+  const {
+    deletedItems,
+    deletedPaginationData,
+    deletedSearch,
+    deletedSearchInput,
+    loadingDeleted,
+    setDeletedSearchInput,
+    handleDeletedSearch,
+    clearDeletedSearch,
+    handleDeletedPageChange,
+    handleDeletedLimitChange,
+    fetchDeletedItems,
+  } = useDeletedItems(showDeleted);
+  
   const [loading, setLoading] = useState(false);
-  
-  // Copy mode state - tracks if form is pre-filled from copying an item
-  const [copiedFrom, setCopiedFrom] = useState(null);
   
   // Edit mode state
   const [editingItem, setEditingItem] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   
-  // Pagination and search for active items
-  const [activeItemsData, setActiveItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
-  const [activeSearch, setActiveSearch] = useState(initialState.search);
-  const [activeSearchInput, setActiveSearchInput] = useState(initialState.search);
-  const [activePagination, setActivePagination] = useState({ page: initialState.page, limit: initialState.limit });
-  const [loadingActive, setLoadingActive] = useState(false);
+  // Use image processing hook for edit form
+  const {
+    image: editImage,
+    imagePreview: editImagePreview,
+    imageProcessing: editImageProcessing,
+    imageError: editImageError,
+    setImage: setEditImage,
+    setImagePreview: setEditImagePreview,
+    handleImageChange: handleEditImageChangeRaw,
+    clearImage: clearEditImage,
+  } = useImageProcessing(showSuccess);
   
-  // Deleted items section
-  const [showDeleted, setShowDeleted] = useState(initialState.showDeleted);
-  const [deletedItemsData, setDeletedItemsData] = useState({ items: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } });
-  const [deletedSearch, setDeletedSearch] = useState('');
-  const [deletedSearchInput, setDeletedSearchInput] = useState('');
-  const [deletedPagination, setDeletedPagination] = useState({ page: 1, limit: 10 });
-  const [loadingDeleted, setLoadingDeleted] = useState(false);
+  // Combined error from multiple sources
+  const error = formError || imageError || activeError || editImageError;
+  const setError = (err) => {
+    setFormError(err);
+    setActiveError(err);
+  };
 
   // Update URL when state changes
-  const updateUrl = useCallback((search, pagination, deleted) => {
+  useEffect(() => {
     const params = new URLSearchParams();
-    if (pagination.page > 1) params.set('page', pagination.page);
-    if (pagination.limit !== 10) params.set('limit', pagination.limit);
-    if (search) params.set('search', search);
-    if (deleted) params.set('deleted', 'true');
-    setSearchParams(params, { replace: true });
-  }, [setSearchParams]);
-
-  // Update URL when state changes
-  useEffect(() => {
-    updateUrl(activeSearch, activePagination, showDeleted);
-  }, [activeSearch, activePagination, showDeleted, updateUrl]);
-
-  const fetchActiveItems = useCallback(async () => {
-    setLoadingActive(true);
-    try {
-      const result = await getItemsPaginated({ 
-        page: activePagination.page, 
-        limit: activePagination.limit, 
-        search: activeSearch 
-      });
-      setActiveItemsData(result);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoadingActive(false);
-    }
-  }, [activePagination.page, activePagination.limit, activeSearch]);
-
-  const fetchDeletedItems = useCallback(async () => {
-    setLoadingDeleted(true);
-    try {
-      const result = await getDeletedItems({ 
-        page: deletedPagination.page, 
-        limit: deletedPagination.limit, 
-        search: deletedSearch 
-      });
-      setDeletedItemsData(result);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoadingDeleted(false);
-    }
-  }, [deletedPagination.page, deletedPagination.limit, deletedSearch]);
-
-  useEffect(() => {
-    fetchActiveItems();
-  }, [fetchActiveItems]);
-
-  useEffect(() => {
-    if (showDeleted) {
-      fetchDeletedItems();
-    }
-  }, [showDeleted, fetchDeletedItems]);
-
-  // State for image processing
-  const [imageProcessing, setImageProcessing] = useState(false);
+    if (activePaginationData.page > 1) params.set('page', activePaginationData.page);
+    if (activePaginationData.limit !== 10) params.set('limit', activePaginationData.limit);
+    if (activeSearch) params.set('search', activeSearch);
+    if (showDeleted) params.set('deleted', 'true');
+    updateUrl(params);
+  }, [activeSearch, activePaginationData.page, activePaginationData.limit, showDeleted, updateUrl]);
 
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
-    if (!file) {
-      setImage('');
-      setImagePreview('');
-      return;
-    }
-
-    setImageProcessing(true);
-    setError('');
-    
-    try {
-      const base64Image = await processImageUpload(file, showSuccess);
-      setImage(base64Image);
-      setImagePreview(base64Image);
-    } catch (err) {
-      setError(err.message || 'Failed to process image. Please try a different file.');
-      console.error('Image compression error:', err);
-    } finally {
-      setImageProcessing(false);
-    }
+    await handleImageChangeRaw(file);
   };
 
-  const clearImage = () => {
-    setImage('');
-    setImagePreview('');
-    // Reset file input
-    const fileInput = document.getElementById('itemImage');
-    if (fileInput) fileInput.value = '';
+  const handleEditImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    await handleEditImageChangeRaw(file);
+    setEditingItem(prev => ({
+      ...prev,
+      editImage: '',
+      editImagePreview: '',
+      removeImage: false
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!name.trim() || !price) {
-      setError('Please fill in name and price');
-      return;
-    }
-
-    const priceNum = Number.parseFloat(price);
-    if (Number.isNaN(priceNum) || priceNum < 0) {
-      setError('Please enter a valid price');
+    const validation = validateForm();
+    if (!validation.valid) {
+      setError(validation.error);
       return;
     }
 
     setLoading(true);
     try {
-      await createItem({ 
-        name: name.trim(), 
-        price: priceNum,
-        color: color.trim(),
-        fabric: fabric.trim(),
-        specialFeatures: specialFeatures.trim(),
-        image: image
-      });
+      const formData = getFormData(validation.priceNum, image);
+      await createItem(formData);
       const itemName = name.trim();
-      resetItemForm({
-        setName, setPrice, setColor, setFabric, 
-        setSpecialFeatures, setImage, setImagePreview, 
-        setCopiedFrom, setError
-      }, 'itemImage');
+      resetForm();
+      resetImage();
+      const fileInput = document.getElementById('itemImage');
+      if (fileInput) fileInput.value = '';
       onItemsChange();
       fetchActiveItems();
       showSuccess(`Item "${itemName}" has been added successfully.`);
@@ -428,24 +310,17 @@ function ItemPanel({ onItemsChange }) {
       editColor: item.color || '',
       editFabric: item.fabric || '',
       editSpecialFeatures: item.specialFeatures || '',
-      editImage: '',
-      editImagePreview: item.imageUrl || '',
       removeImage: false
     });
+    setEditImage('');
+    setEditImagePreview(item.imageUrl || '');
     setShowEditModal(true);
   };
 
   // Copy item - pre-fill the create form with existing item data
   const handleCopy = (item) => {
-    setName(item.name);
-    setPrice(String(item.price));
-    setColor(item.color || '');
-    setFabric(item.fabric || '');
-    setSpecialFeatures(item.specialFeatures || '');
-    // Don't copy the image - user should upload a new one or leave blank
-    setImage('');
-    setImagePreview('');
-    setCopiedFrom(item.name);
+    setFormFromItem(item);
+    resetImage();
     setError('');
     // Scroll to top of the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -453,40 +328,14 @@ function ItemPanel({ onItemsChange }) {
 
   // Cancel copy mode and clear form
   const handleCancelCopy = () => {
-    resetItemForm({
-      setName, setPrice, setColor, setFabric, 
-      setSpecialFeatures, setImage, setImagePreview, 
-      setCopiedFrom, setError
-    }, 'itemImage');
+    resetForm();
+    resetImage();
+    const fileInput = document.getElementById('itemImage');
+    if (fileInput) fileInput.value = '';
   };
 
-  // State for edit image processing
-  const [editImageProcessing, setEditImageProcessing] = useState(false);
-
-  const handleEditImageChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setEditImageProcessing(true);
-    setError('');
-    
-    try {
-      const base64Image = await processImageUpload(file, showSuccess);
-      setEditingItem(prev => ({
-        ...prev,
-        editImage: base64Image,
-        editImagePreview: base64Image,
-        removeImage: false
-      }));
-    } catch (err) {
-      setError(err.message || 'Failed to process image. Please try a different file.');
-      console.error('Image compression error:', err);
-    } finally {
-      setEditImageProcessing(false);
-    }
-  };
-
-  const clearEditImage = () => {
+  const clearEditImageWrapper = () => {
+    clearEditImage();
     setEditingItem(prev => ({
       ...prev,
       editImage: '',
@@ -522,9 +371,9 @@ function ItemPanel({ onItemsChange }) {
         specialFeatures: editingItem.editSpecialFeatures.trim()
       };
 
-      // Handle image changes
-      if (editingItem.editImage) {
-        updateData.image = editingItem.editImage;
+      // Handle image changes - use editImage from the hook
+      if (editImage) {
+        updateData.image = editImage;
       } else if (editingItem.removeImage) {
         updateData.image = null;
       }
@@ -548,30 +397,6 @@ function ItemPanel({ onItemsChange }) {
     setShowEditModal(false);
     setEditingItem(null);
     setError('');
-  };
-
-  const handleActiveSearch = (e) => {
-    e.preventDefault();
-    setActiveSearch(activeSearchInput);
-    setActivePagination(prev => ({ ...prev, page: 1 }));
-  };
-
-  const handleDeletedSearch = (e) => {
-    e.preventDefault();
-    setDeletedSearch(deletedSearchInput);
-    setDeletedPagination(prev => ({ ...prev, page: 1 }));
-  };
-
-  const clearActiveSearch = () => {
-    setActiveSearchInput('');
-    setActiveSearch('');
-    setActivePagination(prev => ({ ...prev, page: 1 }));
-  };
-
-  const clearDeletedSearch = () => {
-    setDeletedSearchInput('');
-    setDeletedSearch('');
-    setDeletedPagination(prev => ({ ...prev, page: 1 }));
   };
 
   // Format item name with color and fabric
@@ -759,7 +584,7 @@ function ItemPanel({ onItemsChange }) {
             onClick={() => setShowDeleted(!showDeleted)}
             size="small"
           >
-            {showDeleted ? 'Hide Deleted' : 'Show Deleted'} ({deletedItemsData.pagination.total || 0})
+            {showDeleted ? 'Hide Deleted' : 'Show Deleted'} ({deletedPaginationData.total || 0})
           </Button>
         </Box>
         
@@ -800,14 +625,14 @@ function ItemPanel({ onItemsChange }) {
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
-        ) : activeItemsData.items.length === 0 ? (
+        ) : activeItems.length === 0 ? (
           <Typography color="text.secondary" textAlign="center" py={4}>
             No items found
           </Typography>
         ) : (
           <>
             <Grid container spacing={2}>
-              {activeItemsData.items.map((item) => (
+              {activeItems.map((item) => (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item._id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {item.imageUrl ? (
@@ -879,9 +704,9 @@ function ItemPanel({ onItemsChange }) {
               ))}
             </Grid>
             {renderPaginationControls(
-              activeItemsData.pagination,
-              (page) => setActivePagination(prev => ({ ...prev, page })),
-              (limit) => setActivePagination({ page: 1, limit })
+              activePaginationData,
+              handleActivePageChange,
+              handleActiveLimitChange
             )}
           </>
         )}
@@ -930,14 +755,14 @@ function ItemPanel({ onItemsChange }) {
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
-          ) : deletedItemsData.items.length === 0 ? (
+          ) : deletedItems.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={4}>
               No deleted items found
             </Typography>
           ) : (
             <>
               <Stack spacing={1}>
-                {deletedItemsData.items.map((item) => (
+                {deletedItems.map((item) => (
                   <Card key={item._id} variant="outlined" sx={{ bgcolor: 'background.paper' }}>
                     <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', py: 1.5, '&:last-child': { pb: 1.5 } }}>
                       {item.imageUrl && (
@@ -983,9 +808,9 @@ function ItemPanel({ onItemsChange }) {
                 ))}
               </Stack>
               {renderPaginationControls(
-                deletedItemsData.pagination,
-                (page) => setDeletedPagination(prev => ({ ...prev, page })),
-                (limit) => setDeletedPagination({ page: 1, limit })
+                deletedPaginationData,
+                handleDeletedPageChange,
+                handleDeletedLimitChange
               )}
             </>
           )}
@@ -1079,11 +904,11 @@ function ItemPanel({ onItemsChange }) {
                         hidden
                       />
                     </Button>
-                    {editingItem.editImagePreview && (
+                    {editImagePreview && (
                       <Box sx={{ position: 'relative', display: 'inline-block' }}>
                         <Box
                           component="img"
-                          src={editingItem.editImagePreview}
+                          src={editImagePreview}
                           alt="Preview"
                           sx={{ 
                             width: 80, 
@@ -1096,7 +921,7 @@ function ItemPanel({ onItemsChange }) {
                         />
                         <IconButton
                           size="small"
-                          onClick={clearEditImage}
+                          onClick={clearEditImageWrapper}
                           sx={{
                             position: 'absolute',
                             top: -8,

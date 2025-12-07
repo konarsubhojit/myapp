@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -25,7 +24,9 @@ import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { getOrdersPaginated } from '../services/api';
+import { useUrlSync } from '../hooks/useUrlSync';
+import { useOrderPagination } from '../hooks/useOrderPagination';
+import { useOrderFilters } from '../hooks/useOrderFilters';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
 import {
@@ -37,6 +38,7 @@ import {
 } from '../constants/orderConstants';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 
 // Build URL params string for comparison
 const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => {
@@ -56,111 +58,54 @@ const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => 
 };
 
 // Parse URL params to state
-const parseUrlParams = (searchParams) => {
-  const page = Number.parseInt(searchParams.get('page'), 10);
-  const limit = Number.parseInt(searchParams.get('limit'), 10);
-  const sortKey = searchParams.get('sortKey');
-  const sortDir = searchParams.get('sortDir');
+const parseUrlParams = (getParam, getIntParam) => {
+  const page = getIntParam('page', 1);
+  const limit = getIntParam('limit', 10);
+  const sortKey = getParam('sortKey', null);
+  const sortDir = getParam('sortDir', null);
   
   return {
-    page: Number.isNaN(page) || page < 1 ? 1 : page,
-    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
+    page: page < 1 ? 1 : page,
+    limit: [10, 20, 50].includes(limit) ? limit : 10,
     filters: {
-      customerName: searchParams.get('customerName') || '',
-      customerId: searchParams.get('customerId') || '',
-      orderFrom: searchParams.get('orderFrom') || '',
-      orderId: searchParams.get('orderId') || '',
-      confirmationStatus: searchParams.get('confirmationStatus') || '',
-      paymentStatus: searchParams.get('paymentStatus') || '',
+      customerName: getParam('customerName', ''),
+      customerId: getParam('customerId', ''),
+      orderFrom: getParam('orderFrom', ''),
+      orderId: getParam('orderId', ''),
+      confirmationStatus: getParam('confirmationStatus', ''),
+      paymentStatus: getParam('paymentStatus', ''),
     },
     sortConfig: {
       key: sortKey || 'expectedDeliveryDate',
       direction: sortDir === 'desc' ? 'desc' : 'asc',
     },
-    selectedOrderId: searchParams.get('order') || null,
+    selectedOrderId: getParam('order', null),
   };
 };
 
 /**
- * Checks if an order matches the given filter criteria
- * @param {Object} order - The order object to check
- * @param {Object} filters - The filter criteria object
- * @returns {boolean} - True if order matches all filters, false otherwise
+ * Builds URL search params object from state
  */
-const orderMatchesFilters = (order, filters) => {
-  if (!filters) return true;
+const buildUrlParams = (filters, pagination, sortConfig, selectedOrderId) => {
+  const params = new URLSearchParams();
   
-  const matchesCustomerName = (order.customerName || '')
-    .toLowerCase()
-    .includes((filters.customerName || '').toLowerCase());
-  const matchesCustomerId = (order.customerId || '')
-    .toLowerCase()
-    .includes((filters.customerId || '').toLowerCase());
-  const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
-  const matchesOrderId = (order.orderId || '')
-    .toLowerCase()
-    .includes((filters.orderId || '').toLowerCase());
-  const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
-  const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
+  // Only add non-default values to URL
+  if (pagination.page > 1) params.set('page', pagination.page);
+  if (pagination.limit !== 10) params.set('limit', pagination.limit);
   
-  return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
-};
-
-/**
- * Handles null value comparison for date sorting
- * @param {any} aValue - First date value
- * @param {any} bValue - Second date value
- * @param {string} sortDirection - Sort direction ('asc' or 'desc')
- * @returns {number|null} - Returns comparison result or null if both values exist
- */
-const handleNullDateComparison = (aValue, bValue, sortDirection) => {
-  if (!aValue && !bValue) return 0;
-  if (!aValue) return sortDirection === 'asc' ? 1 : -1;
-  if (!bValue) return sortDirection === 'asc' ? -1 : 1;
-  return null;
-};
-
-/**
- * Normalizes values based on sort key type
- * @param {any} aValue - First value
- * @param {any} bValue - Second value
- * @param {string} sortKey - The field being sorted
- * @param {string} sortDirection - Sort direction for null handling
- * @returns {Object} - Normalized values or early return value
- */
-const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
-  if (sortKey === 'totalPrice') {
-    return { a: Number.parseFloat(aValue), b: Number.parseFloat(bValue) };
-  }
+  if (filters.customerName) params.set('customerName', filters.customerName);
+  if (filters.customerId) params.set('customerId', filters.customerId);
+  if (filters.orderFrom) params.set('orderFrom', filters.orderFrom);
+  if (filters.orderId) params.set('orderId', filters.orderId);
+  if (filters.confirmationStatus) params.set('confirmationStatus', filters.confirmationStatus);
+  if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
   
-  if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
-    const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
-    if (nullResult !== null) return { earlyReturn: nullResult };
-    return { a: new Date(aValue), b: new Date(bValue) };
-  }
+  if (sortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', sortConfig.key);
+  if (sortConfig.direction !== 'asc') params.set('sortDir', sortConfig.direction);
   
-  return { 
-    a: aValue != null ? String(aValue).toLowerCase() : '', 
-    b: bValue != null ? String(bValue).toLowerCase() : '' 
-  };
-};
-
-/**
- * Compares two order values for sorting with support for dates, numbers, and strings
- * @param {any} aValue - First value to compare
- * @param {any} bValue - Second value to compare
- * @param {string} sortKey - The field being sorted (determines comparison type)
- * @param {string} sortDirection - Sort direction ('asc' or 'desc')
- * @returns {number} - Returns -1, 0, or 1 for sorting
- */
-const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
-  const normalized = normalizeComparisonValues(aValue, bValue, sortKey, sortDirection);
-  if (normalized.earlyReturn !== undefined) return normalized.earlyReturn;
-
-  const { a, b } = normalized;
-  if (a < b) return sortDirection === 'asc' ? -1 : 1;
-  if (a > b) return sortDirection === 'asc' ? 1 : -1;
-  return 0;
+  if (selectedOrderId) params.set('order', selectedOrderId);
+  
+  return params;
 };
 
 /**
@@ -211,91 +156,41 @@ const getHistoryPaymentColor = (status) => {
   }
 };
 
-/**
- * Creates an empty filter object with default values
- */
-const createEmptyFilters = () => ({
-  customerName: '',
-  customerId: '',
-  orderFrom: '',
-  orderId: '',
-  confirmationStatus: '',
-  paymentStatus: ''
-});
-
-/**
- * Builds URL search params object from state
- */
-const buildUrlParams = (filters, pagination, sortConfig, selectedOrderId) => {
-  const params = new URLSearchParams();
-  
-  // Only add non-default values to URL
-  if (pagination.page > 1) params.set('page', pagination.page);
-  if (pagination.limit !== 10) params.set('limit', pagination.limit);
-  
-  if (filters.customerName) params.set('customerName', filters.customerName);
-  if (filters.customerId) params.set('customerId', filters.customerId);
-  if (filters.orderFrom) params.set('orderFrom', filters.orderFrom);
-  if (filters.orderId) params.set('orderId', filters.orderId);
-  if (filters.confirmationStatus) params.set('confirmationStatus', filters.confirmationStatus);
-  if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
-  
-  if (sortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', sortConfig.key);
-  if (sortConfig.direction !== 'asc') params.set('sortDir', sortConfig.direction);
-  
-  if (selectedOrderId) params.set('order', selectedOrderId);
-  
-  return params;
-};
-
 function OrderHistory({ onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
-  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Use URL sync hook
+  const { getParam, getIntParam, updateUrl } = useUrlSync();
   
   // Parse initial state from URL
-  const initialState = parseUrlParams(searchParams);
+  const initialState = parseUrlParams(getParam, getIntParam);
   
-  const [orders, setOrders] = useState([]);
-  const [pagination, setPagination] = useState({ 
-    page: initialState.page, 
-    limit: initialState.limit, 
-    total: 0, 
-    totalPages: 0 
-  });
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Use pagination hook
+  const {
+    orders,
+    pagination,
+    initialLoading,
+    loading,
+    error,
+    fetchOrders,
+    handlePageChange,
+    handlePageSizeChange,
+  } = useOrderPagination(getIntParam);
+  
+  // Use filters hook
+  const {
+    filters,
+    sortConfig,
+    sortedOrders,
+    handleFilterChange,
+    handleClearFilters,
+    handleSort,
+  } = useOrderFilters(orders, initialState.filters, initialState.sortConfig);
+  
   const [selectedOrderId, setSelectedOrderId] = useState(initialState.selectedOrderId);
-  const [filters, setFilters] = useState(initialState.filters);
-  const [sortConfig, setSortConfig] = useState(initialState.sortConfig);
   
   // Track previous URL params to avoid unnecessary updates
   const prevParamsRef = useRef('');
-
-  // Update URL when state changes
-  const updateUrl = useCallback((newFilters, newPagination, newSortConfig, newSelectedOrderId) => {
-    const params = buildUrlParams(newFilters, newPagination, newSortConfig, newSelectedOrderId);
-    setSearchParams(params, { replace: true });
-  }, [setSearchParams]);
-
-  const fetchOrders = useCallback(async (page, limit) => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await getOrdersPaginated({ page, limit });
-      setOrders(result.orders);
-      setPagination(result.pagination);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch orders');
-    } finally {
-      setLoading(false);
-      setInitialLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOrders(pagination.page, pagination.limit);
-  }, [pagination.page, pagination.limit, fetchOrders]);
 
   // Update URL when state changes - only if params actually changed
   useEffect(() => {
@@ -305,30 +200,10 @@ function OrderHistory({ onDuplicateOrder }) {
     // Only update URL if params actually changed
     if (newParamsString !== prevParamsRef.current) {
       prevParamsRef.current = newParamsString;
-      updateUrl(filters, paginationForUrl, sortConfig, selectedOrderId);
+      const params = buildUrlParams(filters, paginationForUrl, sortConfig, selectedOrderId);
+      updateUrl(params);
     }
   }, [filters, pagination.page, pagination.limit, sortConfig, selectedOrderId, updateUrl]);
-
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSort = (key) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }));
-    }
-  };
-
-  const handlePageSizeChange = (newLimit) => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
-  };
 
   const handleOrderClick = (orderId) => {
     setSelectedOrderId(orderId);
@@ -337,25 +212,6 @@ function OrderHistory({ onDuplicateOrder }) {
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
   };
-
-  const handleClearFilters = () => {
-    setFilters(createEmptyFilters());
-  };
-
-  const filteredOrders = useMemo(() => {
-    return orders.filter(order => orderMatchesFilters(order, filters));
-  }, [orders, filters]);
-
-  const sortedOrders = useMemo(() => {
-    const sorted = [...filteredOrders];
-    sorted.sort((a, b) => compareOrderValues(
-      a[sortConfig.key],
-      b[sortConfig.key],
-      sortConfig.key,
-      sortConfig.direction
-    ));
-    return sorted;
-  }, [filteredOrders, sortConfig]);
 
   if (initialLoading) {
     return (
