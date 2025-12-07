@@ -349,65 +349,73 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+async function validateUpdateRequest(requestBody) {
+  const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
+
+  const notesValidation = validateUpdateCustomerNotes(customerNotes);
+  if (!notesValidation.valid) return notesValidation;
+
+  const fieldsValidation = validateUpdateFields(customerName, customerId);
+  if (!fieldsValidation.valid) return fieldsValidation;
+
+  const statusValidation = validateOrderStatus(status);
+  if (!statusValidation.valid) return statusValidation;
+
+  const paymentStatusValidation = validateUpdatePaymentStatus(paymentStatus);
+  if (!paymentStatusValidation.valid) return paymentStatusValidation;
+
+  const confirmationValidation = validateUpdateConfirmationStatus(confirmationStatus);
+  if (!confirmationValidation.valid) return confirmationValidation;
+
+  const paidAmountResult = parseUpdatePaidAmount(paidAmount);
+  if (!paidAmountResult.valid) return paidAmountResult;
+
+  const priorityResult = parseUpdatePriority(priority);
+  if (!priorityResult.valid) return priorityResult;
+
+  const dateResult = parseUpdateDeliveryDate(expectedDeliveryDate);
+  if (!dateResult.valid) return dateResult;
+
+  const itemsResult = await processUpdateOrderItems(items);
+  if (!itemsResult.valid) return itemsResult;
+
+  return { 
+    valid: true, 
+    data: { paidAmountResult, priorityResult, dateResult, itemsResult, paymentStatus } 
+  };
+}
+
+function buildUpdateData(validationData, requestBody) {
+  const { orderFrom, customerName, customerId, status, paymentStatus, confirmationStatus, customerNotes } = requestBody;
+  const { paidAmountResult, priorityResult, dateResult, itemsResult } = validationData;
+  
+  const updateData = {};
+  if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
+  if (customerName !== undefined) updateData.customerName = customerName;
+  if (customerId !== undefined) updateData.customerId = customerId;
+  if (dateResult.parsedDate !== undefined) updateData.expectedDeliveryDate = dateResult.parsedDate;
+  if (status !== undefined) updateData.status = status;
+  if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+  if (paidAmountResult.parsedAmount !== undefined) updateData.paidAmount = paidAmountResult.parsedAmount;
+  if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
+  if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
+  if (priorityResult.parsedPriority !== undefined) updateData.priority = priorityResult.parsedPriority;
+  if (itemsResult.orderItems !== undefined) updateData.items = itemsResult.orderItems;
+  if (itemsResult.totalPrice !== undefined) updateData.totalPrice = itemsResult.totalPrice;
+  
+  return updateData;
+}
+
 router.put('/:id', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
-
-    // Validate customer notes
-    const notesValidation = validateUpdateCustomerNotes(customerNotes);
-    if (!notesValidation.valid) {
-      return res.status(400).json({ message: notesValidation.error });
+    const validation = await validateUpdateRequest(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.error });
     }
+
+    const { paidAmountResult, itemsResult } = validation.data;
     
-    // Validate customer name and ID
-    const fieldsValidation = validateUpdateFields(customerName, customerId);
-    if (!fieldsValidation.valid) {
-      return res.status(400).json({ message: fieldsValidation.error });
-    }
-
-    // Validate status
-    const statusValidation = validateOrderStatus(status);
-    if (!statusValidation.valid) {
-      return res.status(400).json({ message: statusValidation.error });
-    }
-
-    // Validate payment status
-    const paymentStatusValidation = validateUpdatePaymentStatus(paymentStatus);
-    if (!paymentStatusValidation.valid) {
-      return res.status(400).json({ message: paymentStatusValidation.error });
-    }
-
-    // Validate confirmation status
-    const confirmationValidation = validateUpdateConfirmationStatus(confirmationStatus);
-    if (!confirmationValidation.valid) {
-      return res.status(400).json({ message: confirmationValidation.error });
-    }
-
-    // Parse paid amount
-    const paidAmountResult = parseUpdatePaidAmount(paidAmount);
-    if (!paidAmountResult.valid) {
-      return res.status(400).json({ message: paidAmountResult.error });
-    }
-
-    // Parse priority
-    const priorityResult = parseUpdatePriority(priority);
-    if (!priorityResult.valid) {
-      return res.status(400).json({ message: priorityResult.error });
-    }
-
-    // Parse delivery date
-    const dateResult = parseUpdateDeliveryDate(expectedDeliveryDate);
-    if (!dateResult.valid) {
-      return res.status(400).json({ message: dateResult.error });
-    }
-
-    // Process order items
-    const itemsResult = await processUpdateOrderItems(items);
-    if (!itemsResult.valid) {
-      return res.status(400).json({ message: itemsResult.error });
-    }
-
-    // Validate payment amount against total price
+    // Validate payment amount against total price if needed
     if (paidAmountResult.parsedAmount !== undefined) {
       const existingOrder = await Order.findById(req.params.id);
       if (!existingOrder) {
@@ -418,28 +426,14 @@ router.put('/:id', async (req, res) => {
         paidAmountResult.parsedAmount, 
         itemsResult.totalPrice, 
         existingOrder.totalPrice, 
-        paymentStatus
+        validation.data.paymentStatus
       );
       if (!paymentValidation.valid) {
         return res.status(400).json({ message: paymentValidation.error });
       }
     }
 
-    // Build update data
-    const updateData = {};
-    if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
-    if (customerName !== undefined) updateData.customerName = customerName;
-    if (customerId !== undefined) updateData.customerId = customerId;
-    if (dateResult.parsedDate !== undefined) updateData.expectedDeliveryDate = dateResult.parsedDate;
-    if (status !== undefined) updateData.status = status;
-    if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
-    if (paidAmountResult.parsedAmount !== undefined) updateData.paidAmount = paidAmountResult.parsedAmount;
-    if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
-    if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
-    if (priorityResult.parsedPriority !== undefined) updateData.priority = priorityResult.parsedPriority;
-    if (itemsResult.orderItems !== undefined) updateData.items = itemsResult.orderItems;
-    if (itemsResult.totalPrice !== undefined) updateData.totalPrice = itemsResult.totalPrice;
-
+    const updateData = buildUpdateData(validation.data, req.body);
     const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
     if (!updatedOrder) {
       return res.status(404).json({ message: 'Order not found' });

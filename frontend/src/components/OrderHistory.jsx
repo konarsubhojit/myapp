@@ -81,6 +81,46 @@ const parseUrlParams = (searchParams) => {
   };
 };
 
+// Helper function to check if order matches filters
+const orderMatchesFilters = (order, filters) => {
+  const matchesCustomerName = order.customerName
+    .toLowerCase()
+    .includes(filters.customerName.toLowerCase());
+  const matchesCustomerId = order.customerId
+    .toLowerCase()
+    .includes(filters.customerId.toLowerCase());
+  const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
+  const matchesOrderId = order.orderId
+    .toLowerCase()
+    .includes(filters.orderId.toLowerCase());
+  const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
+  const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
+  
+  return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
+};
+
+// Helper function to compare order values for sorting
+const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
+  if (sortKey === 'totalPrice') {
+    aValue = parseFloat(aValue);
+    bValue = parseFloat(bValue);
+  } else if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
+    // Handle null values - nulls go last for ascending, first for descending
+    if (!aValue && !bValue) return 0;
+    if (!aValue) return sortDirection === 'asc' ? 1 : -1;
+    if (!bValue) return sortDirection === 'asc' ? -1 : 1;
+    aValue = new Date(aValue);
+    bValue = new Date(bValue);
+  } else {
+    aValue = String(aValue).toLowerCase();
+    bValue = String(bValue).toLowerCase();
+  }
+
+  if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+  if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+  return 0;
+};
+
 function OrderHistory({ onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -201,49 +241,17 @@ function OrderHistory({ onDuplicateOrder }) {
   };
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesCustomerName = order.customerName
-        .toLowerCase()
-        .includes(filters.customerName.toLowerCase());
-      const matchesCustomerId = order.customerId
-        .toLowerCase()
-        .includes(filters.customerId.toLowerCase());
-      const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
-      const matchesOrderId = order.orderId
-        .toLowerCase()
-        .includes(filters.orderId.toLowerCase());
-      const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
-      const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
-      
-      return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
-    });
+    return orders.filter(order => orderMatchesFilters(order, filters));
   }, [orders, filters]);
 
   const sortedOrders = useMemo(() => {
     const sorted = [...filteredOrders];
-    sorted.sort((a, b) => {
-      let aValue = a[sortConfig.key];
-      let bValue = b[sortConfig.key];
-
-      if (sortConfig.key === 'totalPrice') {
-        aValue = parseFloat(aValue);
-        bValue = parseFloat(bValue);
-      } else if (sortConfig.key === 'createdAt' || sortConfig.key === 'expectedDeliveryDate') {
-        // Handle null values - nulls go last for ascending, first for descending
-        if (!aValue && !bValue) return 0;
-        if (!aValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        if (!bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      } else {
-        aValue = String(aValue).toLowerCase();
-        bValue = String(bValue).toLowerCase();
-      }
-
-      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+    sorted.sort((a, b) => compareOrderValues(
+      a[sortConfig.key],
+      b[sortConfig.key],
+      sortConfig.key,
+      sortConfig.direction
+    ));
     return sorted;
   }, [filteredOrders, sortConfig]);
 

@@ -119,32 +119,37 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     setEditForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const validateFormData = () => {
     if (!editForm.customerName.trim() || !editForm.customerId.trim()) {
-      setError('Customer name and ID are required');
-      return;
+      return { valid: false, error: 'Customer name and ID are required' };
     }
 
-    // Validate paid amount
     const parsedPaidAmount = Number.parseFloat(editForm.paidAmount);
     if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
-      setError('Paid amount must be a valid non-negative number');
-      return;
+      return { valid: false, error: 'Paid amount must be a valid non-negative number' };
     }
 
     if (parsedPaidAmount > order.totalPrice) {
-      setError('Paid amount cannot exceed total price');
-      return;
+      return { valid: false, error: 'Paid amount cannot exceed total price' };
     }
 
-    // Additional validation for partially paid orders
     if (
       editForm.paymentStatus === 'partially_paid' &&
       (parsedPaidAmount <= 0 || parsedPaidAmount >= order.totalPrice)
     ) {
-      setError('For partially paid orders, paid amount must be greater than 0 and less than total price');
+      return { valid: false, error: 'For partially paid orders, paid amount must be greater than 0 and less than total price' };
+    }
+
+    return { valid: true, parsedPaidAmount };
+  };
+
+  const handleSave = async () => {
+    const validation = validateFormData();
+    if (!validation.valid) {
+      setError(validation.error);
       return;
     }
+
     setSaving(true);
     setError('');
     try {
@@ -155,7 +160,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
         status: editForm.status,
         expectedDeliveryDate: editForm.expectedDeliveryDate || null,
         paymentStatus: editForm.paymentStatus,
-        paidAmount: parsedPaidAmount,
+        paidAmount: validation.parsedPaidAmount,
         confirmationStatus: editForm.confirmationStatus,
         customerNotes: editForm.customerNotes,
         priority: Number.parseInt(editForm.priority, 10)
