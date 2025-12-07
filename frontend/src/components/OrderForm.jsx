@@ -222,8 +222,9 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
       onOrderCreated();
       showSuccess(`Order ${order.orderId} created successfully!`);
       
-      // Navigate back to /orders/new if we were duplicating
+            // Order created successfully
       if (duplicateOrderId) {
+        // Duplicated order completed
       }
     } catch (err) {
       setError(err.message);

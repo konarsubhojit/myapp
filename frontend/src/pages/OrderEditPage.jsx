@@ -12,7 +12,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useOrderDetails } from '../hooks/useOrderDetails';
 import OrderDetailsEditForm from '../components/common/OrderDetailsEditForm';
 
-function OrderEditPage({ orderId, items, onBack, onSaved }) {
+function OrderEditPage({ orderId, onBack, onSaved }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
   

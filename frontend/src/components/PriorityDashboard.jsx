@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigation, VIEWS } from '../contexts/NavigationContext';
+import { useNavigation } from '../contexts/NavigationContext';
+import { VIEWS } from '../constants/navigationConstants';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -100,7 +101,7 @@ function formatDate(dateString) {
   });
 }
 
-function PriorityDashboard({ onRefresh }) {
+function PriorityDashboard() {
   const { formatPrice } = useCurrency();
   const { navigateTo } = useNavigation();
   const [orders, setOrders] = useState([]);
@@ -139,12 +140,6 @@ function PriorityDashboard({ onRefresh }) {
   };
 
 
-  const handleOrderUpdated = () => {
-    fetchPriorityOrders();
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
 
   if (loading) {
     return (

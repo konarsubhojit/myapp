@@ -17,7 +17,7 @@ import PriorityLegend from './common/PriorityLegend';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function OrderHistory({ onOrderClick, onDuplicateOrder }) {
+function OrderHistory({ onOrderClick }) {
   const { formatPrice } = useCurrency();
   
   // Use pagination hook
@@ -27,7 +27,6 @@ function OrderHistory({ onOrderClick, onDuplicateOrder }) {
     initialLoading,
     loading,
     error,
-    fetchOrders,
     handlePageChange,
     handlePageSizeChange,
   } = useOrderPagination();

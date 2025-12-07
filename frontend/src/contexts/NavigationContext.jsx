@@ -1,17 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback } from 'react';
+import { VIEWS } from '../constants/navigationConstants';
 
 const NavigationContext = createContext();
-
-export const VIEWS = {
-  PRIORITY: 'priority',
-  NEW_ORDER: 'new-order',
-  DUPLICATE_ORDER: 'duplicate-order',
-  ITEMS: 'items',
-  HISTORY: 'history',
-  SALES: 'sales',
-  ORDER_DETAILS: 'order-details',
-  EDIT_ORDER: 'edit-order',
-};
 
 export function NavigationProvider({ children }) {
   const [currentView, setCurrentView] = useState(VIEWS.PRIORITY);

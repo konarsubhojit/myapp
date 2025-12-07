@@ -40,13 +40,31 @@ const getHistoryStatusColor = (status) => {
 };
 
 /**
- * Gets color for priority indicators
+ * Gets color for priority indicators using new urgency-based system
  */
 const getHistoryPriorityColor = (priorityData) => {
   if (!priorityData) return 'default';
-  if (priorityData.className.includes('overdue')) return 'error';
-  if (priorityData.className.includes('due-today')) return 'warning';
-  if (priorityData.className.includes('urgent')) return 'warning';
+  
+  // Use urgency level (new system)
+  if (priorityData.urgency) {
+    switch (priorityData.urgency) {
+      case 'critical': return 'error';
+      case 'high': return 'warning';
+      case 'medium': return 'info';
+      case 'low': return 'success';
+      default: return 'default';
+    }
+  }
+  
+  // Fallback to className
+  if (priorityData.className) {
+    if (priorityData.className.includes('overdue')) return 'error';
+    if (priorityData.className.includes('critical')) return 'error';
+    if (priorityData.className.includes('due-today')) return 'error';
+    if (priorityData.className.includes('urgent')) return 'warning';
+    if (priorityData.className.includes('medium')) return 'info';
+  }
+  
   return 'success';
 };
 

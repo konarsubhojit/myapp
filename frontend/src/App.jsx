@@ -22,7 +22,8 @@ import PreviewIcon from '@mui/icons-material/Preview';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
-import { NavigationProvider, useNavigation, VIEWS } from './contexts/NavigationContext';
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
+import { VIEWS } from './constants/navigationConstants';
 import { getItems, getOrders } from './services/api';
 import Login from './components/Login';
 import PriorityDashboard from './components/PriorityDashboard';
@@ -197,7 +198,6 @@ function AppContent() {
         return (
           <OrderEditPage
             orderId={viewData?.orderId}
-            items={items}
             onBack={() => navigateTo(VIEWS.ORDER_DETAILS, { orderId: viewData?.orderId })}
             onSaved={(orderId) => {
               fetchOrders();

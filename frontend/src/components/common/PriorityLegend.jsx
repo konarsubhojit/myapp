@@ -5,25 +5,29 @@ import Chip from '@mui/material/Chip';
 function PriorityLegend() {
   return (
     <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
-        Priority Indicators:
+      <Typography variant="body2" color="text.secondary" gutterBottom fontWeight={600}>
+        Priority Levels (Production Time: 1-2 weeks)
       </Typography>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Chip label="Overdue" color="error" size="small" />
-          <Typography variant="caption" color="text.secondary">Past</Typography>
+          <Typography variant="caption" color="text.secondary">Past due date</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Chip label="Due Today" color="warning" size="small" />
-          <Typography variant="caption" color="text.secondary">Today</Typography>
+          <Chip label="Critical" color="error" size="small" />
+          <Typography variant="caption" color="text.secondary">≤3 days (rush needed)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Chip label="1-3d" color="warning" variant="outlined" size="small" />
-          <Typography variant="caption" color="text.secondary">Soon</Typography>
+          <Chip label="Urgent" color="warning" size="small" />
+          <Typography variant="caption" color="text.secondary">4-7 days (tight)</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Chip label="Medium" color="info" size="small" />
+          <Typography variant="caption" color="text.secondary">8-14 days (standard)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Chip label="Normal" color="success" size="small" />
-          <Typography variant="caption" color="text.secondary">Later</Typography>
+          <Typography variant="caption" color="text.secondary">>14 days (comfortable)</Typography>
         </Box>
       </Box>
     </Box>
