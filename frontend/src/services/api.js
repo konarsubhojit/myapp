@@ -67,8 +67,23 @@ async function authFetch(url, options = {}) {
   if (isGuestModeFn?.()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
     // Return mock empty response for guest mode
-    // For list endpoints return empty array, for single item endpoints return empty object
-    const mockData = url.includes('/items/') || url.includes('/orders/') ? {} : [];
+    // Check if this is a paginated endpoint (contains query params like page, limit)
+    let mockData;
+    if (url.includes('?page=') || url.includes('&page=')) {
+      // Paginated endpoint - return pagination structure
+      // Determine if it's items or orders based on URL
+      const dataKey = url.includes('/orders') ? 'orders' : 'items';
+      mockData = { 
+        [dataKey]: [], 
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
+      };
+    } else if (url.includes('/items/') || url.includes('/orders/')) {
+      // Single item endpoint - return empty object
+      mockData = {};
+    } else {
+      // List endpoint without pagination - return empty array
+      mockData = [];
+    }
     return new Response(JSON.stringify(mockData), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
