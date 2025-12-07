@@ -6,7 +6,7 @@ const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('ItemsRoute');
 
-const ALLOWED_LIMITS = [10, 20, 50];
+const ALLOWED_LIMITS = new Set([10, 20, 50]);
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 
 async function uploadImage(image) {
@@ -81,13 +81,13 @@ function validateItemPrice(price) {
 
 router.get('/', async (req, res) => {
   try {
-    const parsedPage = parseInt(req.query.page, 10);
-    const parsedLimit = parseInt(req.query.limit, 10);
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
     const search = req.query.search || '';
     
     if (req.query.page || req.query.limit) {
       const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-      const limit = ALLOWED_LIMITS.includes(parsedLimit) ? parsedLimit : 10;
+      const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
       
       const result = await Item.findPaginated({ page, limit, search });
       res.json(result);
@@ -103,12 +103,12 @@ router.get('/', async (req, res) => {
 
 router.get('/deleted', async (req, res) => {
   try {
-    const parsedPage = parseInt(req.query.page, 10);
-    const parsedLimit = parseInt(req.query.limit, 10);
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
     const search = req.query.search || '';
     
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = ALLOWED_LIMITS.includes(parsedLimit) ? parsedLimit : 10;
+    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
     
     const result = await Item.findDeletedPaginated({ page, limit, search });
     res.json(result);

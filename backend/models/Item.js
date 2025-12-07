@@ -6,7 +6,7 @@ function transformItem(item) {
   return {
     ...item,
     _id: item.id,
-    price: parseFloat(item.price),
+    price: Number.parseFloat(item.price),
     color: item.color || '',
     fabric: item.fabric || '',
     specialFeatures: item.specialFeatures || '',

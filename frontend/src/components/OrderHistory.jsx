@@ -211,6 +211,43 @@ const getHistoryPaymentColor = (status) => {
   }
 };
 
+/**
+ * Creates an empty filter object with default values
+ */
+const createEmptyFilters = () => ({
+  customerName: '',
+  customerId: '',
+  orderFrom: '',
+  orderId: '',
+  confirmationStatus: '',
+  paymentStatus: ''
+});
+
+/**
+ * Builds URL search params object from state
+ */
+const buildUrlParams = (filters, pagination, sortConfig, selectedOrderId) => {
+  const params = new URLSearchParams();
+  
+  // Only add non-default values to URL
+  if (pagination.page > 1) params.set('page', pagination.page);
+  if (pagination.limit !== 10) params.set('limit', pagination.limit);
+  
+  if (filters.customerName) params.set('customerName', filters.customerName);
+  if (filters.customerId) params.set('customerId', filters.customerId);
+  if (filters.orderFrom) params.set('orderFrom', filters.orderFrom);
+  if (filters.orderId) params.set('orderId', filters.orderId);
+  if (filters.confirmationStatus) params.set('confirmationStatus', filters.confirmationStatus);
+  if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
+  
+  if (sortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', sortConfig.key);
+  if (sortConfig.direction !== 'asc') params.set('sortDir', sortConfig.direction);
+  
+  if (selectedOrderId) params.set('order', selectedOrderId);
+  
+  return params;
+};
+
 function OrderHistory({ onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -237,24 +274,7 @@ function OrderHistory({ onDuplicateOrder }) {
 
   // Update URL when state changes
   const updateUrl = useCallback((newFilters, newPagination, newSortConfig, newSelectedOrderId) => {
-    const params = new URLSearchParams();
-    
-    // Only add non-default values to URL
-    if (newPagination.page > 1) params.set('page', newPagination.page);
-    if (newPagination.limit !== 10) params.set('limit', newPagination.limit);
-    
-    if (newFilters.customerName) params.set('customerName', newFilters.customerName);
-    if (newFilters.customerId) params.set('customerId', newFilters.customerId);
-    if (newFilters.orderFrom) params.set('orderFrom', newFilters.orderFrom);
-    if (newFilters.orderId) params.set('orderId', newFilters.orderId);
-    if (newFilters.confirmationStatus) params.set('confirmationStatus', newFilters.confirmationStatus);
-    if (newFilters.paymentStatus) params.set('paymentStatus', newFilters.paymentStatus);
-    
-    if (newSortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', newSortConfig.key);
-    if (newSortConfig.direction !== 'asc') params.set('sortDir', newSortConfig.direction);
-    
-    if (newSelectedOrderId) params.set('order', newSelectedOrderId);
-    
+    const params = buildUrlParams(newFilters, newPagination, newSortConfig, newSelectedOrderId);
     setSearchParams(params, { replace: true });
   }, [setSearchParams]);
 
@@ -319,15 +339,7 @@ function OrderHistory({ onDuplicateOrder }) {
   };
 
   const handleClearFilters = () => {
-    const clearedFilters = { 
-      customerName: '', 
-      customerId: '', 
-      orderFrom: '', 
-      orderId: '', 
-      confirmationStatus: '', 
-      paymentStatus: '' 
-    };
-    setFilters(clearedFilters);
+    setFilters(createEmptyFilters());
   };
 
   const filteredOrders = useMemo(() => {
