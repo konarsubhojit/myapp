@@ -54,12 +54,13 @@ function calculateEffectivePriority(order) {
 }
 
 /**
- * Get urgency level for visual styling
- * Aligns with priorityUtils.js priority classifications:
- * - CRITICAL: Overdue or ≤3 days (rush needed)
- * - HIGH: 4-7 days (tight, <1 week)
- * - MEDIUM: 8-14 days (standard 1-2 weeks)
- * - NORMAL: >14 days (comfortable)
+ * Get urgency level for visual styling in the dashboard
+ * Maps delivery dates to dashboard urgency categories (critical/high/medium/normal)
+ * Based on priorityUtils.js priority thresholds:
+ * - critical: Overdue or ≤3 days (aligns with priorityUtils OVERDUE/CRITICAL)
+ * - high: 4-7 days (aligns with priorityUtils URGENT)
+ * - medium: 8-14 days (aligns with priorityUtils MEDIUM)
+ * - normal: >14 days (aligns with priorityUtils NORMAL)
  */
 function getUrgencyLevel(order) {
   if (!order.expectedDeliveryDate) {
