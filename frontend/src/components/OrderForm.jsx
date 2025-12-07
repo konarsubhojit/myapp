@@ -54,6 +54,8 @@ function OrderForm({ items, onOrderCreated }) {
   const [orderFrom, setOrderFrom] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
+  const [address, setAddress] = useState('');
+  const [orderDate, setOrderDate] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('unpaid');
   const [paidAmount, setPaidAmount] = useState('');
@@ -82,13 +84,15 @@ function OrderForm({ items, onOrderCreated }) {
         setOrderFrom(order.orderFrom || '');
         setCustomerName(order.customerName || '');
         setCustomerId(order.customerId || '');
+        setAddress(order.address || '');
         setCustomerNotes(order.customerNotes || '');
         setPriority(order.priority || 0);
         
-        // Reset payment info for new order
+        // Reset payment info and dates for new order
         setPaymentStatus('unpaid');
         setPaidAmount('');
         setConfirmationStatus('unconfirmed');
+        setOrderDate('');
         setExpectedDeliveryDate('');
         
         // Create lookup maps for efficient item matching
@@ -154,6 +158,7 @@ function OrderForm({ items, onOrderCreated }) {
 
   const getMinDate = () => {
     const today = new Date();
+    today.setFullYear(today.getFullYear() - 1); // Allow backdating up to 1 year
     return today.toISOString().split('T')[0];
   };
 
@@ -161,6 +166,8 @@ function OrderForm({ items, onOrderCreated }) {
     setOrderFrom('');
     setCustomerName('');
     setCustomerId('');
+    setAddress('');
+    setOrderDate('');
     setExpectedDeliveryDate('');
     setPaymentStatus('unpaid');
     setPaidAmount('');
@@ -198,7 +205,9 @@ function OrderForm({ items, onOrderCreated }) {
         orderFrom,
         customerName: customerName.trim(),
         customerId: customerId.trim(),
+        address: address.trim(),
         items: orderItems,
+        orderDate: orderDate || null,
         expectedDeliveryDate: expectedDeliveryDate || null,
         paymentStatus,
         paidAmount: paidAmount ? Number.parseFloat(paidAmount) : 0,
@@ -322,6 +331,32 @@ function OrderForm({ items, onOrderCreated }) {
               placeholder="Enter customer ID"
               fullWidth
               required
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              id="address"
+              label="Address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Enter customer address"
+              fullWidth
+              multiline
+              rows={2}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+            <TextField
+              id="orderDate"
+              label="Order Date"
+              type="date"
+              value={orderDate}
+              onChange={(e) => setOrderDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinDate() } }}
+              fullWidth
+              helperText="Leave blank to use current date"
             />
           </Grid>
 
