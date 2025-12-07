@@ -148,10 +148,11 @@ function AppContent() {
       {/* Header */}
       <AppBar 
         position="sticky" 
-        elevation={2}
+        elevation={0}
         sx={{ 
-          bgcolor: 'primary.main',
-          backgroundImage: 'linear-gradient(135deg, #5a6fd8 0%, #6943a0 100%)',
+          bgcolor: '#000000',
+          borderBottom: '1px solid',
+          borderColor: 'rgba(255, 255, 255, 0.12)',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
@@ -159,8 +160,8 @@ function AppContent() {
             variant="h6" 
             component="h1" 
             sx={{ 
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
+              fontWeight: 600,
+              letterSpacing: '0.01em',
               fontSize: { xs: '1rem', sm: '1.25rem' },
               flexShrink: 1,
               minWidth: 0,
@@ -168,22 +169,21 @@ function AppContent() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               color: '#ffffff',
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
-              filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
             }}
           >
             {isMobile ? 'OMS' : 'Order Management System'}
           </Typography>
-          <Box display="flex" alignItems="center" gap={0.5} flexShrink={0}>
+          <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
             {guestMode && (
               <Chip 
                 icon={<PreviewIcon />} 
                 label={isMobile ? "Guest" : "Guest Mode"} 
                 size="small"
                 sx={{ 
-                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  bgcolor: 'rgba(255,255,255,0.1)', 
                   color: 'white',
-                  fontWeight: 600,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  fontWeight: 500,
                   '& .MuiChip-icon': {
                     color: 'white'
                   }
@@ -194,15 +194,15 @@ function AppContent() {
               <Avatar 
                 src={user.picture} 
                 alt={user?.name || 'User'}
-                sx={{ width: 28, height: 28 }}
+                sx={{ width: 32, height: 32, border: '2px solid rgba(255,255,255,0.2)' }}
               />
             ) : (
-              <Avatar sx={{ width: 28, height: 28, bgcolor: 'rgba(255,255,255,0.2)', fontSize: '0.875rem' }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: '#ffffff', color: '#000000', fontSize: '0.875rem', fontWeight: 600 }}>
                 {(user?.name || user?.email || 'U')[0].toUpperCase()}
               </Avatar>
             )}
             {!isMobile && !guestMode && (
-              <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', color: '#ffffff' }}>
                 {user?.name || user?.email}
               </Typography>
             )}
@@ -213,12 +213,12 @@ function AppContent() {
               startIcon={isMobile ? undefined : <LogoutIcon />}
               sx={{ 
                 color: 'white', 
-                borderColor: 'rgba(255,255,255,0.5)',
+                borderColor: 'rgba(255,255,255,0.3)',
                 minWidth: isMobile ? 40 : 'auto',
                 px: isMobile ? 1 : 2,
                 '&:hover': {
                   borderColor: 'white',
-                  bgcolor: 'rgba(255,255,255,0.1)',
+                  bgcolor: 'rgba(255,255,255,0.08)',
                 }
               }}
               aria-label="Sign out"
@@ -234,12 +234,15 @@ function AppContent() {
 
       {/* Navigation Tabs */}
       <Paper 
-        elevation={1}
+        elevation={0}
         sx={{ 
           position: 'sticky',
           top: { xs: 56, sm: 64 },
           zIndex: 1000,
           borderRadius: 0,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: '#ffffff',
         }}
       >
         <Container maxWidth="lg">
@@ -252,7 +255,19 @@ function AppContent() {
             aria-label="Main navigation"
             sx={{
               '& .MuiTab-root': {
-                minHeight: 56,
+                minHeight: 48,
+                color: '#666666',
+                fontWeight: 500,
+                textTransform: 'none',
+                fontSize: '0.9375rem',
+                '&.Mui-selected': {
+                  color: '#000000',
+                  fontWeight: 600,
+                },
+              },
+              '& .MuiTabs-indicator': {
+                height: 2,
+                bgcolor: '#000000',
               }
             }}
           >
