@@ -20,6 +20,8 @@ export default defineConfig({
         'vite.config.js',
         'vitest.config.js',
         '**/*eslint*',
+        'src/main.jsx',
+        'src/hooks/index.js',
       ],
     },
   },
