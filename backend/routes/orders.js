@@ -182,43 +182,6 @@ function parseUpdateDeliveryDate(expectedDeliveryDate) {
   return { valid: true, parsedDate: parsedDeliveryDate };
 }
 
-async function processUpdateOrderItems(items) {
-  if (items === undefined) {
-    return { valid: true, orderItems: undefined, totalPrice: undefined };
-  }
-  
-  if (!Array.isArray(items) || items.length === 0) {
-    return { valid: false, error: 'At least one item is required' };
-  }
-
-  const orderItems = [];
-  let totalPrice = 0;
-
-  for (const orderItem of items) {
-    const item = await Item.findById(orderItem.itemId);
-    if (!item) {
-      return { valid: false, error: `Item with id ${orderItem.itemId} not found` };
-    }
-    
-    const quantity = Number.parseInt(orderItem.quantity, 10);
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      return { valid: false, error: 'Quantity must be a positive integer' };
-    }
-
-    orderItems.push({
-      item: item._id,
-      name: item.name,
-      price: item.price,
-      quantity: quantity,
-      customizationRequest: orderItem.customizationRequest || ''
-    });
-
-    totalPrice += item.price * quantity;
-  }
-
-  return { valid: true, orderItems, totalPrice };
-}
-
 function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotalPrice, paymentStatus) {
   if (parsedPaidAmount === undefined) {
     return { valid: true };
@@ -240,9 +203,9 @@ function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotal
   return { valid: true };
 }
 
-async function processOrderItems(items) {
-  let totalPrice = 0;
+async function buildOrderItemsList(items) {
   const orderItems = [];
+  let totalPrice = 0;
 
   for (const orderItem of items) {
     const item = await Item.findById(orderItem.itemId);
@@ -267,6 +230,22 @@ async function processOrderItems(items) {
   }
 
   return { valid: true, orderItems, totalPrice };
+}
+
+async function processOrderItems(items) {
+  return buildOrderItemsList(items);
+}
+
+async function processUpdateOrderItems(items) {
+  if (items === undefined) {
+    return { valid: true, orderItems: undefined, totalPrice: undefined };
+  }
+  
+  if (!Array.isArray(items) || items.length === 0) {
+    return { valid: false, error: 'At least one item is required' };
+  }
+
+  return buildOrderItemsList(items);
 }
 
 router.get('/', async (req, res) => {
