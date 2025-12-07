@@ -3,11 +3,11 @@ name: Build and Test Pipeline
 on:
   push:
     branches:
-      - main
+      - master
       - develop
   pull_request:
     branches:
-      - main
+      - master
       - develop
   workflow_dispatch:
 
@@ -173,6 +173,7 @@ jobs:
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx
             -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
             -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,**/test/**,**/__tests__/**
+            -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
 
       - name: SonarQube Quality Gate Check
         uses: sonarsource/sonarqube-quality-gate-action@master
