@@ -80,8 +80,11 @@ function PriorityNotificationPanel() {
     try {
       const data = await getPriorityOrders();
       
+      // Ensure data is an array
+      const ordersArray = Array.isArray(data) ? data : [];
+      
       // Filter to show only most critical orders (top 10)
-      const criticalOrders = data
+      const criticalOrders = ordersArray
         .filter(order => {
           const days = getDaysUntilDelivery(order.expectedDeliveryDate);
           return (days !== null && days <= 3) || order.priority >= 5;
