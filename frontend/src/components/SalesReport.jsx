@@ -48,7 +48,11 @@ const VIEW_OPTIONS = [
 const VALID_RANGES = new Set(TIME_RANGES.map(r => r.key));
 const VALID_VIEWS = new Set(VIEW_OPTIONS.map(v => v.key));
 
-// Helper function to aggregate item counts from orders
+/**
+ * Aggregates item counts and revenue from filtered orders
+ * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
+ * @returns {Object} - Object with item names as keys and {quantity, revenue} as values
+ */
 const aggregateItemCounts = (filteredOrders) => {
   const itemCounts = {};
   
@@ -67,7 +71,11 @@ const aggregateItemCounts = (filteredOrders) => {
   return itemCounts;
 };
 
-// Helper function to aggregate customer data from orders
+/**
+ * Aggregates customer order data including total spent and items purchased
+ * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
+ * @returns {Object} - Object with customer keys containing {customerId, customerName, orderCount, totalSpent, items}
+ */
 const aggregateCustomerData = (filteredOrders) => {
   const customerCounts = {};
   
@@ -103,7 +111,11 @@ const aggregateCustomerData = (filteredOrders) => {
   return customerCounts;
 };
 
-// Helper function to aggregate source breakdown from orders
+/**
+ * Aggregates order count and revenue by source
+ * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
+ * @returns {Object} - Object with order sources as keys and {count, revenue} as values
+ */
 const aggregateSourceBreakdown = (filteredOrders) => {
   const sourceBreakdown = {};
   

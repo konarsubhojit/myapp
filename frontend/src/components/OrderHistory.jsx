@@ -81,7 +81,12 @@ const parseUrlParams = (searchParams) => {
   };
 };
 
-// Helper function to check if order matches filters
+/**
+ * Checks if an order matches the given filter criteria
+ * @param {Object} order - The order object to check
+ * @param {Object} filters - The filter criteria object
+ * @returns {boolean} - True if order matches all filters, false otherwise
+ */
 const orderMatchesFilters = (order, filters) => {
   if (!filters) return true;
   
@@ -101,7 +106,14 @@ const orderMatchesFilters = (order, filters) => {
   return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
 };
 
-// Helper function to compare order values for sorting
+/**
+ * Compares two order values for sorting with support for dates, numbers, and strings
+ * @param {any} aValue - First value to compare
+ * @param {any} bValue - Second value to compare
+ * @param {string} sortKey - The field being sorted (determines comparison type)
+ * @param {string} sortDirection - Sort direction ('asc' or 'desc')
+ * @returns {number} - Returns -1, 0, or 1 for sorting
+ */
 const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
   if (sortKey === 'totalPrice') {
     aValue = parseFloat(aValue);

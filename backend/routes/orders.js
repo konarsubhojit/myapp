@@ -349,6 +349,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+/**
+ * Validates all fields required for updating an order
+ * @param {Object} requestBody - The request body containing order update fields
+ * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
+ */
 async function validateUpdateRequest(requestBody) {
   const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
 
@@ -391,6 +396,12 @@ async function validateUpdateRequest(requestBody) {
   };
 }
 
+/**
+ * Builds the update data object from validated request data
+ * @param {Object} validationData - The validated data from validateUpdateRequest
+ * @param {Object} requestBody - The original request body
+ * @returns {Object} - The update data object with only defined fields
+ */
 function buildUpdateData(validationData, requestBody) {
   const { orderFrom, customerName, customerId, status, paymentStatus, confirmationStatus, customerNotes } = requestBody;
   const { paidAmountResult, priorityResult, dateResult, itemsResult } = validationData;
