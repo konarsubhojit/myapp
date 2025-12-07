@@ -386,7 +386,7 @@ async function validateUpdateRequest(requestBody) {
       priorityResult, 
       dateResult, 
       itemsResult, 
-      paymentStatus: { value: paymentStatus }
+      paymentStatus
     } 
   };
 }
@@ -432,7 +432,7 @@ router.put('/:id', async (req, res) => {
         paidAmountResult.parsedAmount, 
         itemsResult.totalPrice, 
         existingOrder.totalPrice, 
-        paymentStatus.value
+        paymentStatus
       );
       if (!paymentValidation.valid) {
         return res.status(400).json({ message: paymentValidation.error });
