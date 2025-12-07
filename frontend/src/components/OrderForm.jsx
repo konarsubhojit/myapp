@@ -156,10 +156,14 @@ function OrderForm({ items, onOrderCreated }) {
     }, 0);
   };
 
-  const getMinDate = () => {
+  const getMinOrderDate = () => {
     const today = new Date();
     today.setFullYear(today.getFullYear() - 1); // Allow backdating up to 1 year
     return today.toISOString().split('T')[0];
+  };
+
+  const getMinDeliveryDate = () => {
+    return new Date().toISOString().split('T')[0]; // Today or future dates only
   };
 
   const resetForm = () => {
@@ -354,7 +358,7 @@ function OrderForm({ items, onOrderCreated }) {
               type="date"
               value={orderDate}
               onChange={(e) => setOrderDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinDate() } }}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinOrderDate() } }}
               fullWidth
               helperText="Leave blank to use current date"
             />
@@ -367,7 +371,7 @@ function OrderForm({ items, onOrderCreated }) {
               type="date"
               value={expectedDeliveryDate}
               onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinDate() } }}
+              slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinDeliveryDate() } }}
               fullWidth
             />
           </Grid>

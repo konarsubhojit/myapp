@@ -270,4 +270,85 @@ describe('OrderInfoSection', () => {
     const selects = screen.getAllByRole('combobox');
     expect(selects.length).toBeGreaterThan(0);
   });
+
+  it('should display order date when present in display mode', () => {
+    const dataWithOrderDate = { 
+      ...mockDisplayData, 
+      orderDate: '2024-01-10T08:00:00Z' 
+    };
+    
+    render(
+      <OrderInfoSection
+        isEditing={false}
+        data={dataWithOrderDate}
+        priority={null}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    expect(screen.getByText('Order Date:')).toBeInTheDocument();
+    // Use flexible matcher for date format (08:00 AM with leading zero)
+    expect(screen.getByText(/Jan 10, 2024, (8|08):00 AM/)).toBeInTheDocument();
+  });
+
+  it('should hide order date when not provided in display mode', () => {
+    render(
+      <OrderInfoSection
+        isEditing={false}
+        data={mockDisplayData}
+        priority={null}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    expect(screen.queryByText('Order Date:')).not.toBeInTheDocument();
+  });
+
+  it('should render order date field in edit mode', () => {
+    const dataWithOrderDate = { 
+      ...mockEditData, 
+      orderDate: '2024-01-10' 
+    };
+    
+    render(
+      <OrderInfoSection
+        isEditing={true}
+        data={dataWithOrderDate}
+        priority={null}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    expect(screen.getByLabelText('Order Date')).toBeInTheDocument();
+  });
+
+  it('should show helper text for order date field in edit mode', () => {
+    render(
+      <OrderInfoSection
+        isEditing={true}
+        data={mockEditData}
+        priority={null}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    expect(screen.getByText('Leave blank to use current date')).toBeInTheDocument();
+  });
+
+  it('should call onDataChange when order date is changed', async () => {
+    const user = userEvent.setup();
+    render(
+      <OrderInfoSection
+        isEditing={true}
+        data={mockEditData}
+        priority={null}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    const orderDateInput = screen.getByLabelText('Order Date');
+    await user.type(orderDateInput, '2024-01-15');
+    
+    expect(mockOnDataChange).toHaveBeenCalledWith('orderDate', expect.stringContaining('2024-01-15'));
+  });
 });
