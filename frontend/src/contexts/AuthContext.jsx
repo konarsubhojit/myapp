@@ -201,7 +201,7 @@ export function AuthProvider({ children }) {
   setOnUnauthorizedCallback(handleUnauthorized);
   setGuestModeChecker(() => guestMode);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isAuthenticated,
     loading,
@@ -213,7 +213,7 @@ export function AuthProvider({ children }) {
     getAccessToken,
     guestMode,
     enableGuestMode,
-  };
+  }), [user, isAuthenticated, loading, error, accessToken, handleGoogleSuccess, handleGoogleError, logout, getAccessToken, guestMode, enableGuestMode]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
