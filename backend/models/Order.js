@@ -35,39 +35,25 @@ function transformOrder(order, items = []) {
   };
 }
 
-function processStringField(value) {
-  return value !== undefined ? value.trim() : undefined;
-}
-
-function processOptionalStringField(value) {
-  return value !== undefined ? (value?.trim() || null) : undefined;
-}
-
-function processDateField(value) {
-  return value !== undefined ? (value ? new Date(value) : null) : undefined;
-}
-
-function processNumericStringField(value) {
-  return value !== undefined ? value.toString() : undefined;
-}
-
 function buildOrderUpdateData(data) {
   const updateData = {};
-  
   if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
-  if (data.customerName !== undefined) updateData.customerName = processStringField(data.customerName);
-  if (data.customerId !== undefined) updateData.customerId = processStringField(data.customerId);
-  if (data.address !== undefined) updateData.address = processOptionalStringField(data.address);
-  if (data.totalPrice !== undefined) updateData.totalPrice = processNumericStringField(data.totalPrice);
-  if (data.orderDate !== undefined) updateData.orderDate = processDateField(data.orderDate);
-  if (data.expectedDeliveryDate !== undefined) updateData.expectedDeliveryDate = processDateField(data.expectedDeliveryDate);
+  if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
+  if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
+  if (data.address !== undefined) updateData.address = data.address?.trim() || null;
+  if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
+  if (data.orderDate !== undefined) {
+    updateData.orderDate = data.orderDate ? new Date(data.orderDate) : null;
+  }
+  if (data.expectedDeliveryDate !== undefined) {
+    updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
+  }
   if (data.status !== undefined) updateData.status = data.status;
   if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
-  if (data.paidAmount !== undefined) updateData.paidAmount = processNumericStringField(data.paidAmount);
+  if (data.paidAmount !== undefined) updateData.paidAmount = data.paidAmount.toString();
   if (data.confirmationStatus !== undefined) updateData.confirmationStatus = data.confirmationStatus;
-  if (data.customerNotes !== undefined) updateData.customerNotes = processOptionalStringField(data.customerNotes);
+  if (data.customerNotes !== undefined) updateData.customerNotes = data.customerNotes?.trim() || null;
   if (data.priority !== undefined) updateData.priority = data.priority;
-  
   return updateData;
 }
 

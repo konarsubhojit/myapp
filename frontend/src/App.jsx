@@ -1,48 +1,48 @@
-import { useState, useEffect, useCallback } from 'react';
-import Box from '@mui/material/Box';
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import Container from '@mui/material/Container';
-import Paper from '@mui/material/Paper';
-import Tabs from '@mui/material/Tab';
-import Tab from '@mui/material/Tab';
-import Button from '@mui/material/Button';
-import Avatar from '@mui/material/Avatar';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import { useMediaQuery, useTheme } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AddBoxIcon from '@mui/icons-material/AddBox';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import HistoryIcon from '@mui/icons-material/History';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import LogoutIcon from '@mui/icons-material/Logout';
-import PreviewIcon from '@mui/icons-material/Preview';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
-import { CurrencyProvider } from './contexts/CurrencyContext';
-import { NavigationProvider, useNavigation } from './contexts/NavigationContext';
-import { VIEWS } from './constants/navigationConstants';
-import { getItems, getOrders } from './services/api';
-import Login from './components/Login';
-import PriorityDashboard from './components/PriorityDashboard';
-import OrderForm from './components/OrderForm';
-import ItemPanel from './components/ItemPanel';
-import OrderHistory from './components/OrderHistory';
-import SalesReport from './components/SalesReport';
-import OrderDetailsPage from './pages/OrderDetailsPage';
-import OrderEditPage from './pages/OrderEditPage';
-import PriorityNotificationPanel from './components/PriorityNotificationPanel';
+import { useState, useEffect, useCallback } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import AppBar from '@mui/material/AppBar'
+import Toolbar from '@mui/material/Toolbar'
+import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Box from '@mui/material/Box'
+import Container from '@mui/material/Container'
+import Tabs from '@mui/material/Tabs'
+import Tab from '@mui/material/Tab'
+import Paper from '@mui/material/Paper'
+import CircularProgress from '@mui/material/CircularProgress'
+import Avatar from '@mui/material/Avatar'
+import Chip from '@mui/material/Chip'
+import LogoutIcon from '@mui/icons-material/Logout'
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import HistoryIcon from '@mui/icons-material/History'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
+import PreviewIcon from '@mui/icons-material/Preview'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import './App.css'
+import ItemPanel from './components/ItemPanel'
+import OrderForm from './components/OrderForm'
+import OrderHistory from './components/OrderHistory'
+import SalesReport from './components/SalesReport'
+import PriorityDashboard from './components/PriorityDashboard'
+import PriorityNotificationPanel from './components/PriorityNotificationPanel'
+import Login from './components/Login'
+import { CurrencyProvider } from './contexts/CurrencyContext'
+import { NotificationProvider } from './contexts/NotificationContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { getItems, getOrders } from './services/api'
 
 const TAB_ROUTES = [
-  { view: VIEWS.PRIORITY, label: 'Priority Dashboard', icon: <DashboardIcon /> },
-  { view: VIEWS.NEW_ORDER, label: 'New Order', icon: <AddBoxIcon /> },
-  { view: VIEWS.ITEMS, label: 'Manage Items', icon: <InventoryIcon /> },
-  { view: VIEWS.HISTORY, label: 'Order History', icon: <HistoryIcon /> },
-  { view: VIEWS.SALES, label: 'Sales Report', icon: <AssessmentIcon /> },
-];
+  { path: '/priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
+  { path: '/orders/new', label: 'Create Order', icon: <AddShoppingCartIcon /> },
+  { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
+  { path: '/history', label: 'Order History', icon: <HistoryIcon /> },
+  { path: '/sales', label: 'Sales Report', icon: <AssessmentIcon /> },
+]
 
+// Loading screen component to reduce cognitive complexity
 function LoadingScreen({ message }) {
   return (
     <Box 
@@ -52,168 +52,106 @@ function LoadingScreen({ message }) {
       justifyContent="center" 
       minHeight="100vh"
       gap={2}
+      component="output"
+      aria-live="polite"
+      aria-label={message}
     >
       <CircularProgress size={48} />
       <Typography variant="body1" color="text.secondary">
         {message}
       </Typography>
     </Box>
-  );
+  )
 }
 
 function AppContent() {
-  const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth();
-  const { currentView, navigateTo, viewData } = useNavigation();
-  const [items, setItems] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [orderHistoryKey, setOrderHistoryKey] = useState(0);
-  const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
+  const [items, setItems] = useState([])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [orderHistoryKey, setOrderHistoryKey] = useState(0)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const muiTheme = useTheme()
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
 
   const fetchItems = useCallback(async () => {
     try {
-      const data = await getItems();
-      setItems(data);
+      const data = await getItems()
+      setItems(data)
     } catch (error) {
-      console.error('Error fetching items:', error);
+      console.error('Error fetching items:', error)
     }
-  }, []);
+  }, [])
 
   const fetchOrders = useCallback(async () => {
     try {
-      const data = await getOrders();
-      setOrders(data);
+      const data = await getOrders()
+      setOrders(data)
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching orders:', error)
     }
-  }, []);
+  }, [])
 
   const handleOrderCreated = useCallback(() => {
-    fetchOrders();
-    setOrderHistoryKey(prev => prev + 1);
-  }, [fetchOrders]);
+    fetchOrders()
+    // Increment key to trigger OrderHistory refresh when switching tabs
+    setOrderHistoryKey(prev => prev + 1)
+  }, [fetchOrders])
 
   useEffect(() => {
     let isMounted = true;
     
     const loadData = async () => {
       if (!isAuthenticated) {
-        if (isMounted) setLoading(false);
-        return;
+        if (isMounted) setLoading(false)
+        return
       }
       
-      if (isMounted) setLoading(true);
-      await Promise.all([fetchItems(), fetchOrders()]);
-      if (isMounted) setLoading(false);
-    };
+      if (isMounted) setLoading(true)
+      await Promise.all([fetchItems(), fetchOrders()])
+      if (isMounted) setLoading(false)
+    }
     
-    loadData();
+    loadData()
     
     return () => {
-      isMounted = false;
-    };
-  }, [isAuthenticated, fetchItems, fetchOrders]);
+      isMounted = false
+    }
+  }, [isAuthenticated, fetchItems, fetchOrders])
 
+  // Get current tab value based on path
   const getCurrentTabValue = () => {
-    const tabIndex = TAB_ROUTES.findIndex(route => route.view === currentView);
-    return tabIndex >= 0 ? tabIndex : 0;
-  };
-
-  const handleTabChange = (event, newValue) => {
-    navigateTo(TAB_ROUTES[newValue].view);
-  };
-
-  if (authLoading) {
-    return <LoadingScreen message="Checking authentication..." />;
+    const path = location.pathname
+    if (path.startsWith('/priority')) return 0
+    if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 1
+    if (path.startsWith('/items')) return 2
+    if (path.startsWith('/history')) return 3
+    if (path.startsWith('/sales')) return 4
+    return 0
   }
 
+  const handleTabChange = (event, newValue) => {
+    navigate(TAB_ROUTES[newValue].path)
+  }
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return <LoadingScreen message="Checking authentication..." />
+  }
+
+  // Show login if not authenticated
   if (!isAuthenticated) {
-    return <Login />;
+    return <Login />
   }
 
   if (loading) {
-    return <LoadingScreen message="Loading your data..." />;
+    return <LoadingScreen message="Loading your data..." />
   }
-
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case VIEWS.PRIORITY:
-        return (
-          <PriorityDashboard 
-            onRefresh={() => {
-              fetchOrders();
-              setOrderHistoryKey(prev => prev + 1);
-            }}
-          />
-        );
-      
-      case VIEWS.NEW_ORDER:
-        return (
-          <OrderForm 
-            items={items} 
-            onOrderCreated={handleOrderCreated} 
-          />
-        );
-      
-      case VIEWS.DUPLICATE_ORDER:
-        return (
-          <OrderForm 
-            items={items} 
-            onOrderCreated={handleOrderCreated}
-            duplicateOrderId={viewData?.orderId}
-          />
-        );
-      
-      case VIEWS.ITEMS:
-        return (
-          <ItemPanel 
-            onItemsChange={fetchItems} 
-          />
-        );
-      
-      case VIEWS.HISTORY:
-        return (
-          <OrderHistory 
-            key={orderHistoryKey}
-            onOrderClick={(orderId) => navigateTo(VIEWS.ORDER_DETAILS, { orderId })}
-            onDuplicateOrder={(orderId) => navigateTo(VIEWS.DUPLICATE_ORDER, { orderId })}
-          />
-        );
-      
-      case VIEWS.SALES:
-        return <SalesReport orders={orders} />;
-      
-      case VIEWS.ORDER_DETAILS:
-        return (
-          <OrderDetailsPage 
-            orderId={viewData?.orderId}
-            onBack={() => navigateTo(VIEWS.HISTORY)}
-            onEdit={(orderId) => navigateTo(VIEWS.EDIT_ORDER, { orderId })}
-            onDuplicate={(orderId) => navigateTo(VIEWS.DUPLICATE_ORDER, { orderId })}
-          />
-        );
-      
-      case VIEWS.EDIT_ORDER:
-        return (
-          <OrderEditPage
-            orderId={viewData?.orderId}
-            onBack={() => navigateTo(VIEWS.ORDER_DETAILS, { orderId: viewData?.orderId })}
-            onSaved={(orderId) => {
-              fetchOrders();
-              setOrderHistoryKey(prev => prev + 1);
-              navigateTo(VIEWS.ORDER_DETAILS, { orderId });
-            }}
-          />
-        );
-      
-      default:
-        return <PriorityDashboard onRefresh={fetchOrders} />;
-    }
-  };
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      {/* Header */}
       <AppBar 
         position="sticky" 
         elevation={0}
@@ -237,9 +175,7 @@ function AppContent() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               color: '#ffffff',
-              cursor: 'pointer',
             }}
-            onClick={() => navigateTo(VIEWS.PRIORITY)}
           >
             {isMobile ? 'OMS' : 'Order Management System'}
           </Typography>
@@ -292,68 +228,72 @@ function AppContent() {
                   bgcolor: 'rgba(255,255,255,0.08)',
                 }
               }}
+              aria-label="Sign out"
             >
-              {isMobile ? <LogoutIcon fontSize="small" /> : (guestMode ? 'Exit' : 'Sign Out')}
+              {(() => {
+                if (isMobile) return <LogoutIcon fontSize="small" />;
+                return guestMode ? 'Exit' : 'Sign Out';
+              })()}
             </Button>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Navigation Tabs - only show for main views */}
-      {![VIEWS.ORDER_DETAILS, VIEWS.EDIT_ORDER].includes(currentView) && (
-        <Paper 
-          elevation={0}
-          sx={{ 
-            position: 'sticky',
-            top: { xs: 56, sm: 64 },
-            zIndex: 1000,
-            borderRadius: 0,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            bgcolor: '#ffffff',
-          }}
-        >
-          <Container maxWidth="lg">
-            <Tabs
-              value={getCurrentTabValue()}
-              onChange={handleTabChange}
-              variant={isMobile ? 'scrollable' : 'fullWidth'}
-              scrollButtons={isMobile ? 'auto' : false}
-              allowScrollButtonsMobile
-              sx={{
-                '& .MuiTab-root': {
-                  minHeight: 48,
-                  color: '#666666',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  fontSize: '0.9375rem',
-                  '&.Mui-selected': {
-                    color: '#000000',
-                    fontWeight: 600,
-                  },
+      {/* Navigation Tabs */}
+      <Paper 
+        elevation={0}
+        sx={{ 
+          position: 'sticky',
+          top: { xs: 56, sm: 64 },
+          zIndex: 1000,
+          borderRadius: 0,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: '#ffffff',
+        }}
+      >
+        <Container maxWidth="lg">
+          <Tabs
+            value={getCurrentTabValue()}
+            onChange={handleTabChange}
+            variant={isMobile ? 'scrollable' : 'fullWidth'}
+            scrollButtons={isMobile ? 'auto' : false}
+            allowScrollButtonsMobile
+            aria-label="Main navigation"
+            sx={{
+              '& .MuiTab-root': {
+                minHeight: 48,
+                color: '#666666',
+                fontWeight: 500,
+                textTransform: 'none',
+                fontSize: '0.9375rem',
+                '&.Mui-selected': {
+                  color: '#000000',
+                  fontWeight: 600,
                 },
-                '& .MuiTabs-indicator': {
-                  height: 2,
-                  bgcolor: '#000000',
-                }
-              }}
-            >
-              {TAB_ROUTES.map((tab) => (
-                <Tab
-                  key={tab.view}
-                  icon={tab.icon}
-                  label={isMobile ? undefined : tab.label}
-                  iconPosition="start"
-                  sx={{ 
-                    gap: 1,
-                    flexDirection: 'row',
-                  }}
-                />
-              ))}
-            </Tabs>
-          </Container>
-        </Paper>
-      )}
+              },
+              '& .MuiTabs-indicator': {
+                height: 2,
+                bgcolor: '#000000',
+              }
+            }}
+          >
+            {TAB_ROUTES.map((tab) => (
+              <Tab
+                key={tab.path}
+                icon={tab.icon}
+                label={isMobile ? undefined : tab.label}
+                aria-label={tab.label}
+                iconPosition="start"
+                sx={{ 
+                  gap: 1,
+                  flexDirection: 'row',
+                }}
+              />
+            ))}
+          </Tabs>
+        </Container>
+      </Paper>
 
       {/* Main Content */}
       <Container 
@@ -364,10 +304,70 @@ function AppContent() {
           px: { xs: 2, sm: 3 },
         }}
       >
-        {renderCurrentView()}
+        <Routes>
+          <Route 
+            path="/" 
+            element={<Navigate to="/priority" replace />} 
+          />
+          <Route 
+            path="/priority" 
+            element={
+              <PriorityDashboard 
+                onRefresh={() => {
+                  fetchOrders();
+                  setOrderHistoryKey(prev => prev + 1);
+                }}
+              />
+            } 
+          />
+          <Route 
+            path="/orders/new" 
+            element={
+              <OrderForm 
+                items={items} 
+                onOrderCreated={handleOrderCreated} 
+              />
+            } 
+          />
+          <Route 
+            path="/orders/duplicate/:orderId" 
+            element={
+              <OrderForm 
+                items={items} 
+                onOrderCreated={handleOrderCreated} 
+              />
+            } 
+          />
+          <Route 
+            path="/items" 
+            element={
+              <ItemPanel 
+                onItemsChange={fetchItems} 
+              />
+            } 
+          />
+          <Route 
+            path="/history" 
+            element={
+              <OrderHistory 
+                key={orderHistoryKey}
+                onDuplicateOrder={(orderId) => navigate(`/orders/duplicate/${orderId}`)}
+              />
+            } 
+          />
+          <Route 
+            path="/sales" 
+            element={<SalesReport orders={orders} />} 
+          />
+          {/* Catch-all route */}
+          <Route 
+            path="*" 
+            element={<Navigate to="/priority" replace />} 
+          />
+        </Routes>
       </Container>
     </Box>
-  );
+  )
 }
 
 function App() {
@@ -375,13 +375,11 @@ function App() {
     <AuthProvider>
       <NotificationProvider>
         <CurrencyProvider>
-          <NavigationProvider>
-            <AppContent />
-          </NavigationProvider>
+          <AppContent />
         </CurrencyProvider>
       </NotificationProvider>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App
