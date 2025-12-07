@@ -6,10 +6,12 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
+import Button from '@mui/material/Button';
+import PreviewIcon from '@mui/icons-material/Preview';
 import { useAuth } from '../contexts/AuthContext';
 
 function Login() {
-  const { handleGoogleSuccess, handleGoogleError, loading, error } = useAuth();
+  const { handleGoogleSuccess, handleGoogleError, loading, error, enableGuestMode } = useAuth();
 
   if (loading) {
     return (
@@ -96,6 +98,23 @@ function Login() {
               width="100%"
               text="signin_with"
             />
+            
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<PreviewIcon />}
+              onClick={enableGuestMode}
+              sx={{
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  bgcolor: 'rgba(102, 126, 234, 0.05)',
+                }
+              }}
+            >
+              Continue as Guest (View Only)
+            </Button>
           </Box>
 
           <Divider sx={{ my: 3 }} />
