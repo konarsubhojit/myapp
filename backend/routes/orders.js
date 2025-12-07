@@ -15,6 +15,114 @@ const {
 const logger = createLogger('OrdersRoute');
 const ALLOWED_LIMITS = new Set([10, 20, 50]);
 
+function validateCustomerNotes(customerNotes) {
+  if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+    return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
+  }
+  return { valid: true };
+}
+
+function validateRequiredFields(orderFrom, customerName, customerId, items) {
+  if (!orderFrom || !customerName || !customerId) {
+    return { valid: false, error: 'Order source, customer name, and customer ID are required' };
+  }
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { valid: false, error: 'At least one item is required' };
+  }
+  return { valid: true };
+}
+
+function validateDeliveryDate(expectedDeliveryDate) {
+  if (!expectedDeliveryDate) {
+    return { valid: true, parsedDate: null };
+  }
+  
+  const parsedDeliveryDate = new Date(expectedDeliveryDate);
+  if (Number.isNaN(parsedDeliveryDate.getTime())) {
+    return { valid: false, error: 'Invalid expected delivery date' };
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deliveryDate = new Date(parsedDeliveryDate);
+  deliveryDate.setHours(0, 0, 0, 0);
+  
+  if (deliveryDate < today) {
+    return { valid: false, error: 'Expected delivery date cannot be in the past' };
+  }
+  
+  return { valid: true, parsedDate: parsedDeliveryDate };
+}
+
+function validatePaymentData(paymentStatus, paidAmount, totalPrice) {
+  if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+    return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
+  }
+
+  let parsedPaidAmount = 0;
+  if (paidAmount !== undefined && paidAmount !== null) {
+    parsedPaidAmount = Number.parseFloat(paidAmount);
+    if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+      return { valid: false, error: 'Paid amount must be a valid non-negative number' };
+    }
+  }
+
+  if (parsedPaidAmount > totalPrice) {
+    return { valid: false, error: 'Paid amount cannot exceed total price' };
+  }
+  
+  if (paymentStatus === 'partially_paid' && (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)) {
+    return { 
+      valid: false, 
+      error: 'Partially paid orders must have a paid amount greater than 0 and less than the total price' 
+    };
+  }
+
+  return { valid: true, parsedAmount: parsedPaidAmount };
+}
+
+function validatePriority(priority) {
+  if (priority === undefined || priority === null) {
+    return { valid: true, parsedPriority: 0 };
+  }
+  
+  const parsedPriority = Number.parseInt(priority, 10);
+  if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+    return { valid: false, error: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` };
+  }
+  
+  return { valid: true, parsedPriority };
+}
+
+async function processOrderItems(items) {
+  let totalPrice = 0;
+  const orderItems = [];
+
+  for (const orderItem of items) {
+    const item = await Item.findById(orderItem.itemId);
+    if (!item) {
+      return { valid: false, error: `Item with id ${orderItem.itemId} not found` };
+    }
+    
+    const quantity = Number.parseInt(orderItem.quantity, 10);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return { valid: false, error: 'Quantity must be a positive integer' };
+    }
+
+    orderItems.push({
+      item: item._id,
+      name: item.name,
+      price: item.price,
+      quantity: quantity,
+      customizationRequest: orderItem.customizationRequest || ''
+    });
+
+    totalPrice += item.price * quantity;
+  }
+
+  return { valid: true, orderItems, totalPrice };
+}
+
 router.get('/', async (req, res) => {
   try {
     const parsedPage = Number.parseInt(req.query.page, 10);
@@ -39,105 +147,59 @@ router.post('/', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
-    if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
-      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
-    }
-    if (!orderFrom || !customerName || !customerId) {
-      return res.status(400).json({ message: 'Order source, customer name, and customer ID are required' });
-    }
-
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'At least one item is required' });
+    // Validate customer notes
+    const notesValidation = validateCustomerNotes(customerNotes);
+    if (!notesValidation.valid) {
+      return res.status(400).json({ message: notesValidation.error });
     }
 
-    let parsedDeliveryDate = null;
-    if (expectedDeliveryDate) {
-      parsedDeliveryDate = new Date(expectedDeliveryDate);
-      if (Number.isNaN(parsedDeliveryDate.getTime())) {
-        return res.status(400).json({ message: 'Invalid expected delivery date' });
-      }
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const deliveryDate = new Date(parsedDeliveryDate);
-      deliveryDate.setHours(0, 0, 0, 0);
-      
-      if (deliveryDate < today) {
-        return res.status(400).json({ message: 'Expected delivery date cannot be in the past' });
-      }
+    // Validate required fields
+    const fieldsValidation = validateRequiredFields(orderFrom, customerName, customerId, items);
+    if (!fieldsValidation.valid) {
+      return res.status(400).json({ message: fieldsValidation.error });
     }
 
-    if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
-      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
+    // Validate delivery date
+    const dateValidation = validateDeliveryDate(expectedDeliveryDate);
+    if (!dateValidation.valid) {
+      return res.status(400).json({ message: dateValidation.error });
     }
 
+    // Validate confirmation status
     if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
       return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
     }
 
-    let parsedPaidAmount = 0;
-    if (paidAmount !== undefined && paidAmount !== null) {
-      parsedPaidAmount = Number.parseFloat(paidAmount);
-      if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
-        return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
-      }
+    // Validate priority
+    const priorityValidation = validatePriority(priority);
+    if (!priorityValidation.valid) {
+      return res.status(400).json({ message: priorityValidation.error });
     }
 
-    let parsedPriority = 0;
-    if (priority !== undefined && priority !== null) {
-      parsedPriority = Number.parseInt(priority, 10);
-      if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
-        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
-      }
+    // Process order items
+    const itemsResult = await processOrderItems(items);
+    if (!itemsResult.valid) {
+      return res.status(400).json({ message: itemsResult.error });
     }
 
-    let totalPrice = 0;
-    const orderItems = [];
-
-    for (const orderItem of items) {
-      const item = await Item.findById(orderItem.itemId);
-      if (!item) {
-        return res.status(400).json({ message: `Item with id ${orderItem.itemId} not found` });
-      }
-      
-      const quantity = Number.parseInt(orderItem.quantity, 10);
-      if (!Number.isInteger(quantity) || quantity < 1) {
-        return res.status(400).json({ message: 'Quantity must be a positive integer' });
-      }
-
-      orderItems.push({
-        item: item._id,
-        name: item.name,
-        price: item.price,
-        quantity: quantity,
-        customizationRequest: orderItem.customizationRequest || ''
-      });
-
-      totalPrice += item.price * quantity;
-    }
-
-    if (parsedPaidAmount > totalPrice) {
-      return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
-    }
-    
-    if (paymentStatus === 'partially_paid' && (parsedPaidAmount === 0 || parsedPaidAmount >= totalPrice)) {
-      return res.status(400).json({
-        message: 'Partially paid orders must have a paid amount greater than 0 and less than the total price'
-      });
+    // Validate payment data
+    const paymentValidation = validatePaymentData(paymentStatus, paidAmount, itemsResult.totalPrice);
+    if (!paymentValidation.valid) {
+      return res.status(400).json({ message: paymentValidation.error });
     }
 
     const newOrder = await Order.create({
       orderFrom,
       customerName,
       customerId,
-      items: orderItems,
-      totalPrice,
-      expectedDeliveryDate: parsedDeliveryDate,
+      items: itemsResult.orderItems,
+      totalPrice: itemsResult.totalPrice,
+      expectedDeliveryDate: dateValidation.parsedDate,
       paymentStatus: paymentStatus || 'unpaid',
-      paidAmount: parsedPaidAmount,
+      paidAmount: paymentValidation.parsedAmount,
       confirmationStatus: confirmationStatus || 'unconfirmed',
       customerNotes: customerNotes || '',
-      priority: parsedPriority
+      priority: priorityValidation.parsedPriority
     });
 
     logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });

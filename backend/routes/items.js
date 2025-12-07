@@ -32,6 +32,53 @@ async function uploadImage(image) {
   return blob.url;
 }
 
+async function handleImageUpdate(image, existingImageUrl) {
+  let newImageUrl = existingImageUrl;
+  let oldImageUrl = null;
+
+  if (image && typeof image === 'string' && image.startsWith('data:image/')) {
+    oldImageUrl = existingImageUrl;
+    newImageUrl = await uploadImage(image);
+    logger.info('New image uploaded to blob storage', { url: newImageUrl });
+  } else if (image === null || image === '') {
+    oldImageUrl = existingImageUrl;
+    newImageUrl = '';
+  }
+
+  return { newImageUrl, oldImageUrl };
+}
+
+async function deleteOldImage(oldImageUrl) {
+  if (!oldImageUrl) return;
+  
+  try {
+    await del(oldImageUrl);
+    logger.info('Old image deleted from blob storage', { url: oldImageUrl });
+  } catch (deleteError) {
+    logger.warn('Failed to delete old image from blob storage', { url: oldImageUrl, error: deleteError.message });
+  }
+}
+
+function validateItemName(name) {
+  if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
+    return { valid: false, error: 'Item name cannot be empty' };
+  }
+  return { valid: true };
+}
+
+function validateItemPrice(price) {
+  if (price === undefined) {
+    return { valid: true, parsedPrice: undefined };
+  }
+  
+  const parsedPrice = Number.parseFloat(price);
+  if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+    return { valid: false, error: 'Valid price is required' };
+  }
+  
+  return { valid: true, parsedPrice };
+}
+
 router.get('/', async (req, res) => {
   try {
     const parsedPage = parseInt(req.query.page, 10);
@@ -117,16 +164,16 @@ router.put('/:id', async (req, res) => {
   try {
     const { name, price, color, fabric, specialFeatures, image } = req.body;
 
-    if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
-      return res.status(400).json({ message: 'Item name cannot be empty' });
+    // Validate name
+    const nameValidation = validateItemName(name);
+    if (!nameValidation.valid) {
+      return res.status(400).json({ message: nameValidation.error });
     }
 
-    let parsedPrice;
-    if (price !== undefined) {
-      parsedPrice = Number.parseFloat(price);
-      if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-        return res.status(400).json({ message: 'Valid price is required' });
-      }
+    // Validate price
+    const priceValidation = validateItemPrice(price);
+    if (!priceValidation.valid) {
+      return res.status(400).json({ message: priceValidation.error });
     }
 
     const existingItem = await Item.findById(req.params.id);
@@ -134,44 +181,31 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    let imageUrl = existingItem.imageUrl;
-    let oldImageUrl = null;
-
-    if (image && typeof image === 'string' && image.startsWith('data:image/')) {
-      try {
-        oldImageUrl = existingItem.imageUrl;
-        imageUrl = await uploadImage(image);
-        logger.info('New image uploaded to blob storage', { url: imageUrl });
-      } catch (uploadError) {
-        logger.error('Failed to upload image to blob storage', uploadError);
-        return res.status(400).json({ message: uploadError.message });
-      }
-    } else if (image === null || image === '') {
-      oldImageUrl = existingItem.imageUrl;
-      imageUrl = '';
+    // Handle image update
+    let imageResult;
+    try {
+      imageResult = await handleImageUpdate(image, existingItem.imageUrl);
+    } catch (uploadError) {
+      logger.error('Failed to upload image to blob storage', uploadError);
+      return res.status(400).json({ message: uploadError.message });
     }
 
+    // Build update data
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
-    if (parsedPrice !== undefined) updateData.price = parsedPrice;
+    if (priceValidation.parsedPrice !== undefined) updateData.price = priceValidation.parsedPrice;
     if (color !== undefined) updateData.color = color;
     if (fabric !== undefined) updateData.fabric = fabric;
     if (specialFeatures !== undefined) updateData.specialFeatures = specialFeatures;
-    if (imageUrl !== existingItem.imageUrl) updateData.imageUrl = imageUrl;
+    if (imageResult.newImageUrl !== existingItem.imageUrl) updateData.imageUrl = imageResult.newImageUrl;
 
     const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData);
     if (!updatedItem) {
       return res.status(404).json({ message: 'Item not found' });
     }
 
-    if (oldImageUrl) {
-      try {
-        await del(oldImageUrl);
-        logger.info('Old image deleted from blob storage', { url: oldImageUrl });
-      } catch (deleteError) {
-        logger.warn('Failed to delete old image from blob storage', { url: oldImageUrl, error: deleteError.message });
-      }
-    }
+    // Delete old image if needed
+    await deleteOldImage(imageResult.oldImageUrl);
     
     logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
     res.json(updatedItem);
