@@ -90,6 +90,7 @@ describe('PaginationControls', () => {
       />
     );
 
+    // When there are no pages, we show "Page 1 of 1" (not 0) for better UX
     expect(screen.getByText('Page 1 of 1 (0 items)')).toBeInTheDocument();
   });
 });
