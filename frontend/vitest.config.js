@@ -17,7 +17,7 @@ export default defineConfig({
         '**/*.spec.{js,jsx}',
         'vite.config.js',
         'vitest.config.js',
-        'eslint.config.js',
+        '**/*eslint*',
       ],
     },
   },
