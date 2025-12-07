@@ -100,7 +100,7 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ message: `Item with id ${orderItem.itemId} not found` });
       }
       
-      const quantity = parseInt(orderItem.quantity, 10);
+      const quantity = Number.parseInt(orderItem.quantity, 10);
       if (!Number.isInteger(quantity) || quantity < 1) {
         return res.status(400).json({ message: 'Quantity must be a positive integer' });
       }
@@ -261,7 +261,7 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
       }
       
-      if (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice) {
+      if (paymentStatus === 'partially_paid' && (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)) {
         return res.status(400).json({
           message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
         });
