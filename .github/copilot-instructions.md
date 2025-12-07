@@ -52,6 +52,20 @@ npm run backend
 npm run frontend
 ```
 
+### Guest Mode for Development/Screenshots
+The application includes a **Guest Mode** feature that allows you to view the UI without making real API calls. This is useful for:
+- Taking screenshots during development
+- Testing UI/UX without a backend connection
+- Demonstrating the interface to stakeholders
+
+To enable Guest Mode:
+1. Start the frontend dev server: `npm run frontend`
+2. Navigate to `http://localhost:5173`
+3. Click the **"Continue as Guest (View Only)"** button on the login page
+4. You can now browse the UI without authentication or API calls
+
+**Note**: In Guest Mode, all API calls are intercepted and return empty data, so you'll see empty lists and forms but can still navigate the interface.
+
 ### Frontend Commands
 ```bash
 cd frontend

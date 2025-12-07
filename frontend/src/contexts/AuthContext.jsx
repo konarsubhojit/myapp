@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { setAccessTokenGetter, setOnUnauthorizedCallback } from '../services/api';
+import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } from '../services/api';
 
 const AuthContext = createContext(undefined);
 
@@ -17,20 +17,35 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [googleUser, setGoogleUser] = useState(null);
+  const [guestMode, setGuestMode] = useState(false);
 
-  // Derive user from googleUser
+  // Derive user from googleUser or guest mode
   const user = useMemo(() => {
+    if (guestMode) {
+      return { name: 'Guest User', email: 'guest@example.com', isGuest: true };
+    }
     return googleUser;
-  }, [googleUser]);
+  }, [googleUser, guestMode]);
 
-  // Check if authenticated
-  const isAuthenticated = !!googleUser;
+  // Check if authenticated (guest mode counts as authenticated for UI purposes)
+  const isAuthenticated = !!googleUser || guestMode;
 
   // Initial auth check - restore session from storage
   useEffect(() => {
     let isMounted = true;
     
     const initAuth = async () => {
+      // Check for guest mode from sessionStorage
+      const storedGuestMode = sessionStorage.getItem('guestMode');
+      if (storedGuestMode === 'true') {
+        setGuestMode(true);
+        console.log('[Auth] Guest mode enabled');
+        if (isMounted) {
+          setLoading(false);
+        }
+        return;
+      }
+
       // Check for stored Google session
       const storedGoogleUser = sessionStorage.getItem('googleUser');
       const storedGoogleToken = sessionStorage.getItem('googleToken');
@@ -117,11 +132,20 @@ export function AuthProvider({ children }) {
     setError('Google login failed. Please try again.');
   }, []);
 
+  // Enable guest mode
+  const enableGuestMode = useCallback(() => {
+    setGuestMode(true);
+    sessionStorage.setItem('guestMode', 'true');
+    console.log('[Auth] Guest mode enabled');
+  }, []);
+
   // Logout
   const logout = useCallback(() => {
     setGoogleUser(null);
+    setGuestMode(false);
     sessionStorage.removeItem('googleUser');
     sessionStorage.removeItem('googleToken');
+    sessionStorage.removeItem('guestMode');
     setAccessToken(null);
     console.log('[Auth] Logout successful');
   }, []);
@@ -172,6 +196,7 @@ export function AuthProvider({ children }) {
   // This must be called synchronously to avoid race conditions with API calls
   setAccessTokenGetter(getAccessToken);
   setOnUnauthorizedCallback(handleUnauthorized);
+  setGuestModeChecker(() => guestMode);
 
   const value = {
     user,
@@ -183,6 +208,8 @@ export function AuthProvider({ children }) {
     handleGoogleError,
     logout,
     getAccessToken,
+    guestMode,
+    enableGuestMode,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

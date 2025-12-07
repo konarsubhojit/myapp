@@ -11,11 +11,13 @@ import Tab from '@mui/material/Tab'
 import Paper from '@mui/material/Paper'
 import CircularProgress from '@mui/material/CircularProgress'
 import Avatar from '@mui/material/Avatar'
+import Chip from '@mui/material/Chip'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import HistoryIcon from '@mui/icons-material/History'
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import PreviewIcon from '@mui/icons-material/Preview'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import './App.css'
@@ -36,7 +38,7 @@ const TAB_ROUTES = [
 ]
 
 function AppContent() {
-  const { isAuthenticated, loading: authLoading, user, logout } = useAuth()
+  const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
   const [items, setItems] = useState([])
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -179,11 +181,27 @@ function AppContent() {
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
+              color: 'white',
             }}
           >
             {isMobile ? 'OMS' : 'Order Management System'}
           </Typography>
           <Box display="flex" alignItems="center" gap={0.5} flexShrink={0}>
+            {guestMode && (
+              <Chip 
+                icon={<PreviewIcon />} 
+                label={isMobile ? "Guest" : "Guest Mode"} 
+                size="small"
+                sx={{ 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  color: 'white',
+                  fontWeight: 600,
+                  '& .MuiChip-icon': {
+                    color: 'white'
+                  }
+                }}
+              />
+            )}
             {user?.picture ? (
               <Avatar 
                 src={user.picture} 
@@ -195,7 +213,7 @@ function AppContent() {
                 {(user?.name || user?.email || 'U')[0].toUpperCase()}
               </Avatar>
             )}
-            {!isMobile && (
+            {!isMobile && !guestMode && (
               <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {user?.name || user?.email}
               </Typography>
@@ -217,7 +235,7 @@ function AppContent() {
               }}
               aria-label="Sign out"
             >
-              {isMobile ? <LogoutIcon fontSize="small" /> : 'Sign Out'}
+              {isMobile ? <LogoutIcon fontSize="small" /> : (guestMode ? 'Exit' : 'Sign Out')}
             </Button>
           </Box>
         </Toolbar>

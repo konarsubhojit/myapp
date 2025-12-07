@@ -3,12 +3,23 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 // Token getter function - will be set by AuthProvider
 let getAccessTokenFn = null;
 
+// Guest mode flag
+let isGuestModeFn = null;
+
 /**
  * Set the function to get access token
  * This should be called by AuthProvider after initialization
  */
 export const setAccessTokenGetter = (getter) => {
   getAccessTokenFn = getter;
+};
+
+/**
+ * Set the function to check if guest mode is enabled
+ * @param {Function} checker - Function that returns true if guest mode is enabled
+ */
+export const setGuestModeChecker = (checker) => {
+  isGuestModeFn = checker;
 };
 
 /**
@@ -52,6 +63,16 @@ export const setOnUnauthorizedCallback = (callback) => {
  * @returns {Promise<Response>} Fetch response
  */
 async function authFetch(url, options = {}) {
+  // Check if guest mode is enabled
+  if (isGuestModeFn && isGuestModeFn()) {
+    console.log('[API] Guest mode active - skipping API call to:', url);
+    // Return mock empty response for guest mode
+    return new Response(JSON.stringify([]), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   const authHeaders = await getAuthHeaders();
   const response = await fetch(url, {
     ...options,
