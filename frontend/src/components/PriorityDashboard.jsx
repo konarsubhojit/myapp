@@ -294,8 +294,9 @@ function PriorityDashboard({ onRefresh }) {
                           sx={{ mt: 0.5 }}
                           color={
                             priorityStatus.status === 'overdue' ? 'error' :
-                            priorityStatus.status === 'due-today' ? 'warning' :
-                            priorityStatus.status === 'urgent' ? 'warning' : 'success'
+                            priorityStatus.status === 'critical' ? 'error' :
+                            priorityStatus.status === 'urgent' ? 'warning' :
+                            priorityStatus.status === 'medium' ? 'info' : 'success'
                           }
                           variant="outlined"
                         />

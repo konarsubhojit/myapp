@@ -21,67 +21,69 @@ describe('priorityUtils', () => {
       
       expect(result).toBeDefined();
       expect(result.status).toBe('overdue');
-      expect(result.label).toBe('Overdue');
+      expect(result.label).toBe('Overdue by 1 day');
       expect(result.className).toBe('priority-overdue');
     });
 
-    it('should return due-today status for today', () => {
+    it('should return critical status for today', () => {
       const today = new Date();
       
       const result = getPriorityStatus(today.toISOString());
       
       expect(result).toBeDefined();
-      expect(result.status).toBe('due-today');
+      expect(result.status).toBe('critical');
       expect(result.label).toBe('Due Today');
-      expect(result.className).toBe('priority-due-today');
+      expect(result.className).toBe('priority-critical');
     });
 
-    it('should return urgent status for delivery within 1 day', () => {
+    it('should return critical status for delivery within 1 day', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       
       const result = getPriorityStatus(tomorrow.toISOString());
       
       expect(result).toBeDefined();
-      expect(result.status).toBe('urgent');
+      expect(result.status).toBe('critical');
       expect(result.label).toBe('Due in 1 day');
-      expect(result.className).toBe('priority-urgent');
+      expect(result.className).toBe('priority-critical');
     });
 
-    it('should return urgent status for delivery within 3 days', () => {
+    it('should return critical status for delivery within 3 days', () => {
       const threeDays = new Date();
       threeDays.setDate(threeDays.getDate() + 3);
       
       const result = getPriorityStatus(threeDays.toISOString());
       
       expect(result).toBeDefined();
-      expect(result.status).toBe('urgent');
+      expect(result.status).toBe('critical');
       expect(result.label).toBe('Due in 3 days');
-      expect(result.className).toBe('priority-urgent');
+      expect(result.className).toBe('priority-critical');
     });
 
-    it('should return normal status for delivery beyond 3 days', () => {
+    it('should return urgent status for delivery in 5 days', () => {
       const fiveDays = new Date();
       fiveDays.setDate(fiveDays.getDate() + 5);
       
       const result = getPriorityStatus(fiveDays.toISOString());
       
       expect(result).toBeDefined();
-      expect(result.status).toBe('normal');
+      expect(result.status).toBe('urgent');
       expect(result.label).toBe('Due in 5 days');
-      expect(result.className).toBe('priority-normal');
+      expect(result.className).toBe('priority-urgent');
     });
 
-    it('should return null for normal status with shortLabels option', () => {
+    it('should return short label for urgent status with shortLabels option', () => {
       const fiveDays = new Date();
       fiveDays.setDate(fiveDays.getDate() + 5);
       
       const result = getPriorityStatus(fiveDays.toISOString(), { shortLabels: true });
       
-      expect(result).toBeNull();
+      expect(result).toBeDefined();
+      expect(result.status).toBe('urgent');
+      expect(result.label).toBe('5d');
     });
 
-    it('should return short label for urgent status with shortLabels option', () => {
+    it('should return short label for critical status with shortLabels option', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       
