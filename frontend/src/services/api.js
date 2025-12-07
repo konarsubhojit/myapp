@@ -67,7 +67,9 @@ async function authFetch(url, options = {}) {
   if (isGuestModeFn && isGuestModeFn()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
     // Return mock empty response for guest mode
-    return new Response(JSON.stringify([]), {
+    // For list endpoints return empty array, for single item endpoints return empty object
+    const mockData = url.includes('/items/') || url.includes('/orders/') ? {} : [];
+    return new Response(JSON.stringify(mockData), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

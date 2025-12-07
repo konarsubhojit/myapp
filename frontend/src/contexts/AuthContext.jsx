@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } from '../services/api';
 
+// Guest user constant
+const GUEST_USER = { name: 'Guest User', email: 'guest@example.com', isGuest: true };
+
 const AuthContext = createContext(undefined);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -22,7 +25,7 @@ export function AuthProvider({ children }) {
   // Derive user from googleUser or guest mode
   const user = useMemo(() => {
     if (guestMode) {
-      return { name: 'Guest User', email: 'guest@example.com', isGuest: true };
+      return GUEST_USER;
     }
     return googleUser;
   }, [googleUser, guestMode]);

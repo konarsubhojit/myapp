@@ -105,10 +105,10 @@ function Login() {
               startIcon={<PreviewIcon />}
               onClick={enableGuestMode}
               sx={{
-                borderColor: 'rgba(102, 126, 234, 0.5)',
-                color: '#667eea',
+                borderColor: 'primary.main',
+                color: 'primary.main',
                 '&:hover': {
-                  borderColor: '#667eea',
+                  borderColor: 'primary.dark',
                   bgcolor: 'rgba(102, 126, 234, 0.05)',
                 }
               }}
