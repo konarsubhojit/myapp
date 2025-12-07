@@ -87,6 +87,17 @@ function OrderInfoSection({
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
+              label="Order Date"
+              type="date"
+              value={data.orderDate || ''}
+              onChange={(e) => onDataChange('orderDate', e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              fullWidth
+              helperText="Leave blank to use current date"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
               label="Expected Delivery Date"
               type="date"
               value={data.expectedDeliveryDate}
@@ -154,6 +165,16 @@ function OrderInfoSection({
             variant="outlined"
           />
         </Grid>
+        {data.orderDate && (
+          <>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" color="text.secondary">Order Date:</Typography>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2">{formatOrderDate(data.orderDate)}</Typography>
+            </Grid>
+          </>
+        )}
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2" color="text.secondary">Created:</Typography>
         </Grid>

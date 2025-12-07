@@ -7,7 +7,9 @@ import { getOrder, updateOrder } from '../services/api';
 const createEditFormFromOrder = (data) => ({
   customerName: data.customerName || '',
   customerId: data.customerId || '',
+  address: data.address || '',
   orderFrom: data.orderFrom || '',
+  orderDate: data.orderDate ? data.orderDate.split('T')[0] : '',
   expectedDeliveryDate: data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : '',
   status: data.status || 'pending',
   paymentStatus: data.paymentStatus || 'unpaid',
@@ -61,7 +63,9 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
   const [editForm, setEditForm] = useState({
     customerName: '',
     customerId: '',
+    address: '',
     orderFrom: '',
+    orderDate: '',
     expectedDeliveryDate: '',
     status: '',
     paymentStatus: '',
@@ -108,8 +112,10 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
       const updateData = {
         customerName: editForm.customerName.trim(),
         customerId: editForm.customerId.trim(),
+        address: editForm.address.trim(),
         orderFrom: editForm.orderFrom,
         status: editForm.status,
+        orderDate: editForm.orderDate || null,
         expectedDeliveryDate: editForm.expectedDeliveryDate || null,
         paymentStatus: editForm.paymentStatus,
         paidAmount: validation.parsedPaidAmount,

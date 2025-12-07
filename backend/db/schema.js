@@ -21,6 +21,7 @@ const orders = pgTable('orders', {
   orderFrom: orderFromEnum('order_from').notNull(),
   customerName: text('customer_name').notNull(),
   customerId: text('customer_id').notNull(),
+  address: text('address'),
   totalPrice: numeric('total_price', { precision: 10, scale: 2 }).notNull(),
   status: text('status').default('pending'),
   paymentStatus: text('payment_status').default('unpaid'),
@@ -28,6 +29,7 @@ const orders = pgTable('orders', {
   confirmationStatus: text('confirmation_status').default('unconfirmed'),
   customerNotes: text('customer_notes'),
   priority: integer('priority').default(0),
+  orderDate: timestamp('order_date'),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });

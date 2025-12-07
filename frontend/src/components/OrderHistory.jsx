@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -24,7 +24,6 @@ import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { useUrlSync } from '../hooks/useUrlSync';
 import { useOrderPagination } from '../hooks/useOrderPagination';
 import { useOrderFilters } from '../hooks/useOrderFilters';
 import { getPriorityStatus } from '../utils/priorityUtils';
@@ -38,75 +37,6 @@ import {
 } from '../constants/orderConstants';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-
-// Build URL params string for comparison
-const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => {
-  const parts = [];
-  if (pagination.page > 1) parts.push(`page=${pagination.page}`);
-  if (pagination.limit !== 10) parts.push(`limit=${pagination.limit}`);
-  if (filters.customerName) parts.push(`customerName=${filters.customerName}`);
-  if (filters.customerId) parts.push(`customerId=${filters.customerId}`);
-  if (filters.orderFrom) parts.push(`orderFrom=${filters.orderFrom}`);
-  if (filters.orderId) parts.push(`orderId=${filters.orderId}`);
-  if (filters.confirmationStatus) parts.push(`confirmationStatus=${filters.confirmationStatus}`);
-  if (filters.paymentStatus) parts.push(`paymentStatus=${filters.paymentStatus}`);
-  if (sortConfig.key !== 'expectedDeliveryDate') parts.push(`sortKey=${sortConfig.key}`);
-  if (sortConfig.direction !== 'asc') parts.push(`sortDir=${sortConfig.direction}`);
-  if (selectedOrderId) parts.push(`order=${selectedOrderId}`);
-  return parts.join('&');
-};
-
-// Parse URL params to state
-const parseUrlParams = (getParam, getIntParam) => {
-  const page = getIntParam('page', 1);
-  const limit = getIntParam('limit', 10);
-  const sortKey = getParam('sortKey', null);
-  const sortDir = getParam('sortDir', null);
-  
-  return {
-    page: page < 1 ? 1 : page,
-    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
-    filters: {
-      customerName: getParam('customerName', ''),
-      customerId: getParam('customerId', ''),
-      orderFrom: getParam('orderFrom', ''),
-      orderId: getParam('orderId', ''),
-      confirmationStatus: getParam('confirmationStatus', ''),
-      paymentStatus: getParam('paymentStatus', ''),
-    },
-    sortConfig: {
-      key: sortKey || 'expectedDeliveryDate',
-      direction: sortDir === 'desc' ? 'desc' : 'asc',
-    },
-    selectedOrderId: getParam('order', null),
-  };
-};
-
-/**
- * Builds URL search params object from state
- */
-const buildUrlParams = (filters, pagination, sortConfig, selectedOrderId) => {
-  const params = new URLSearchParams();
-  
-  // Only add non-default values to URL
-  if (pagination.page > 1) params.set('page', pagination.page);
-  if (pagination.limit !== 10) params.set('limit', pagination.limit);
-  
-  if (filters.customerName) params.set('customerName', filters.customerName);
-  if (filters.customerId) params.set('customerId', filters.customerId);
-  if (filters.orderFrom) params.set('orderFrom', filters.orderFrom);
-  if (filters.orderId) params.set('orderId', filters.orderId);
-  if (filters.confirmationStatus) params.set('confirmationStatus', filters.confirmationStatus);
-  if (filters.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
-  
-  if (sortConfig.key !== 'expectedDeliveryDate') params.set('sortKey', sortConfig.key);
-  if (sortConfig.direction !== 'asc') params.set('sortDir', sortConfig.direction);
-  
-  if (selectedOrderId) params.set('order', selectedOrderId);
-  
-  return params;
-};
 
 /**
  * Formats delivery date for order history display
@@ -159,12 +89,6 @@ const getHistoryPaymentColor = (status) => {
 function OrderHistory({ onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   
-  // Use URL sync hook
-  const { getParam, getIntParam, updateUrl } = useUrlSync();
-  
-  // Parse initial state from URL
-  const initialState = parseUrlParams(getParam, getIntParam);
-  
   // Use pagination hook
   const {
     orders,
@@ -175,7 +99,7 @@ function OrderHistory({ onDuplicateOrder }) {
     fetchOrders,
     handlePageChange,
     handlePageSizeChange,
-  } = useOrderPagination(getIntParam);
+  } = useOrderPagination();
   
   // Use filters hook
   const {
@@ -185,25 +109,9 @@ function OrderHistory({ onDuplicateOrder }) {
     handleFilterChange,
     handleClearFilters,
     handleSort,
-  } = useOrderFilters(orders, initialState.filters, initialState.sortConfig);
+  } = useOrderFilters(orders);
   
-  const [selectedOrderId, setSelectedOrderId] = useState(initialState.selectedOrderId);
-  
-  // Track previous URL params to avoid unnecessary updates
-  const prevParamsRef = useRef('');
-
-  // Update URL when state changes - only if params actually changed
-  useEffect(() => {
-    const paginationForUrl = { page: pagination.page, limit: pagination.limit };
-    const newParamsString = buildParamsString(filters, paginationForUrl, sortConfig, selectedOrderId);
-    
-    // Only update URL if params actually changed
-    if (newParamsString !== prevParamsRef.current) {
-      prevParamsRef.current = newParamsString;
-      const params = buildUrlParams(filters, paginationForUrl, sortConfig, selectedOrderId);
-      updateUrl(params);
-    }
-  }, [filters, pagination.page, pagination.limit, sortConfig, selectedOrderId, updateUrl]);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const handleOrderClick = (orderId) => {
     setSelectedOrderId(orderId);

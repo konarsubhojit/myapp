@@ -37,6 +37,16 @@ function CustomerInfoSection({
               required
             />
           </Grid>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="Address"
+              value={data.address || ''}
+              onChange={(e) => onDataChange('address', e.target.value)}
+              fullWidth
+              multiline
+              rows={2}
+            />
+          </Grid>
         </Grid>
       </Box>
     );
@@ -60,6 +70,16 @@ function CustomerInfoSection({
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2">{data.customerId}</Typography>
         </Grid>
+        {data.address && (
+          <>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" color="text.secondary">Address:</Typography>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2">{data.address}</Typography>
+            </Grid>
+          </>
+        )}
       </Grid>
     </Box>
   );

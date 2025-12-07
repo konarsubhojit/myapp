@@ -270,7 +270,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
+    const { orderFrom, customerName, customerId, address, orderDate, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
     // Validate customer notes
     const notesValidation = validateCustomerNotes(customerNotes);
@@ -318,6 +318,8 @@ router.post('/', async (req, res) => {
       orderFrom,
       customerName,
       customerId,
+      address,
+      orderDate,
       items: itemsResult.orderItems,
       totalPrice: itemsResult.totalPrice,
       expectedDeliveryDate: dateValidation.parsedDate,
@@ -355,7 +357,7 @@ router.get('/:id', async (req, res) => {
  * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
  */
 async function validateUpdateRequest(requestBody) {
-  const { customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
+  const { customerName, customerId, items, orderDate, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
 
   const notesValidation = validateUpdateCustomerNotes(customerNotes);
   if (!notesValidation.valid) return notesValidation;
@@ -403,13 +405,15 @@ async function validateUpdateRequest(requestBody) {
  * @returns {Object} - The update data object with only defined fields
  */
 function buildUpdateData(validationData, requestBody) {
-  const { orderFrom, customerName, customerId, status, paymentStatus, confirmationStatus, customerNotes } = requestBody;
+  const { orderFrom, customerName, customerId, address, orderDate, status, paymentStatus, confirmationStatus, customerNotes } = requestBody;
   const { paidAmountResult, priorityResult, dateResult, itemsResult } = validationData;
   
   const updateData = {};
   if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
   if (customerName !== undefined) updateData.customerName = customerName;
   if (customerId !== undefined) updateData.customerId = customerId;
+  if (address !== undefined) updateData.address = address;
+  if (orderDate !== undefined) updateData.orderDate = orderDate;
   if (dateResult.parsedDate !== undefined) updateData.expectedDeliveryDate = dateResult.parsedDate;
   if (status !== undefined) updateData.status = status;
   if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;

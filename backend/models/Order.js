@@ -27,7 +27,9 @@ function transformOrder(order, items = []) {
     paymentStatus: order.paymentStatus || 'unpaid',
     confirmationStatus: order.confirmationStatus || 'unconfirmed',
     customerNotes: order.customerNotes || '',
+    address: order.address || '',
     priority: order.priority || 0,
+    orderDate: order.orderDate ? order.orderDate.toISOString() : null,
     expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
     items: items.map(transformOrderItem)
   };
@@ -38,7 +40,11 @@ function buildOrderUpdateData(data) {
   if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
   if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
   if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
+  if (data.address !== undefined) updateData.address = data.address?.trim() || null;
   if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
+  if (data.orderDate !== undefined) {
+    updateData.orderDate = data.orderDate ? new Date(data.orderDate) : null;
+  }
   if (data.expectedDeliveryDate !== undefined) {
     updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
   }
@@ -136,12 +142,14 @@ const Order = {
       orderFrom: data.orderFrom,
       customerName: data.customerName.trim(),
       customerId: data.customerId.trim(),
+      address: data.address?.trim() || null,
       totalPrice: data.totalPrice.toString(),
       paidAmount: (data.paidAmount || 0).toString(),
       paymentStatus: data.paymentStatus || 'unpaid',
       confirmationStatus: data.confirmationStatus || 'unconfirmed',
       customerNotes: data.customerNotes?.trim() || null,
       priority: data.priority || 0,
+      orderDate: data.orderDate ? new Date(data.orderDate) : null,
       expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
     }).returning();
     
