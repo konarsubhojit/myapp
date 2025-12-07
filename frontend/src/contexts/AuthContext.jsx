@@ -74,7 +74,7 @@ export function AuthProvider({ children }) {
       }
       // Decode base64url to base64, then decode to JSON
       const base64Url = parts[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/');
       const payload = JSON.parse(atob(base64));
       const userData = {
         id: payload.sub,
@@ -96,7 +96,7 @@ export function AuthProvider({ children }) {
         sessionStorage.removeItem('redirectAfterLogin');
         // Use setTimeout to ensure state is updated before navigation
         setTimeout(() => {
-          window.location.href = redirectPath;
+          globalThis.location.href = redirectPath;
         }, 100);
       }
     } catch (parseError) {

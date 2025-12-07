@@ -201,7 +201,7 @@ function OrderForm({ items, onOrderCreated }) {
         items: orderItems,
         expectedDeliveryDate: expectedDeliveryDate || null,
         paymentStatus,
-        paidAmount: paidAmount ? parseFloat(paidAmount) : 0,
+        paidAmount: paidAmount ? Number.parseFloat(paidAmount) : 0,
         confirmationStatus,
         customerNotes: customerNotes.trim(),
         priority,
@@ -398,7 +398,7 @@ function OrderForm({ items, onOrderCreated }) {
                 id="priority"
                 value={priority}
                 label="Priority Level"
-                onChange={(e) => setPriority(parseInt(e.target.value, 10))}
+                onChange={(e) => setPriority(Number.parseInt(e.target.value, 10))}
               >
                 {PRIORITY_LEVELS.map((level) => (
                   <MenuItem key={level.value} value={level.value}>
