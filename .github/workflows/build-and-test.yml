@@ -170,7 +170,7 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.sources=backend,frontend/src
             -Dsonar.tests=backend/__tests__,frontend/src/test
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,frontend/src/test/**
             -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
             -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,**/test/**,**/__tests__/**
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
