@@ -205,6 +205,12 @@ export const getOrdersPaginated = async ({ page = 1, limit = 10 } = {}) => {
   return response.json();
 };
 
+export const getPriorityOrders = async () => {
+  const response = await authFetch(`${API_BASE_URL}/orders/priority`);
+  if (!response.ok) throw new Error('Failed to fetch priority orders');
+  return response.json();
+};
+
 export const getOrder = async (id) => {
   const response = await authFetch(`${API_BASE_URL}/orders/${id}`);
   if (!response.ok) throw new Error('Failed to fetch order');

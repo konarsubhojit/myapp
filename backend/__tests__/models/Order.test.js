@@ -444,4 +444,110 @@ describe('Order Model', () => {
       expect(result.pagination.totalPages).toBe(1);
     });
   });
+
+  describe('orderDate handling', () => {
+    it('should use current date when orderDate is not provided', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Test User',
+        customerId: 'CUST999',
+        totalPrice: 100.0,
+        items: [
+          { item: 1, name: 'Item 1', price: 100.0, quantity: 1 },
+        ],
+        // orderDate is not provided
+      };
+
+      const mockCreatedOrder = {
+        id: 100,
+        orderId: 'ORD999999',
+        orderFrom: 'Website',
+        customerName: 'Test User',
+        customerId: 'CUST999',
+        totalPrice: '100.00',
+        paidAmount: '0.00',
+        paymentStatus: 'unpaid',
+        confirmationStatus: 'unconfirmed',
+        priority: 0,
+        orderDate: new Date(), // Should be set to current date
+        expectedDeliveryDate: null,
+        createdAt: new Date(),
+      };
+
+      const mockCreatedItems = [
+        { id: 100, orderId: 100, itemId: 1, name: 'Item 1', price: '100.00', quantity: 1 },
+      ];
+
+      mockDb.insert = jest.fn()
+        .mockReturnValueOnce({
+          values: jest.fn(() => ({
+            returning: jest.fn(() => Promise.resolve([mockCreatedOrder])),
+          })),
+        })
+        .mockReturnValueOnce({
+          values: jest.fn(() => ({
+            returning: jest.fn(() => Promise.resolve(mockCreatedItems)),
+          })),
+        });
+
+      const result = await Order.create(orderData);
+
+      expect(result).toBeDefined();
+      expect(result.orderDate).toBeDefined();
+      expect(result.orderDate).not.toBeNull();
+    });
+
+    it('should use provided orderDate when specified', async () => {
+      const specificDate = new Date('2024-01-15');
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Test User',
+        customerId: 'CUST998',
+        totalPrice: 100.0,
+        items: [
+          { item: 1, name: 'Item 1', price: 100.0, quantity: 1 },
+        ],
+        orderDate: specificDate,
+      };
+
+      const mockCreatedOrder = {
+        id: 101,
+        orderId: 'ORD999998',
+        orderFrom: 'Website',
+        customerName: 'Test User',
+        customerId: 'CUST998',
+        totalPrice: '100.00',
+        paidAmount: '0.00',
+        paymentStatus: 'unpaid',
+        confirmationStatus: 'unconfirmed',
+        priority: 0,
+        orderDate: specificDate,
+        expectedDeliveryDate: null,
+        createdAt: new Date(),
+      };
+
+      const mockCreatedItems = [
+        { id: 101, orderId: 101, itemId: 1, name: 'Item 1', price: '100.00', quantity: 1 },
+      ];
+
+      mockDb.insert = jest.fn()
+        .mockReturnValueOnce({
+          values: jest.fn(() => ({
+            returning: jest.fn(() => Promise.resolve([mockCreatedOrder])),
+          })),
+        })
+        .mockReturnValueOnce({
+          values: jest.fn(() => ({
+            returning: jest.fn(() => Promise.resolve(mockCreatedItems)),
+          })),
+        });
+
+      const result = await Order.create(orderData);
+
+      expect(result).toBeDefined();
+      expect(result.orderDate).toBeDefined();
+      // Compare ISO strings to avoid timezone issues
+      expect(new Date(result.orderDate).toISOString()).toBe(specificDate.toISOString());
+    });
+  });
 });

@@ -168,7 +168,9 @@ function SalesReport({ orders }) {
       const cutoffDate = new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
       
       const filteredOrders = orders.filter(order => {
-        const orderDate = new Date(order.createdAt);
+        // Use orderDate if available, otherwise fall back to createdAt
+        const dateToUse = order.orderDate || order.createdAt;
+        const orderDate = new Date(dateToUse);
         return orderDate >= cutoffDate;
       });
 
