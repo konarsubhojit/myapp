@@ -53,13 +53,15 @@ const aggregateItemCounts = (filteredOrders) => {
   const itemCounts = {};
   
   filteredOrders.forEach(order => {
-    order.items.forEach(item => {
-      if (!itemCounts[item.name]) {
-        itemCounts[item.name] = { quantity: 0, revenue: 0 };
-      }
-      itemCounts[item.name].quantity += item.quantity;
-      itemCounts[item.name].revenue += item.price * item.quantity;
-    });
+    if (order.items?.length) {
+      order.items.forEach(item => {
+        if (!itemCounts[item.name]) {
+          itemCounts[item.name] = { quantity: 0, revenue: 0 };
+        }
+        itemCounts[item.name].quantity += item.quantity;
+        itemCounts[item.name].revenue += item.price * item.quantity;
+      });
+    }
   });
   
   return itemCounts;
@@ -87,13 +89,15 @@ const aggregateCustomerData = (filteredOrders) => {
     customerCounts[key].totalSpent += order.totalPrice;
     
     // Track items purchased by each customer
-    order.items.forEach(item => {
-      const itemName = item.name;
-      if (!customerCounts[key].items[itemName]) {
-        customerCounts[key].items[itemName] = 0;
-      }
-      customerCounts[key].items[itemName] += item.quantity;
-    });
+    if (order.items?.length) {
+      order.items.forEach(item => {
+        const itemName = item.name;
+        if (!customerCounts[key].items[itemName]) {
+          customerCounts[key].items[itemName] = 0;
+        }
+        customerCounts[key].items[itemName] += item.quantity;
+      });
+    }
   });
   
   return customerCounts;
@@ -104,11 +108,12 @@ const aggregateSourceBreakdown = (filteredOrders) => {
   const sourceBreakdown = {};
   
   filteredOrders.forEach(order => {
-    if (!sourceBreakdown[order.orderFrom]) {
-      sourceBreakdown[order.orderFrom] = { count: 0, revenue: 0 };
+    const orderSource = order.orderFrom || 'unknown';
+    if (!sourceBreakdown[orderSource]) {
+      sourceBreakdown[orderSource] = { count: 0, revenue: 0 };
     }
-    sourceBreakdown[order.orderFrom].count += 1;
-    sourceBreakdown[order.orderFrom].revenue += order.totalPrice;
+    sourceBreakdown[orderSource].count += 1;
+    sourceBreakdown[orderSource].revenue += order.totalPrice;
   });
   
   return sourceBreakdown;
