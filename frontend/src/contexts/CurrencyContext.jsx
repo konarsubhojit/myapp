@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee', locale: 'en-IN' },
@@ -31,8 +31,15 @@ export function CurrencyProvider({ children }) {
     }).format(amount);
   }, [currency]);
 
+  const value = useMemo(() => ({
+    currency,
+    setCurrency,
+    currencies: CURRENCIES,
+    formatPrice
+  }), [currency, setCurrency, formatPrice]);
+
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, currencies: CURRENCIES, formatPrice }}>
+    <CurrencyContext.Provider value={value}>
       {children}
     </CurrencyContext.Provider>
   );

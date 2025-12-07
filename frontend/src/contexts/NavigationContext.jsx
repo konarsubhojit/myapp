@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { VIEWS } from '../constants/navigationConstants';
 
 const NavigationContext = createContext();
@@ -24,12 +24,12 @@ export function NavigationProvider({ children }) {
     }
   }, [currentView, navigateTo]);
 
-  const value = {
+  const value = useMemo(() => ({
     currentView,
     viewData,
     navigateTo,
     goBack,
-  };
+  }), [currentView, viewData, navigateTo, goBack]);
 
   return (
     <NavigationContext.Provider value={value}>
