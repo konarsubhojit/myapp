@@ -63,7 +63,7 @@ jobs:
       # SonarQube analysis with coverage from both backend and frontend
       # Coverage is generated in backend/coverage/lcov.info and frontend/coverage/lcov.info
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v2.4.0
+        uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
