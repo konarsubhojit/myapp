@@ -185,6 +185,8 @@ function ItemPanel({ onItemsChange }) {
   
   // Combined error from multiple sources
   const error = formError || imageError || activeError || editImageError;
+  
+  // Set error across all error sources to ensure consistency
   const setError = (err) => {
     setFormError(err);
     setActiveError(err);

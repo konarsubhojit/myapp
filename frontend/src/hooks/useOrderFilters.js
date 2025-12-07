@@ -52,7 +52,13 @@ const handleNullDateComparison = (aValue, bValue, sortDirection) => {
  */
 const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
   if (sortKey === 'totalPrice') {
-    return { a: Number.parseFloat(aValue), b: Number.parseFloat(bValue) };
+    const a = Number.parseFloat(aValue);
+    const b = Number.parseFloat(bValue);
+    // Handle NaN values
+    if (Number.isNaN(a) && Number.isNaN(b)) return { a: 0, b: 0 };
+    if (Number.isNaN(a)) return { earlyReturn: sortDirection === 'asc' ? 1 : -1 };
+    if (Number.isNaN(b)) return { earlyReturn: sortDirection === 'asc' ? -1 : 1 };
+    return { a, b };
   }
   
   if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {

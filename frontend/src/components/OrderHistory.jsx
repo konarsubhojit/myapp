@@ -66,7 +66,7 @@ const parseUrlParams = (getParam, getIntParam) => {
   
   return {
     page: page < 1 ? 1 : page,
-    limit: [10, 20, 50].includes(limit) ? limit : 10,
+    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
     filters: {
       customerName: getParam('customerName', ''),
       customerId: getParam('customerId', ''),
