@@ -160,13 +160,15 @@ The repository includes comprehensive CI/CD pipelines via GitHub Actions:
 
 #### Testing and Code Quality
 
-The `build-and-test.yml` workflow automatically:
+The `build-and-test.yml` workflow runs all tasks in a single job for efficient SonarQube coverage tracking:
 - Runs backend tests with coverage (Jest)
 - Runs frontend tests with coverage (Vitest)
-- Analyzes code with SonarQube for quality and security
-- Checks Quality Gate status
 - Lints frontend code with ESLint
 - Builds frontend for production
+- Analyzes code with SonarQube for quality and security
+- Checks Quality Gate status
+
+All steps run sequentially in one job, allowing SonarQube to directly access test coverage without artifact transfers.
 
 For complete SonarQube setup and configuration details, see [SonarQube Integration Guide](docs/SONARQUBE_INTEGRATION.md).
 

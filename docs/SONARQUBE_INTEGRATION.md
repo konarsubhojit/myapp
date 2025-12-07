@@ -127,31 +127,33 @@ This generates `frontend/coverage/lcov.info`.
 
 ## GitHub Actions Workflow
 
-The project includes a comprehensive CI/CD workflow at `.github/workflows/build-and-test.yml` that:
+The project includes a comprehensive CI/CD workflow at `.github/workflows/build-and-test.yml` that runs all tasks in a single job for efficiency:
 
-1. **Runs backend tests** with coverage on every push and pull request
-2. **Runs frontend tests** with coverage
-3. **Uploads coverage artifacts** from both test jobs
-4. **Downloads coverage artifacts** in the SonarQube job
-5. **Runs SonarQube analysis** with merged coverage data
-6. **Checks Quality Gate** status
+1. **Installs dependencies** for both backend and frontend
+2. **Runs backend tests** with coverage
+3. **Runs frontend tests** with coverage  
+4. **Lints frontend code** with ESLint
+5. **Builds frontend** for production
+6. **Runs SonarQube analysis** with coverage from both projects
+7. **Checks Quality Gate** status
 
 ### Workflow Structure
 
 ```yaml
 jobs:
-  backend-test:
-    # Runs backend tests and uploads coverage
-    
-  frontend-test:
-    # Runs frontend tests and uploads coverage
-    
-  sonarqube:
-    needs: [backend-test, frontend-test]
-    # Downloads coverage from both jobs
-    # Runs SonarQube scan with merged coverage
-    # Checks Quality Gate status
+  build-test-analyze:
+    # Single job that runs all steps sequentially
+    # - Install backend dependencies
+    # - Run backend tests with coverage
+    # - Install frontend dependencies
+    # - Run frontend tests with coverage
+    # - Lint frontend
+    # - Build frontend
+    # - Run SonarQube scan with coverage
+    # - Check Quality Gate status
 ```
+
+This sequential approach ensures SonarQube can directly access the test coverage generated in the same job, eliminating the need for artifact uploads and downloads.
 
 ### SonarQube Scan Action
 
@@ -181,39 +183,41 @@ The Quality Gate check ensures code meets quality standards:
 
 ## How It Works
 
-### 1. Test Execution
+### Workflow Execution
 
-When you push code or create a pull request:
+When you push code or create a pull request, the workflow runs in a single job:
 
-1. **Backend test job** installs dependencies and runs `npm run test:coverage`
-   - Generates coverage in LCOV format at `backend/coverage/lcov.info`
-   - Uploads coverage as a GitHub artifact
+1. **Setup**
+   - Checks out code with full git history (`fetch-depth: 0`) for accurate SonarQube analysis
+   - Sets up Node.js environment
 
-2. **Frontend test job** installs dependencies and runs `npm run test:coverage`
-   - Generates coverage in LCOV format at `frontend/coverage/lcov.info`
-   - Uploads coverage as a GitHub artifact
+2. **Backend Testing**
+   - Installs backend dependencies
+   - Runs `npm run test:coverage` which generates `backend/coverage/lcov.info`
 
-### 2. SonarQube Analysis
+3. **Frontend Testing & Build**
+   - Installs frontend dependencies
+   - Runs `npm run test:coverage` which generates `frontend/coverage/lcov.info`
+   - Runs ESLint for code quality checks
+   - Builds the production frontend
 
-After tests complete successfully:
+4. **SonarQube Analysis**
+   - Runs SonarScanner which:
+     - Reads `sonar-project.properties` configuration
+     - Analyzes source code for quality and security issues
+     - Reads both LCOV reports directly from the filesystem
+     - Uploads results to SonarQube server
 
-1. **Downloads coverage artifacts** from both test jobs
-2. **Checks out the code** with full git history (`fetch-depth: 0`)
-3. **Runs SonarScanner** which:
-   - Reads `sonar-project.properties` configuration
-   - Analyzes source code for quality and security issues
-   - Merges coverage data from both LCOV reports
-   - Uploads results to SonarQube server
+5. **Quality Gate Check**
+   - Verifies that code meets quality standards:
+     - Code coverage meets minimum thresholds
+     - No new critical bugs or vulnerabilities introduced
+     - Code duplication is within acceptable limits
+     - Technical debt is manageable
+   - If the Quality Gate fails, the workflow continues (`continue-on-error: true`) but marks the check as failed
 
-### 3. Quality Gate Check
-
-The Quality Gate verifies that:
-- Code coverage meets minimum thresholds
-- No new critical bugs or vulnerabilities are introduced
-- Code duplication is within acceptable limits
-- Technical debt is manageable
-
-If the Quality Gate fails, the workflow continues (`continue-on-error: true`) but marks the check as failed, providing visibility without blocking the pipeline.
+6. **Artifact Upload**
+   - Uploads coverage reports and build artifacts for reference (runs even if previous steps fail)
 
 ## Viewing Results
 
@@ -221,8 +225,8 @@ If the Quality Gate fails, the workflow continues (`continue-on-error: true`) bu
 
 1. Go to the **Actions** tab in your repository
 2. Click on a workflow run
-3. View the **SonarQube Analysis** job logs
-4. Check the **SonarQube Quality Gate Check** status
+3. View the **Build, Test, and Analyze** job logs
+4. Check each step's status including the **SonarQube Quality Gate Check**
 
 ### In SonarQube Dashboard
 
