@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
@@ -52,16 +52,16 @@ export function NotificationProvider({ children }) {
     setNotification((prev) => ({ ...prev, open: false }));
   }, []);
 
+  const value = useMemo(() => ({
+    showNotification,
+    showSuccess,
+    showError,
+    showWarning,
+    showInfo,
+  }), [showNotification, showSuccess, showError, showWarning, showInfo]);
+
   return (
-    <NotificationContext.Provider
-      value={{
-        showNotification,
-        showSuccess,
-        showError,
-        showWarning,
-        showInfo,
-      }}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
       <Snackbar
         open={notification.open}
