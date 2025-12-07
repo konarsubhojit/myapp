@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo } 
 import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } from '../services/api';
 
 // Guest user constant
-const GUEST_USER = { name: 'Guest User', email: 'guest@example.com', isGuest: true };
+const GUEST_USER = { name: 'Guest User', email: 'guest@localhost', isGuest: true };
 
 const AuthContext = createContext(undefined);
 
