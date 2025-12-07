@@ -31,7 +31,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/api/', limiter);
 
-async function initializeDatabase() {
+(async () => {
   try {
     await connectToDatabase();
     logger.info('PostgreSQL connection successful');
@@ -39,9 +39,7 @@ async function initializeDatabase() {
     logger.error('Database initialization failed', err);
     process.exit(1);
   }
-}
-
-initializeDatabase();
+})();
 
 const itemRoutes = require('./routes/items');
 const orderRoutes = require('./routes/orders');

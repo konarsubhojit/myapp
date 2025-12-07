@@ -91,6 +91,22 @@ const formatOrderDeliveryDate = (dateString) => {
   });
 };
 
+/**
+ * Creates initial edit form state from order data
+ */
+const createEditFormFromOrder = (data) => ({
+  customerName: data.customerName || '',
+  customerId: data.customerId || '',
+  orderFrom: data.orderFrom || '',
+  expectedDeliveryDate: data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : '',
+  status: data.status || 'pending',
+  paymentStatus: data.paymentStatus || 'unpaid',
+  paidAmount: data.paidAmount || 0,
+  confirmationStatus: data.confirmationStatus || 'unconfirmed',
+  customerNotes: data.customerNotes || '',
+  priority: data.priority || 0
+});
+
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
@@ -121,18 +137,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
       try {
         const data = await getOrder(orderId);
         setOrder(data);
-        setEditForm({
-          customerName: data.customerName || '',
-          customerId: data.customerId || '',
-          orderFrom: data.orderFrom || '',
-          expectedDeliveryDate: data.expectedDeliveryDate ? data.expectedDeliveryDate.split('T')[0] : '',
-          status: data.status || 'pending',
-          paymentStatus: data.paymentStatus || 'unpaid',
-          paidAmount: data.paidAmount || 0,
-          confirmationStatus: data.confirmationStatus || 'unconfirmed',
-          customerNotes: data.customerNotes || '',
-          priority: data.priority || 0
-        });
+        setEditForm(createEditFormFromOrder(data));
       } catch (err) {
         setError(err.message || 'Failed to fetch order details');
       } finally {
@@ -214,18 +219,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     setError('');
     // Reset form to current order values
     if (order) {
-      setEditForm({
-        customerName: order.customerName || '',
-        customerId: order.customerId || '',
-        orderFrom: order.orderFrom || '',
-        expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.split('T')[0] : '',
-        status: order.status || 'pending',
-        paymentStatus: order.paymentStatus || 'unpaid',
-        paidAmount: order.paidAmount || 0,
-        confirmationStatus: order.confirmationStatus || 'unconfirmed',
-        customerNotes: order.customerNotes || '',
-        priority: order.priority || 0
-      });
+      setEditForm(createEditFormFromOrder(order));
     }
   };
 

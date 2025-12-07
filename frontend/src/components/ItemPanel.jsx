@@ -117,6 +117,23 @@ const processImageUpload = async (file, showSuccess) => {
   return base64Image;
 };
 
+/**
+ * Resets the item form to initial empty state
+ */
+const resetItemForm = (setters, fileInputId) => {
+  setters.setName('');
+  setters.setPrice('');
+  setters.setColor('');
+  setters.setFabric('');
+  setters.setSpecialFeatures('');
+  setters.setImage('');
+  setters.setImagePreview('');
+  setters.setCopiedFrom(null);
+  setters.setError('');
+  const fileInput = document.getElementById(fileInputId);
+  if (fileInput) fileInput.value = '';
+};
+
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
   const page = Number.parseInt(searchParams.get('page'), 10);
@@ -315,8 +332,8 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum < 0) {
+    const priceNum = Number.parseFloat(price);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
       setError('Please enter a valid price');
       return;
     }
@@ -332,17 +349,11 @@ function ItemPanel({ onItemsChange }) {
         image: image
       });
       const itemName = name.trim();
-      setName('');
-      setPrice('');
-      setColor('');
-      setFabric('');
-      setSpecialFeatures('');
-      setImage('');
-      setImagePreview('');
-      setCopiedFrom(null); // Clear copy mode
-      // Reset file input
-      const fileInput = document.getElementById('itemImage');
-      if (fileInput) fileInput.value = '';
+      resetItemForm({
+        setName, setPrice, setColor, setFabric, 
+        setSpecialFeatures, setImage, setImagePreview, 
+        setCopiedFrom, setError
+      }, 'itemImage');
       onItemsChange();
       fetchActiveItems();
       showSuccess(`Item "${itemName}" has been added successfully.`);
@@ -442,18 +453,11 @@ function ItemPanel({ onItemsChange }) {
 
   // Cancel copy mode and clear form
   const handleCancelCopy = () => {
-    setName('');
-    setPrice('');
-    setColor('');
-    setFabric('');
-    setSpecialFeatures('');
-    setImage('');
-    setImagePreview('');
-    setCopiedFrom(null);
-    setError('');
-    // Reset file input
-    const fileInput = document.getElementById('itemImage');
-    if (fileInput) fileInput.value = '';
+    resetItemForm({
+      setName, setPrice, setColor, setFabric, 
+      setSpecialFeatures, setImage, setImagePreview, 
+      setCopiedFrom, setError
+    }, 'itemImage');
   };
 
   // State for edit image processing
@@ -502,8 +506,8 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    const priceNum = parseFloat(editingItem.editPrice);
-    if (isNaN(priceNum) || priceNum < 0) {
+    const priceNum = Number.parseFloat(editingItem.editPrice);
+    if (Number.isNaN(priceNum) || priceNum < 0) {
       setError('Please enter a valid price');
       return;
     }
