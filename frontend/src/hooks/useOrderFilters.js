@@ -13,20 +13,6 @@ const createEmptyFilters = () => ({
 });
 
 /**
- * Checks if a text field matches the filter (case-insensitive)
- */
-const matchesTextField = (fieldValue, filterValue) => {
-  return (fieldValue || '').toLowerCase().includes((filterValue || '').toLowerCase());
-};
-
-/**
- * Checks if a select field matches the filter (exact match)
- */
-const matchesSelectField = (fieldValue, filterValue) => {
-  return !filterValue || fieldValue === filterValue;
-};
-
-/**
  * Checks if an order matches the given filter criteria
  * @param {Object} order - The order object to check
  * @param {Object} filters - The filter criteria object
@@ -35,14 +21,20 @@ const matchesSelectField = (fieldValue, filterValue) => {
 const orderMatchesFilters = (order, filters) => {
   if (!filters) return true;
   
-  return (
-    matchesTextField(order.customerName, filters.customerName) &&
-    matchesTextField(order.customerId, filters.customerId) &&
-    matchesSelectField(order.orderFrom, filters.orderFrom) &&
-    matchesTextField(order.orderId, filters.orderId) &&
-    matchesSelectField(order.confirmationStatus, filters.confirmationStatus) &&
-    matchesSelectField(order.paymentStatus, filters.paymentStatus)
-  );
+  const matchesCustomerName = (order.customerName || '')
+    .toLowerCase()
+    .includes((filters.customerName || '').toLowerCase());
+  const matchesCustomerId = (order.customerId || '')
+    .toLowerCase()
+    .includes((filters.customerId || '').toLowerCase());
+  const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
+  const matchesOrderId = (order.orderId || '')
+    .toLowerCase()
+    .includes((filters.orderId || '').toLowerCase());
+  const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
+  const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
+  
+  return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
 };
 
 /**
@@ -56,51 +48,29 @@ const handleNullDateComparison = (aValue, bValue, sortDirection) => {
 };
 
 /**
- * Normalizes price values for comparison
- */
-const normalizePriceValues = (aValue, bValue, sortDirection) => {
-  const a = Number.parseFloat(aValue);
-  const b = Number.parseFloat(bValue);
-  
-  if (Number.isNaN(a) && Number.isNaN(b)) return { a: 0, b: 0 };
-  if (Number.isNaN(a)) return { earlyReturn: sortDirection === 'asc' ? 1 : -1 };
-  if (Number.isNaN(b)) return { earlyReturn: sortDirection === 'asc' ? -1 : 1 };
-  
-  return { a, b };
-};
-
-/**
- * Normalizes date values for comparison
- */
-const normalizeDateValues = (aValue, bValue, sortDirection) => {
-  const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
-  if (nullResult !== null) return { earlyReturn: nullResult };
-  return { a: new Date(aValue), b: new Date(bValue) };
-};
-
-/**
- * Normalizes string values for comparison
- */
-const normalizeStringValues = (aValue, bValue) => {
-  return { 
-    a: aValue != null ? String(aValue).toLowerCase() : '', 
-    b: bValue != null ? String(bValue).toLowerCase() : '' 
-  };
-};
-
-/**
  * Normalizes values based on sort key type
  */
 const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
   if (sortKey === 'totalPrice') {
-    return normalizePriceValues(aValue, bValue, sortDirection);
+    const a = Number.parseFloat(aValue);
+    const b = Number.parseFloat(bValue);
+    // Handle NaN values
+    if (Number.isNaN(a) && Number.isNaN(b)) return { a: 0, b: 0 };
+    if (Number.isNaN(a)) return { earlyReturn: sortDirection === 'asc' ? 1 : -1 };
+    if (Number.isNaN(b)) return { earlyReturn: sortDirection === 'asc' ? -1 : 1 };
+    return { a, b };
   }
   
   if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
-    return normalizeDateValues(aValue, bValue, sortDirection);
+    const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
+    if (nullResult !== null) return { earlyReturn: nullResult };
+    return { a: new Date(aValue), b: new Date(bValue) };
   }
   
-  return normalizeStringValues(aValue, bValue);
+  return { 
+    a: aValue != null ? String(aValue).toLowerCase() : '', 
+    b: bValue != null ? String(bValue).toLowerCase() : '' 
+  };
 };
 
 /**

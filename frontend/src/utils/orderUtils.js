@@ -13,31 +13,12 @@ export const getOrderStatusColor = (status) => {
 
 /**
  * Gets the color for priority chips based on priority data
- * Uses the new priority urgency levels
  */
 export const getOrderPriorityColor = (priorityData) => {
   if (!priorityData) return 'default';
-  
-  // Use urgency level if available (new system)
-  if (priorityData.urgency) {
-    switch (priorityData.urgency) {
-      case 'critical': return 'error';    // Red
-      case 'high': return 'warning';      // Orange
-      case 'medium': return 'info';       // Blue
-      case 'low': return 'success';       // Green
-      default: return 'default';
-    }
-  }
-  
-  // Fallback to className (legacy support)
-  if (priorityData.className) {
-    if (priorityData.className.includes('overdue')) return 'error';
-    if (priorityData.className.includes('critical')) return 'error';
-    if (priorityData.className.includes('due-today')) return 'error';
-    if (priorityData.className.includes('urgent')) return 'warning';
-    if (priorityData.className.includes('medium')) return 'info';
-  }
-  
+  if (priorityData.className.includes('overdue')) return 'error';
+  if (priorityData.className.includes('due-today')) return 'warning';
+  if (priorityData.className.includes('urgent')) return 'warning';
   return 'success';
 };
 

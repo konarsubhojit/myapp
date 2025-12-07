@@ -39,9 +39,9 @@ describe('orderUtils', () => {
       expect(getOrderPriorityColor(priority)).toBe('error');
     });
 
-    it('should return error for due-today priority', () => {
-      const priority = { urgency: 'critical', className: 'priority-due-today', label: 'Due Today' };
-      expect(getOrderPriorityColor(priority)).toBe('error');
+    it('should return warning for due-today priority', () => {
+      const priority = { className: 'priority-due-today', label: 'Due Today' };
+      expect(getOrderPriorityColor(priority)).toBe('warning');
     });
 
     it('should return warning for urgent priority', () => {
