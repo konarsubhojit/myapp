@@ -84,7 +84,7 @@ function PriorityNotificationPanel() {
       const criticalOrders = data
         .filter(order => {
           const days = getDaysUntilDelivery(order.expectedDeliveryDate);
-          return days !== null && days <= 3 || order.priority >= 5;
+          return (days !== null && days <= 3) || order.priority >= 5;
         })
         .slice(0, 10);
       
@@ -225,7 +225,7 @@ function PriorityNotificationPanel() {
                   <Box key={order._id}>
                     {index > 0 && <Divider />}
                     <ListItem disablePadding>
-                      <ListItemButton onClick={() => handleOrderClick(order._id)}>
+                      <ListItemButton onClick={handleOrderClick}>
                         <Box sx={{ width: '100%' }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                             <Box>
