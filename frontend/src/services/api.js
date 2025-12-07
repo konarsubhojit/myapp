@@ -77,8 +77,8 @@ async function authFetch(url, options = {}) {
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
       };
-    } else if (url.match(/\/(items|orders)\/[a-f0-9]{24}$/i)) {
-      // Single item endpoint with MongoDB ObjectID - return empty object (e.g., /items/507f1f77bcf86cd799439011)
+    } else if (url.includes('/items/') || url.includes('/orders/')) {
+      // Single item endpoint - return empty object
       mockData = {};
     } else {
       // List endpoint without pagination - return empty array
