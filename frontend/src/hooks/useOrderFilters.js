@@ -13,6 +13,20 @@ const createEmptyFilters = () => ({
 });
 
 /**
+ * Checks if a text field matches a filter
+ */
+const matchesTextFilter = (value, filter) => {
+  return (value || '').toLowerCase().includes((filter || '').toLowerCase());
+};
+
+/**
+ * Checks if an exact field matches a filter
+ */
+const matchesExactFilter = (value, filter) => {
+  return !filter || value === filter;
+};
+
+/**
  * Checks if an order matches the given filter criteria
  * @param {Object} order - The order object to check
  * @param {Object} filters - The filter criteria object
@@ -21,20 +35,12 @@ const createEmptyFilters = () => ({
 const orderMatchesFilters = (order, filters) => {
   if (!filters) return true;
   
-  const matchesCustomerName = (order.customerName || '')
-    .toLowerCase()
-    .includes((filters.customerName || '').toLowerCase());
-  const matchesCustomerId = (order.customerId || '')
-    .toLowerCase()
-    .includes((filters.customerId || '').toLowerCase());
-  const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
-  const matchesOrderId = (order.orderId || '')
-    .toLowerCase()
-    .includes((filters.orderId || '').toLowerCase());
-  const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
-  const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
-  
-  return matchesCustomerName && matchesCustomerId && matchesOrderFrom && matchesOrderId && matchesConfirmationStatus && matchesPaymentStatus;
+  return matchesTextFilter(order.customerName, filters.customerName) &&
+         matchesTextFilter(order.customerId, filters.customerId) &&
+         matchesTextFilter(order.orderId, filters.orderId) &&
+         matchesExactFilter(order.orderFrom, filters.orderFrom) &&
+         matchesExactFilter(order.confirmationStatus, filters.confirmationStatus) &&
+         matchesExactFilter(order.paymentStatus, filters.paymentStatus);
 };
 
 /**
@@ -48,29 +54,51 @@ const handleNullDateComparison = (aValue, bValue, sortDirection) => {
 };
 
 /**
- * Normalizes values based on sort key type
+ * Normalizes price values for comparison
  */
-const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
-  if (sortKey === 'totalPrice') {
-    const a = Number.parseFloat(aValue);
-    const b = Number.parseFloat(bValue);
-    // Handle NaN values
-    if (Number.isNaN(a) && Number.isNaN(b)) return { a: 0, b: 0 };
-    if (Number.isNaN(a)) return { earlyReturn: sortDirection === 'asc' ? 1 : -1 };
-    if (Number.isNaN(b)) return { earlyReturn: sortDirection === 'asc' ? -1 : 1 };
-    return { a, b };
-  }
+const normalizePriceValues = (aValue, bValue, sortDirection) => {
+  const a = Number.parseFloat(aValue);
+  const b = Number.parseFloat(bValue);
   
-  if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
-    const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
-    if (nullResult !== null) return { earlyReturn: nullResult };
-    return { a: new Date(aValue), b: new Date(bValue) };
-  }
+  if (Number.isNaN(a) && Number.isNaN(b)) return { a: 0, b: 0 };
+  if (Number.isNaN(a)) return { earlyReturn: sortDirection === 'asc' ? 1 : -1 };
+  if (Number.isNaN(b)) return { earlyReturn: sortDirection === 'asc' ? -1 : 1 };
   
+  return { a, b };
+};
+
+/**
+ * Normalizes date values for comparison
+ */
+const normalizeDateValues = (aValue, bValue, sortDirection) => {
+  const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
+  if (nullResult !== null) return { earlyReturn: nullResult };
+  return { a: new Date(aValue), b: new Date(bValue) };
+};
+
+/**
+ * Normalizes string values for comparison
+ */
+const normalizeStringValues = (aValue, bValue) => {
   return { 
     a: aValue != null ? String(aValue).toLowerCase() : '', 
     b: bValue != null ? String(bValue).toLowerCase() : '' 
   };
+};
+
+/**
+ * Normalizes values based on sort key type
+ */
+const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
+  if (sortKey === 'totalPrice') {
+    return normalizePriceValues(aValue, bValue, sortDirection);
+  }
+  
+  if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
+    return normalizeDateValues(aValue, bValue, sortDirection);
+  }
+  
+  return normalizeStringValues(aValue, bValue);
 };
 
 /**

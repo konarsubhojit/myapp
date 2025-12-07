@@ -35,25 +35,29 @@ function transformOrder(order, items = []) {
   };
 }
 
+function setFieldIfDefined(updateData, key, value, transformer) {
+  if (value !== undefined) {
+    updateData[key] = transformer ? transformer(value) : value;
+  }
+}
+
 function buildOrderUpdateData(data) {
   const updateData = {};
-  if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
-  if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
-  if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
-  if (data.address !== undefined) updateData.address = data.address?.trim() || null;
-  if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
-  if (data.orderDate !== undefined) {
-    updateData.orderDate = data.orderDate ? new Date(data.orderDate) : null;
-  }
-  if (data.expectedDeliveryDate !== undefined) {
-    updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
-  }
-  if (data.status !== undefined) updateData.status = data.status;
-  if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
-  if (data.paidAmount !== undefined) updateData.paidAmount = data.paidAmount.toString();
-  if (data.confirmationStatus !== undefined) updateData.confirmationStatus = data.confirmationStatus;
-  if (data.customerNotes !== undefined) updateData.customerNotes = data.customerNotes?.trim() || null;
-  if (data.priority !== undefined) updateData.priority = data.priority;
+  
+  setFieldIfDefined(updateData, 'orderFrom', data.orderFrom);
+  setFieldIfDefined(updateData, 'customerName', data.customerName, v => v.trim());
+  setFieldIfDefined(updateData, 'customerId', data.customerId, v => v.trim());
+  setFieldIfDefined(updateData, 'address', data.address, v => v?.trim() || null);
+  setFieldIfDefined(updateData, 'totalPrice', data.totalPrice, v => v.toString());
+  setFieldIfDefined(updateData, 'orderDate', data.orderDate, v => v ? new Date(v) : null);
+  setFieldIfDefined(updateData, 'expectedDeliveryDate', data.expectedDeliveryDate, v => v ? new Date(v) : null);
+  setFieldIfDefined(updateData, 'status', data.status);
+  setFieldIfDefined(updateData, 'paymentStatus', data.paymentStatus);
+  setFieldIfDefined(updateData, 'paidAmount', data.paidAmount, v => v.toString());
+  setFieldIfDefined(updateData, 'confirmationStatus', data.confirmationStatus);
+  setFieldIfDefined(updateData, 'customerNotes', data.customerNotes, v => v?.trim() || null);
+  setFieldIfDefined(updateData, 'priority', data.priority);
+  
   return updateData;
 }
 
