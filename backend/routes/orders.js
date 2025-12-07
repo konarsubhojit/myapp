@@ -381,7 +381,13 @@ async function validateUpdateRequest(requestBody) {
 
   return { 
     valid: true, 
-    data: { paidAmountResult, priorityResult, dateResult, itemsResult, paymentStatus } 
+    data: { 
+      paidAmountResult, 
+      priorityResult, 
+      dateResult, 
+      itemsResult, 
+      paymentStatus: { value: paymentStatus }
+    } 
   };
 }
 
@@ -413,7 +419,7 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ message: validation.error });
     }
 
-    const { paidAmountResult, itemsResult } = validation.data;
+    const { paidAmountResult, itemsResult, paymentStatus } = validation.data;
     
     // Validate payment amount against total price if needed
     if (paidAmountResult.parsedAmount !== undefined) {
@@ -426,7 +432,7 @@ router.put('/:id', async (req, res) => {
         paidAmountResult.parsedAmount, 
         itemsResult.totalPrice, 
         existingOrder.totalPrice, 
-        validation.data.paymentStatus
+        paymentStatus.value
       );
       if (!paymentValidation.valid) {
         return res.status(400).json({ message: paymentValidation.error });

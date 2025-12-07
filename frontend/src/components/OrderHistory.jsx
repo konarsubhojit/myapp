@@ -83,16 +83,18 @@ const parseUrlParams = (searchParams) => {
 
 // Helper function to check if order matches filters
 const orderMatchesFilters = (order, filters) => {
+  if (!filters) return true;
+  
   const matchesCustomerName = (order.customerName || '')
     .toLowerCase()
-    .includes(filters.customerName.toLowerCase());
+    .includes((filters.customerName || '').toLowerCase());
   const matchesCustomerId = (order.customerId || '')
     .toLowerCase()
-    .includes(filters.customerId.toLowerCase());
+    .includes((filters.customerId || '').toLowerCase());
   const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
   const matchesOrderId = (order.orderId || '')
     .toLowerCase()
-    .includes(filters.orderId.toLowerCase());
+    .includes((filters.orderId || '').toLowerCase());
   const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
   const matchesPaymentStatus = !filters.paymentStatus || order.paymentStatus === filters.paymentStatus;
   
@@ -112,8 +114,9 @@ const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
     aValue = new Date(aValue);
     bValue = new Date(bValue);
   } else {
-    aValue = String(aValue).toLowerCase();
-    bValue = String(bValue).toLowerCase();
+    // For string comparisons, handle null/undefined values
+    aValue = aValue != null ? String(aValue).toLowerCase() : '';
+    bValue = bValue != null ? String(bValue).toLowerCase() : '';
   }
 
   if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;

@@ -90,7 +90,13 @@ const validateImageFile = (file) => {
   return { valid: true };
 };
 
-// Helper to process image upload
+/**
+ * Process an image file upload with validation and compression
+ * @param {File} file - The image file to process
+ * @param {Function} [showSuccess] - Optional callback to show success notification
+ * @returns {Promise<string>} - Base64 encoded image string
+ * @throws {Error} - If validation fails or processing encounters an error
+ */
 const processImageUpload = async (file, showSuccess) => {
   const validation = validateImageFile(file);
   if (!validation.valid) {
