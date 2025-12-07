@@ -41,6 +41,56 @@ import {
   PRIORITY_LEVELS,
 } from '../constants/orderConstants';
 
+/**
+ * Gets the color for order status chips
+ */
+const getOrderStatusColor = (status) => {
+  switch (status) {
+    case 'pending': return 'warning';
+    case 'processing': return 'info';
+    case 'completed': return 'success';
+    case 'cancelled': return 'error';
+    default: return 'default';
+  }
+};
+
+/**
+ * Gets the color for priority chips based on priority data
+ */
+const getOrderPriorityColor = (priorityData) => {
+  if (!priorityData) return 'default';
+  if (priorityData.className.includes('overdue')) return 'error';
+  if (priorityData.className.includes('due-today')) return 'warning';
+  if (priorityData.className.includes('urgent')) return 'warning';
+  return 'success';
+};
+
+/**
+ * Formats date for display in order details
+ */
+const formatOrderDate = (dateString) => {
+  if (!dateString) return 'Not set';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+/**
+ * Formats delivery date for display
+ */
+const formatOrderDeliveryDate = (dateString) => {
+  if (!dateString) return 'Not set';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
@@ -94,26 +144,6 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
       fetchOrder();
     }
   }, [orderId]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDeliveryDate = (dateString) => {
-    if (!dateString) return 'Not set';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   const handleEditChange = (field, value) => {
     setEditForm(prev => ({ ...prev, [field]: value }));
@@ -199,24 +229,6 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'warning';
-      case 'processing': return 'info';
-      case 'completed': return 'success';
-      case 'cancelled': return 'error';
-      default: return 'default';
-    }
-  };
-
-  const getPriorityColor = (priorityData) => {
-    if (!priorityData) return 'default';
-    if (priorityData.className.includes('overdue')) return 'error';
-    if (priorityData.className.includes('due-today')) return 'warning';
-    if (priorityData.className.includes('urgent')) return 'warning';
-    return 'success';
-  };
-
   const priority = order ? getPriorityStatus(order.expectedDeliveryDate) : null;
 
   return (
@@ -251,13 +263,13 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
               {priority && (
                 <Chip 
                   label={priority.label} 
-                  color={getPriorityColor(priority)} 
+                  color={getOrderPriorityColor(priority)} 
                   size="small"
                 />
               )}
               <Chip 
                 label={order.status || 'Pending'} 
-                color={getStatusColor(order.status)} 
+                color={getOrderStatusColor(order.status)} 
                 size="small"
               />
             </Stack>
@@ -490,7 +502,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
                     <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Source:</Typography></Grid>
                     <Grid size={{ xs: 6 }}><Chip label={order.orderFrom} size="small" color="primary" /></Grid>
                     <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Status:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Chip label={order.status || 'Pending'} size="small" color={getStatusColor(order.status)} /></Grid>
+                    <Grid size={{ xs: 6 }}><Chip label={order.status || 'Pending'} size="small" color={getOrderStatusColor(order.status)} /></Grid>
                     <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Confirmation:</Typography></Grid>
                     <Grid size={{ xs: 6 }}>
                       <Chip 
@@ -508,16 +520,16 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
                       />
                     </Grid>
                     <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Created:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2">{formatDate(order.createdAt)}</Typography></Grid>
+                    <Grid size={{ xs: 6 }}><Typography variant="body2">{formatOrderDate(order.createdAt)}</Typography></Grid>
                     <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Expected Delivery:</Typography></Grid>
                     <Grid size={{ xs: 6 }}>
                       <Typography variant="body2">
-                        {formatDeliveryDate(order.expectedDeliveryDate)}
+                        {formatOrderDeliveryDate(order.expectedDeliveryDate)}
                         {priority && (
                           <Chip 
                             label={priority.label} 
                             size="small" 
-                            color={getPriorityColor(priority)}
+                            color={getOrderPriorityColor(priority)}
                             sx={{ ml: 1 }}
                           />
                         )}

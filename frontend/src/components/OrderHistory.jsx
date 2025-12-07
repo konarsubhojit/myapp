@@ -107,6 +107,45 @@ const orderMatchesFilters = (order, filters) => {
 };
 
 /**
+ * Handles null value comparison for date sorting
+ * @param {any} aValue - First date value
+ * @param {any} bValue - Second date value
+ * @param {string} sortDirection - Sort direction ('asc' or 'desc')
+ * @returns {number|null} - Returns comparison result or null if both values exist
+ */
+const handleNullDateComparison = (aValue, bValue, sortDirection) => {
+  if (!aValue && !bValue) return 0;
+  if (!aValue) return sortDirection === 'asc' ? 1 : -1;
+  if (!bValue) return sortDirection === 'asc' ? -1 : 1;
+  return null;
+};
+
+/**
+ * Normalizes values based on sort key type
+ * @param {any} aValue - First value
+ * @param {any} bValue - Second value
+ * @param {string} sortKey - The field being sorted
+ * @param {string} sortDirection - Sort direction for null handling
+ * @returns {Object} - Normalized values or early return value
+ */
+const normalizeComparisonValues = (aValue, bValue, sortKey, sortDirection) => {
+  if (sortKey === 'totalPrice') {
+    return { a: Number.parseFloat(aValue), b: Number.parseFloat(bValue) };
+  }
+  
+  if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
+    const nullResult = handleNullDateComparison(aValue, bValue, sortDirection);
+    if (nullResult !== null) return { earlyReturn: nullResult };
+    return { a: new Date(aValue), b: new Date(bValue) };
+  }
+  
+  return { 
+    a: aValue != null ? String(aValue).toLowerCase() : '', 
+    b: bValue != null ? String(bValue).toLowerCase() : '' 
+  };
+};
+
+/**
  * Compares two order values for sorting with support for dates, numbers, and strings
  * @param {any} aValue - First value to compare
  * @param {any} bValue - Second value to compare
@@ -115,25 +154,61 @@ const orderMatchesFilters = (order, filters) => {
  * @returns {number} - Returns -1, 0, or 1 for sorting
  */
 const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
-  if (sortKey === 'totalPrice') {
-    aValue = Number.parseFloat(aValue);
-    bValue = Number.parseFloat(bValue);
-  } else if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
-    // Handle null values - nulls go last for ascending, first for descending
-    if (!aValue && !bValue) return 0;
-    if (!aValue) return sortDirection === 'asc' ? 1 : -1;
-    if (!bValue) return sortDirection === 'asc' ? -1 : 1;
-    aValue = new Date(aValue);
-    bValue = new Date(bValue);
-  } else {
-    // For string comparisons, handle null/undefined values
-    aValue = aValue != null ? String(aValue).toLowerCase() : '';
-    bValue = bValue != null ? String(bValue).toLowerCase() : '';
-  }
+  const normalized = normalizeComparisonValues(aValue, bValue, sortKey, sortDirection);
+  if (normalized.earlyReturn !== undefined) return normalized.earlyReturn;
 
-  if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-  if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+  const { a, b } = normalized;
+  if (a < b) return sortDirection === 'asc' ? -1 : 1;
+  if (a > b) return sortDirection === 'asc' ? 1 : -1;
   return 0;
+};
+
+/**
+ * Formats delivery date for order history display
+ */
+const formatHistoryDeliveryDate = (dateString) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+/**
+ * Gets color for order status in history
+ */
+const getHistoryStatusColor = (status) => {
+  switch (status) {
+    case 'pending': return 'warning';
+    case 'processing': return 'info';
+    case 'completed': return 'success';
+    case 'cancelled': return 'error';
+    default: return 'default';
+  }
+};
+
+/**
+ * Gets color for priority indicators
+ */
+const getHistoryPriorityColor = (priorityData) => {
+  if (!priorityData) return 'default';
+  if (priorityData.className.includes('overdue')) return 'error';
+  if (priorityData.className.includes('due-today')) return 'warning';
+  if (priorityData.className.includes('urgent')) return 'warning';
+  return 'success';
+};
+
+/**
+ * Gets color for payment status
+ */
+const getHistoryPaymentColor = (status) => {
+  switch (status) {
+    case 'paid': return 'success';
+    case 'partially_paid': return 'warning';
+    case 'unpaid': return 'default';
+    default: return 'default';
+  }
 };
 
 function OrderHistory({ onDuplicateOrder }) {
@@ -269,42 +344,6 @@ function OrderHistory({ onDuplicateOrder }) {
     ));
     return sorted;
   }, [filteredOrders, sortConfig]);
-
-  const formatDeliveryDate = (dateString) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'warning';
-      case 'processing': return 'info';
-      case 'completed': return 'success';
-      case 'cancelled': return 'error';
-      default: return 'default';
-    }
-  };
-
-  const getPriorityColor = (priorityData) => {
-    if (!priorityData) return 'default';
-    if (priorityData.className.includes('overdue')) return 'error';
-    if (priorityData.className.includes('due-today')) return 'warning';
-    if (priorityData.className.includes('urgent')) return 'warning';
-    return 'success';
-  };
-
-  const getPaymentColor = (status) => {
-    switch (status) {
-      case 'paid': return 'success';
-      case 'partially_paid': return 'warning';
-      case 'unpaid': return 'default';
-      default: return 'default';
-    }
-  };
 
   if (initialLoading) {
     return (
@@ -602,14 +641,14 @@ function OrderHistory({ onDuplicateOrder }) {
                       <Chip 
                         label={order.status || 'pending'} 
                         size="small" 
-                        color={getStatusColor(order.status)}
+                        color={getHistoryStatusColor(order.status)}
                       />
                     </TableCell>
                     <TableCell>
                       <Chip 
                         label={getPaymentStatusLabel(order.paymentStatus)} 
                         size="small" 
-                        color={getPaymentColor(order.paymentStatus)}
+                        color={getHistoryPaymentColor(order.paymentStatus)}
                       />
                     </TableCell>
                     <TableCell align="right">
@@ -619,13 +658,13 @@ function OrderHistory({ onDuplicateOrder }) {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {formatDeliveryDate(order.expectedDeliveryDate)}
+                        {formatHistoryDeliveryDate(order.expectedDeliveryDate)}
                       </Typography>
                       {priority && (
                         <Chip 
                           label={priority.label} 
                           size="small" 
-                          color={getPriorityColor(priority)}
+                          color={getHistoryPriorityColor(priority)}
                           sx={{ mt: 0.5 }}
                         />
                       )}
