@@ -17,6 +17,7 @@ import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import HistoryIcon from '@mui/icons-material/History'
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
 import PreviewIcon from '@mui/icons-material/Preview'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
@@ -25,12 +26,16 @@ import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
 import OrderHistory from './components/OrderHistory'
 import SalesReport from './components/SalesReport'
+import PriorityDashboard from './components/PriorityDashboard'
+import PriorityNotificationPanel from './components/PriorityNotificationPanel'
 import Login from './components/Login'
 import { CurrencyProvider } from './contexts/CurrencyContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
 
 const TAB_ROUTES = [
+  { path: '/priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
   { path: '/orders/new', label: 'Create Order', icon: <AddShoppingCartIcon /> },
   { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
   { path: '/history', label: 'Order History', icon: <HistoryIcon /> },
@@ -118,10 +123,11 @@ function AppContent() {
   // Get current tab value based on path
   const getCurrentTabValue = () => {
     const path = location.pathname
-    if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 0
-    if (path.startsWith('/items')) return 1
-    if (path.startsWith('/history')) return 2
-    if (path.startsWith('/sales')) return 3
+    if (path.startsWith('/priority')) return 0
+    if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 1
+    if (path.startsWith('/items')) return 2
+    if (path.startsWith('/history')) return 3
+    if (path.startsWith('/sales')) return 4
     return 0
   }
 
@@ -174,6 +180,7 @@ function AppContent() {
             {isMobile ? 'OMS' : 'Order Management System'}
           </Typography>
           <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
+            {!guestMode && <PriorityNotificationPanel />}
             {guestMode && (
               <Chip 
                 icon={<PreviewIcon />} 
@@ -300,7 +307,18 @@ function AppContent() {
         <Routes>
           <Route 
             path="/" 
-            element={<Navigate to="/orders/new" replace />} 
+            element={<Navigate to="/priority" replace />} 
+          />
+          <Route 
+            path="/priority" 
+            element={
+              <PriorityDashboard 
+                onRefresh={() => {
+                  fetchOrders();
+                  setOrderHistoryKey(prev => prev + 1);
+                }}
+              />
+            } 
           />
           <Route 
             path="/orders/new" 
@@ -344,7 +362,7 @@ function AppContent() {
           {/* Catch-all route */}
           <Route 
             path="*" 
-            element={<Navigate to="/orders/new" replace />} 
+            element={<Navigate to="/priority" replace />} 
           />
         </Routes>
       </Container>
@@ -355,9 +373,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <CurrencyProvider>
-        <AppContent />
-      </CurrencyProvider>
+      <NotificationProvider>
+        <CurrencyProvider>
+          <AppContent />
+        </CurrencyProvider>
+      </NotificationProvider>
     </AuthProvider>
   )
 }
