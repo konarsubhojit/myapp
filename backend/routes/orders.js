@@ -355,7 +355,7 @@ router.get('/:id', async (req, res) => {
  * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
  */
 async function validateUpdateRequest(requestBody) {
-  const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
+  const { customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
 
   const notesValidation = validateUpdateCustomerNotes(customerNotes);
   if (!notesValidation.valid) return notesValidation;

@@ -116,8 +116,8 @@ const orderMatchesFilters = (order, filters) => {
  */
 const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
   if (sortKey === 'totalPrice') {
-    aValue = parseFloat(aValue);
-    bValue = parseFloat(bValue);
+    aValue = Number.parseFloat(aValue);
+    bValue = Number.parseFloat(bValue);
   } else if (sortKey === 'createdAt' || sortKey === 'expectedDeliveryDate') {
     // Handle null values - nulls go last for ascending, first for descending
     if (!aValue && !bValue) return 0;

@@ -77,7 +77,11 @@ const compressImage = async (file) => {
   return fileToBase64(compressedFile);
 };
 
-// Helper to validate image file
+/**
+ * Validates an image file for size and type
+ * @param {File} file - The file to validate
+ * @returns {Object} - Returns {valid: true} or {valid: false, error: string}
+ */
 const validateImageFile = (file) => {
   if (!file.type.startsWith('image/')) {
     return { valid: false, error: 'Please select a valid image file' };
