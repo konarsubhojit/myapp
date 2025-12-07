@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigation } from '../contexts/NavigationContext';
+import { VIEWS } from '../constants/navigationConstants';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -20,7 +21,6 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { getPriorityOrders } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getPriorityStatus } from '../utils/priorityUtils';
-import OrderDetails from './OrderDetails';
 
 /**
  * Calculate effective priority score for sorting
@@ -101,13 +101,12 @@ function formatDate(dateString) {
   });
 }
 
-function PriorityDashboard({ onRefresh }) {
+function PriorityDashboard() {
   const { formatPrice } = useCurrency();
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const fetchPriorityOrders = useCallback(async () => {
     setLoading(true);
@@ -137,19 +136,10 @@ function PriorityDashboard({ onRefresh }) {
   }, [fetchPriorityOrders]);
 
   const handleOrderClick = (orderId) => {
-    setSelectedOrderId(orderId);
+    navigateTo(VIEWS.ORDER_DETAILS, { orderId });
   };
 
-  const handleCloseDetails = () => {
-    setSelectedOrderId(null);
-  };
 
-  const handleOrderUpdated = () => {
-    fetchPriorityOrders();
-    if (onRefresh) {
-      onRefresh();
-    }
-  };
 
   if (loading) {
     return (
@@ -357,14 +347,6 @@ function PriorityDashboard({ onRefresh }) {
         </Stack>
       )}
 
-      {selectedOrderId && (
-        <OrderDetails 
-          orderId={selectedOrderId} 
-          onClose={handleCloseDetails}
-          onOrderUpdated={handleOrderUpdated}
-          onDuplicateOrder={(orderId) => navigate(`/orders/duplicate/${orderId}`)}
-        />
-      )}
     </Paper>
   );
 }
