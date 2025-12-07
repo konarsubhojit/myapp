@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -12,14 +11,13 @@ import Pagination from '@mui/material/Pagination';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useOrderPagination } from '../hooks/useOrderPagination';
 import { useOrderFilters } from '../hooks/useOrderFilters';
-import OrderDetails from './OrderDetails';
 import OrderHistoryFilters from './common/OrderHistoryFilters';
 import OrderHistoryTable from './common/OrderHistoryTable';
 import PriorityLegend from './common/PriorityLegend';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function OrderHistory({ onDuplicateOrder }) {
+function OrderHistory({ onOrderClick, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   
   // Use pagination hook
@@ -43,16 +41,6 @@ function OrderHistory({ onDuplicateOrder }) {
     handleClearFilters,
     handleSort,
   } = useOrderFilters(orders);
-  
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-
-  const handleOrderClick = (orderId) => {
-    setSelectedOrderId(orderId);
-  };
-
-  const handleCloseDetails = () => {
-    setSelectedOrderId(null);
-  };
 
   if (initialLoading) {
     return (
@@ -120,7 +108,7 @@ function OrderHistory({ onDuplicateOrder }) {
           sortConfig={sortConfig}
           formatPrice={formatPrice}
           onSort={handleSort}
-          onOrderClick={handleOrderClick}
+          onOrderClick={onOrderClick}
         />
       )}
 
@@ -138,15 +126,6 @@ function OrderHistory({ onDuplicateOrder }) {
           Page {pagination.page} of {pagination.totalPages}
         </Typography>
       </Box>
-
-      {selectedOrderId && (
-        <OrderDetails 
-          orderId={selectedOrderId} 
-          onClose={handleCloseDetails}
-          onOrderUpdated={() => fetchOrders(pagination.page, pagination.limit)}
-          onDuplicateOrder={onDuplicateOrder}
-        />
-      )}
     </Paper>
   );
 }

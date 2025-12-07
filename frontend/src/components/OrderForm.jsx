@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -46,11 +46,9 @@ const formatItemDisplayName = (item) => {
   return item.name;
 };
 
-function OrderForm({ items, onOrderCreated }) {
+function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
-  const { orderId: duplicateOrderId } = useParams();
-  const navigate = useNavigate();
   const [orderFrom, setOrderFrom] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
@@ -226,7 +224,6 @@ function OrderForm({ items, onOrderCreated }) {
       
       // Navigate back to /orders/new if we were duplicating
       if (duplicateOrderId) {
-        navigate('/orders/new', { replace: true });
       }
     } catch (err) {
       setError(err.message);
@@ -238,7 +235,6 @@ function OrderForm({ items, onOrderCreated }) {
 
   const handleCancelDuplicate = () => {
     resetForm();
-    navigate('/orders/new', { replace: true });
   };
 
   const estimatedTotal = calculateTotal();
