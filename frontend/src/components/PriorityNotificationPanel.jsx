@@ -125,7 +125,7 @@ function PriorityNotificationPanel() {
     setOpen(!open);
   };
 
-  const handleOrderClick = (orderId) => {
+  const handleOrderClick = () => {
     setOpen(false);
     navigate('/priority');
   };
