@@ -30,7 +30,6 @@ describe('CurrencySelector', () => {
 
   it('should display all currency options', () => {
     render(<CurrencySelector />);
-    const select = screen.getByLabelText('Currency:');
     
     expect(screen.getByRole('option', { name: '$ USD' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: '€ EUR' })).toBeInTheDocument();

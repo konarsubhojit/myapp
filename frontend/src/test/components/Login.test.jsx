@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 vi.mock('../../contexts/AuthContext');
 vi.mock('@react-oauth/google', () => ({
-  GoogleLogin: ({ onSuccess, onError }) => (
+  GoogleLogin: ({ onSuccess }) => (
     <button 
       onClick={() => onSuccess({ credential: 'test-token' })}
       data-testid="google-login"

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useOrderDetails } from '../../hooks/useOrderDetails';
 import * as api from '../../services/api';
 
