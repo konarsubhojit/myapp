@@ -1,0 +1,429 @@
+const request = require('supertest');
+const express = require('express');
+const orderRoutes = require('../../routes/orders');
+const Order = require('../../models/Order');
+const Item = require('../../models/Item');
+
+// Mock dependencies
+jest.mock('../../models/Order');
+jest.mock('../../models/Item');
+jest.mock('../../utils/logger', () => ({
+  createLogger: () => ({
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  }),
+}));
+
+const app = express();
+app.use(express.json());
+app.use('/api/orders', orderRoutes);
+
+describe('Orders Routes', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('GET /api/orders', () => {
+    it('should return all orders without pagination', async () => {
+      const mockOrders = [
+        {
+          _id: 1,
+          orderId: 'ORD123456',
+          customerName: 'John Doe',
+          totalPrice: 100.0,
+          items: [],
+        },
+      ];
+
+      Order.find.mockResolvedValue(mockOrders);
+
+      const response = await request(app).get('/api/orders');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0].orderId).toBe('ORD123456');
+    });
+
+    it('should return paginated orders when pagination params provided', async () => {
+      const mockResult = {
+        orders: [
+          { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0 },
+        ],
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      };
+
+      Order.findPaginated.mockResolvedValue(mockResult);
+
+      const response = await request(app).get('/api/orders?page=1&limit=10');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('orders');
+      expect(response.body).toHaveProperty('pagination');
+    });
+
+    it('should handle database errors', async () => {
+      Order.find.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app).get('/api/orders');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Failed to fetch orders');
+    });
+  });
+
+  describe('POST /api/orders', () => {
+    beforeEach(() => {
+      Item.findById.mockResolvedValue({
+        _id: 1,
+        name: 'Test Item',
+        price: 50.0,
+      });
+    });
+
+    it('should create a new order', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 2 }],
+      };
+
+      const mockCreatedOrder = {
+        _id: 1,
+        orderId: 'ORD654321',
+        ...orderData,
+        totalPrice: 100.0,
+        items: [{ item: 1, name: 'Test Item', price: 50.0, quantity: 2 }],
+      };
+
+      Order.create.mockResolvedValue(mockCreatedOrder);
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('orderId', 'ORD654321');
+      expect(response.body.totalPrice).toBe(100.0);
+    });
+
+    it('should return 400 when orderFrom is missing', async () => {
+      const orderData = {
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 2 }],
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Order source, customer name, and customer ID are required');
+    });
+
+    it('should return 400 when customerName is missing', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 2 }],
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Order source, customer name, and customer ID are required');
+    });
+
+    it('should return 400 when items array is empty', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [],
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('At least one item is required');
+    });
+
+    it('should return 400 when item not found', async () => {
+      Item.findById.mockResolvedValue(null);
+
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 999, quantity: 1 }],
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Item with id 999 not found');
+    });
+
+    it('should return 400 when quantity is invalid', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 0 }],
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Quantity must be a positive integer');
+    });
+
+    it('should return 400 when expected delivery date is in the past', async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 1);
+
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+        expectedDeliveryDate: pastDate.toISOString(),
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Expected delivery date cannot be in the past');
+    });
+
+    it('should return 400 when paid amount exceeds total price', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+        paidAmount: 100,
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Paid amount cannot exceed total price');
+    });
+
+    it('should return 400 for invalid payment status', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+        paymentStatus: 'invalid_status',
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Invalid payment status');
+    });
+
+    it('should return 400 when priority is out of range', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+        priority: 100,
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Priority must be a number');
+    });
+
+    it('should return 400 when customer notes exceed max length', async () => {
+      const longNotes = 'a'.repeat(5001);
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+        customerNotes: longNotes,
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Customer notes cannot exceed');
+    });
+
+    it('should handle database errors', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 1 }],
+      };
+
+      Order.create.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Failed to create order');
+    });
+  });
+
+  describe('GET /api/orders/:id', () => {
+    it('should return order by ID', async () => {
+      const mockOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        customerName: 'John Doe',
+        totalPrice: 100.0,
+        items: [],
+      };
+
+      Order.findById.mockResolvedValue(mockOrder);
+
+      const response = await request(app).get('/api/orders/1');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('orderId', 'ORD123456');
+    });
+
+    it('should return 404 when order not found', async () => {
+      Order.findById.mockResolvedValue(null);
+
+      const response = await request(app).get('/api/orders/999');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Order not found');
+    });
+
+    it('should handle database errors', async () => {
+      Order.findById.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app).get('/api/orders/1');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Failed to fetch order');
+    });
+  });
+
+  describe('PUT /api/orders/:id', () => {
+    beforeEach(() => {
+      Order.findById.mockResolvedValue({
+        _id: 1,
+        orderId: 'ORD123456',
+        totalPrice: 100.0,
+      });
+
+      Item.findById.mockResolvedValue({
+        _id: 1,
+        name: 'Test Item',
+        price: 50.0,
+      });
+    });
+
+    it('should update an order', async () => {
+      const updateData = {
+        customerName: 'Updated Name',
+        status: 'completed',
+      };
+
+      const mockUpdatedOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        customerName: 'Updated Name',
+        status: 'completed',
+        totalPrice: 100.0,
+      };
+
+      Order.findByIdAndUpdate.mockResolvedValue(mockUpdatedOrder);
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.customerName).toBe('Updated Name');
+      expect(response.body.status).toBe('completed');
+    });
+
+    it('should return 400 when customerName is empty', async () => {
+      const updateData = { customerName: '   ' };
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Customer name cannot be empty');
+    });
+
+    it('should return 400 for invalid status', async () => {
+      const updateData = { status: 'invalid_status' };
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Invalid status');
+    });
+
+    it('should return 404 when order not found for paid amount validation', async () => {
+      Order.findById.mockResolvedValue(null);
+
+      const updateData = { paidAmount: 50 };
+
+      const response = await request(app).put('/api/orders/999').send(updateData);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Order not found');
+    });
+
+    it('should return 400 when paid amount exceeds total price', async () => {
+      const updateData = { paidAmount: 200 };
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Paid amount cannot exceed total price');
+    });
+
+    it('should update order items', async () => {
+      const updateData = {
+        items: [{ itemId: 1, quantity: 3 }],
+      };
+
+      const mockUpdatedOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        totalPrice: 150.0,
+        items: [{ item: 1, name: 'Test Item', price: 50.0, quantity: 3 }],
+      };
+
+      Order.findByIdAndUpdate.mockResolvedValue(mockUpdatedOrder);
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.totalPrice).toBe(150.0);
+    });
+
+    it('should return 404 when order not found during update', async () => {
+      const updateData = { customerName: 'Updated Name' };
+      Order.findByIdAndUpdate.mockResolvedValue(null);
+
+      const response = await request(app).put('/api/orders/999').send(updateData);
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('message', 'Order not found');
+    });
+
+    it('should handle database errors', async () => {
+      const updateData = { customerName: 'Updated Name' };
+      Order.findByIdAndUpdate.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Failed to update order');
+    });
+  });
+});
