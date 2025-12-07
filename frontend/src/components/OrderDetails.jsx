@@ -7,22 +7,11 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
-import Grid from '@mui/material/Grid2';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -32,13 +21,10 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useOrderDetails } from '../hooks/useOrderDetails';
 import { getPriorityStatus } from '../utils/priorityUtils';
-import {
-  ORDER_SOURCES,
-  ORDER_STATUSES,
-  PAYMENT_STATUSES,
-  CONFIRMATION_STATUSES,
-  PRIORITY_LEVELS,
-} from '../constants/orderConstants';
+import CustomerInfoSection from './common/CustomerInfoSection';
+import OrderInfoSection from './common/OrderInfoSection';
+import PaymentInfoSection from './common/PaymentInfoSection';
+import OrderItemsTable from './common/OrderItemsTable';
 
 /**
  * Gets the color for order status chips
@@ -62,32 +48,6 @@ const getOrderPriorityColor = (priorityData) => {
   if (priorityData.className.includes('due-today')) return 'warning';
   if (priorityData.className.includes('urgent')) return 'warning';
   return 'success';
-};
-
-/**
- * Formats date for display in order details
- */
-const formatOrderDate = (dateString) => {
-  if (!dateString) return 'Not set';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
-/**
- * Formats delivery date for display
- */
-const formatOrderDeliveryDate = (dateString) => {
-  if (!dateString) return 'Not set';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
 };
 
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
@@ -197,149 +157,24 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
             {isEditing ? (
               <Box component="form" id="order-edit-form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
                 <Stack spacing={3}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Customer Information
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                          label="Customer Name"
-                          value={editForm.customerName}
-                          onChange={(e) => handleEditChange('customerName', e.target.value)}
-                          fullWidth
-                          required
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                          label="Customer ID"
-                          value={editForm.customerId}
-                          onChange={(e) => handleEditChange('customerId', e.target.value)}
-                          fullWidth
-                          required
-                        />
-                      </Grid>
-                    </Grid>
-                  </Box>
+                  <CustomerInfoSection
+                    isEditing={true}
+                    data={editForm}
+                    onDataChange={handleEditChange}
+                  />
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Order Information
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Order Source</InputLabel>
-                          <Select
-                            value={editForm.orderFrom}
-                            label="Order Source"
-                            onChange={(e) => handleEditChange('orderFrom', e.target.value)}
-                          >
-                            {ORDER_SOURCES.map(source => (
-                              <MenuItem key={source.value} value={source.value}>
-                                {source.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Status</InputLabel>
-                          <Select
-                            value={editForm.status}
-                            label="Status"
-                            onChange={(e) => handleEditChange('status', e.target.value)}
-                          >
-                            {ORDER_STATUSES.map(status => (
-                              <MenuItem key={status.value} value={status.value}>
-                                {status.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Confirmation Status</InputLabel>
-                          <Select
-                            value={editForm.confirmationStatus}
-                            label="Confirmation Status"
-                            onChange={(e) => handleEditChange('confirmationStatus', e.target.value)}
-                          >
-                            {CONFIRMATION_STATUSES.map(status => (
-                              <MenuItem key={status.value} value={status.value}>
-                                {status.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <TextField
-                          label="Expected Delivery Date"
-                          type="date"
-                          value={editForm.expectedDeliveryDate}
-                          onChange={(e) => handleEditChange('expectedDeliveryDate', e.target.value)}
-                          slotProps={{ inputLabel: { shrink: true } }}
-                          fullWidth
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Priority Level</InputLabel>
-                          <Select
-                            value={editForm.priority}
-                            label="Priority Level"
-                            onChange={(e) => handleEditChange('priority', Number.parseInt(e.target.value, 10))}
-                          >
-                            {PRIORITY_LEVELS.map(level => (
-                              <MenuItem key={level.value} value={level.value}>
-                                {level.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    </Grid>
-                  </Box>
+                  <OrderInfoSection
+                    isEditing={true}
+                    data={editForm}
+                    onDataChange={handleEditChange}
+                  />
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                      Payment Information
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
-                          <InputLabel>Payment Status</InputLabel>
-                          <Select
-                            value={editForm.paymentStatus}
-                            label="Payment Status"
-                            onChange={(e) => handleEditChange('paymentStatus', e.target.value)}
-                          >
-                            {PAYMENT_STATUSES.map(status => (
-                              <MenuItem key={status.value} value={status.value}>
-                                {status.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      {editForm.paymentStatus === 'partially_paid' && (
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                          <TextField
-                            label="Amount Paid"
-                            type="number"
-                            inputProps={{ min: 0, step: 0.01 }}
-                            value={editForm.paidAmount}
-                            onChange={(e) => handleEditChange('paidAmount', e.target.value)}
-                            fullWidth
-                          />
-                        </Grid>
-                      )}
-                    </Grid>
-                  </Box>
+                  <PaymentInfoSection
+                    isEditing={true}
+                    data={editForm}
+                    formatPrice={formatPrice}
+                    onDataChange={handleEditChange}
+                  />
 
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -358,93 +193,26 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
               </Box>
             ) : (
               <Stack spacing={3}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Customer Information
-                  </Typography>
-                  <Grid container spacing={1}>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Name:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2">{order.customerName}</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Customer ID:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2">{order.customerId}</Typography></Grid>
-                  </Grid>
-                </Box>
+                <CustomerInfoSection
+                  isEditing={false}
+                  data={order}
+                />
 
                 <Divider />
 
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Order Information
-                  </Typography>
-                  <Grid container spacing={1} alignItems="center">
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Source:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Chip label={order.orderFrom} size="small" color="primary" /></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Status:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Chip label={order.status || 'Pending'} size="small" color={getOrderStatusColor(order.status)} /></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Confirmation:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Chip 
-                        label={CONFIRMATION_STATUSES.find(s => s.value === order.confirmationStatus)?.label || 'Unconfirmed'} 
-                        size="small" 
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Priority:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Chip 
-                        label={PRIORITY_LEVELS.find(l => l.value === (order.priority || 0))?.label || 'Normal'} 
-                        size="small" 
-                        variant="outlined"
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Created:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2">{formatOrderDate(order.createdAt)}</Typography></Grid>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Expected Delivery:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="body2">
-                        {formatOrderDeliveryDate(order.expectedDeliveryDate)}
-                        {priority && (
-                          <Chip 
-                            label={priority.label} 
-                            size="small" 
-                            color={getOrderPriorityColor(priority)}
-                            sx={{ ml: 1 }}
-                          />
-                        )}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Box>
+                <OrderInfoSection
+                  isEditing={false}
+                  data={order}
+                  priority={priority}
+                />
 
                 <Divider />
 
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Payment Information
-                  </Typography>
-                  <Grid container spacing={1}>
-                    <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Payment Status:</Typography></Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Chip 
-                        label={PAYMENT_STATUSES.find(s => s.value === order.paymentStatus)?.label || 'Unpaid'} 
-                        size="small"
-                        color={order.paymentStatus === 'paid' ? 'success' : order.paymentStatus === 'partially_paid' ? 'warning' : 'default'}
-                      />
-                    </Grid>
-                    {order.paymentStatus === 'partially_paid' && (
-                      <>
-                        <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Amount Paid:</Typography></Grid>
-                        <Grid size={{ xs: 6 }}><Typography variant="body2">{formatPrice(order.paidAmount || 0)}</Typography></Grid>
-                      </>
-                    )}
-                    {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'partially_paid') && (
-                      <>
-                        <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Balance Due:</Typography></Grid>
-                        <Grid size={{ xs: 6 }}><Typography variant="body2" fontWeight={600} color="error.main">{formatPrice(order.totalPrice - (order.paidAmount || 0))}</Typography></Grid>
-                      </>
-                    )}
-                  </Grid>
-                </Box>
+                <PaymentInfoSection
+                  isEditing={false}
+                  data={order}
+                  formatPrice={formatPrice}
+                />
 
                 {order.customerNotes && (
                   <>
@@ -462,50 +230,10 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
 
                 <Divider />
 
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Order Items
-                  </Typography>
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Item</TableCell>
-                          <TableCell align="right">Price</TableCell>
-                          <TableCell align="right">Qty</TableCell>
-                          <TableCell align="right">Subtotal</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {order.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <Typography variant="body2">{item.name}</Typography>
-                              {item.customizationRequest && (
-                                <Typography variant="caption" color="info.main" fontStyle="italic">
-                                  Customization: {item.customizationRequest}
-                                </Typography>
-                              )}
-                            </TableCell>
-                            <TableCell align="right">{formatPrice(item.price)}</TableCell>
-                            <TableCell align="right">{item.quantity}</TableCell>
-                            <TableCell align="right">{formatPrice(item.price * item.quantity)}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow>
-                          <TableCell colSpan={3} align="right">
-                            <Typography variant="subtitle2">Total:</Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography variant="subtitle1" fontWeight={600} color="primary.main">
-                              {formatPrice(order.totalPrice)}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
+                <OrderItemsTable
+                  items={order.items}
+                  formatPrice={formatPrice}
+                />
               </Stack>
             )}
           </>

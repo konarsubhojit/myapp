@@ -7,36 +7,24 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
-import CardActions from '@mui/material/CardActions';
 import Grid from '@mui/material/Grid2';
-import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import Pagination from '@mui/material/Pagination';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Collapse from '@mui/material/Collapse';
 import InputAdornment from '@mui/material/InputAdornment';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import RestoreIcon from '@mui/icons-material/Restore';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import CloseIcon from '@mui/icons-material/Close';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
-import ImageIcon from '@mui/icons-material/Image';
 import { createItem, deleteItem, updateItem, restoreItem, permanentlyDeleteItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -45,51 +33,9 @@ import { useItemForm } from '../hooks/useItemForm';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { useItemsData } from '../hooks/useItemsData';
 import { useDeletedItems } from '../hooks/useDeletedItems';
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-// Renders pagination controls for item lists
-const renderPaginationControls = (paginationData, onPageChange, onLimitChange) => (
-  <Box 
-    sx={{ 
-      display: 'flex', 
-      justifyContent: 'space-between', 
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 2,
-      mt: 2,
-      p: 2,
-      bgcolor: 'grey.50',
-      borderRadius: 2,
-    }}
-  >
-    <FormControl size="small" sx={{ minWidth: 100 }}>
-      <InputLabel id="page-size-label">Per page</InputLabel>
-      <Select
-        labelId="page-size-label"
-        value={paginationData.limit}
-        label="Per page"
-        onChange={(e) => onLimitChange(parseInt(e.target.value, 10))}
-      >
-        {PAGE_SIZE_OPTIONS.map(size => (
-          <MenuItem key={size} value={size}>{size}</MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-    <Typography variant="body2" color="text.secondary">
-      Page {paginationData.page} of {paginationData.totalPages || 1} ({paginationData.total} items)
-    </Typography>
-    <Pagination
-      count={paginationData.totalPages || 1}
-      page={paginationData.page}
-      onChange={(event, page) => onPageChange(page)}
-      color="primary"
-      showFirstButton
-      showLastButton
-      size="small"
-    />
-  </Box>
-);
+import PaginationControls from './common/PaginationControls';
+import ImageUploadField from './common/ImageUploadField';
+import ItemCard from './common/ItemCard';
 
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
@@ -499,58 +445,13 @@ function ItemPanel({ onItemsChange }) {
           </Grid>
 
           <Grid size={{ xs: 12 }}>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Item Image (Max size: 5MB, auto-compressed)
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={imageProcessing ? <CircularProgress size={16} /> : <ImageIcon />}
-                disabled={imageProcessing}
-              >
-                {imageProcessing ? 'Processing...' : 'Upload Image'}
-                <input
-                  id="itemImage"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  hidden
-                />
-              </Button>
-              {imagePreview && (
-                <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                  <Box
-                    component="img"
-                    src={imagePreview}
-                    alt="Preview"
-                    sx={{ 
-                      width: 80, 
-                      height: 80, 
-                      objectFit: 'cover', 
-                      borderRadius: 1,
-                      border: '2px solid',
-                      borderColor: 'grey.300',
-                    }}
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={clearImage}
-                    sx={{
-                      position: 'absolute',
-                      top: -8,
-                      right: -8,
-                      bgcolor: 'error.main',
-                      color: 'white',
-                      '&:hover': { bgcolor: 'error.dark' },
-                    }}
-                    aria-label="Remove image"
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              )}
-            </Box>
+            <ImageUploadField
+              id="itemImage"
+              imagePreview={imagePreview}
+              imageProcessing={imageProcessing}
+              onImageChange={handleImageChange}
+              onClearImage={clearImage}
+            />
           </Grid>
         </Grid>
         
@@ -636,80 +537,21 @@ function ItemPanel({ onItemsChange }) {
             <Grid container spacing={2}>
               {activeItems.map((item) => (
                 <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item._id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {item.imageUrl ? (
-                      <CardMedia
-                        component="img"
-                        height="140"
-                        image={item.imageUrl}
-                        alt={item.name}
-                        sx={{ objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <Box 
-                        sx={{ 
-                          height: 140, 
-                          bgcolor: 'grey.100', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center' 
-                        }}
-                      >
-                        <ImageIcon sx={{ fontSize: 48, color: 'grey.400' }} />
-                      </Box>
-                    )}
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="h6" color="primary" gutterBottom>
-                        {formatPrice(item.price)}
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                        {item.color && <Chip label={item.color} size="small" variant="outlined" />}
-                        {item.fabric && <Chip label={item.fabric} size="small" variant="outlined" />}
-                      </Stack>
-                      {item.specialFeatures && (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {item.specialFeatures}
-                        </Typography>
-                      )}
-                    </CardContent>
-                    <CardActions sx={{ justifyContent: 'flex-end', p: 1.5 }}>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleCopy(item)}
-                        title="Copy this item to create a variant"
-                        aria-label={`Copy ${item.name}`}
-                      >
-                        <ContentCopyIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        color="primary"
-                        onClick={() => handleEdit(item)}
-                        aria-label={`Edit ${item.name}`}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        color="error"
-                        onClick={() => handleDelete(item._id, item.name)}
-                        aria-label={`Delete ${item.name}`}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </CardActions>
-                  </Card>
+                  <ItemCard
+                    item={item}
+                    formatPrice={formatPrice}
+                    onCopy={handleCopy}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 </Grid>
               ))}
             </Grid>
-            {renderPaginationControls(
-              activePaginationData,
-              handleActivePageChange,
-              handleActiveLimitChange
-            )}
+            <PaginationControls
+              paginationData={activePaginationData}
+              onPageChange={handleActivePageChange}
+              onLimitChange={handleActiveLimitChange}
+            />
           </>
         )}
       </Box>
@@ -809,11 +651,11 @@ function ItemPanel({ onItemsChange }) {
                   </Card>
                 ))}
               </Stack>
-              {renderPaginationControls(
-                deletedPaginationData,
-                handleDeletedPageChange,
-                handleDeletedLimitChange
-              )}
+              <PaginationControls
+                paginationData={deletedPaginationData}
+                onPageChange={handleDeletedPageChange}
+                onLimitChange={handleDeletedLimitChange}
+              />
             </>
           )}
         </Paper>
@@ -887,58 +729,13 @@ function ItemPanel({ onItemsChange }) {
                 />
 
                 <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Item Image (Max size: 5MB, auto-compressed)
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                      startIcon={editImageProcessing ? <CircularProgress size={16} /> : <ImageIcon />}
-                      disabled={editImageProcessing}
-                    >
-                      {editImageProcessing ? 'Processing...' : 'Upload Image'}
-                      <input
-                        id="editItemImage"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleEditImageChange}
-                        hidden
-                      />
-                    </Button>
-                    {editImagePreview && (
-                      <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                        <Box
-                          component="img"
-                          src={editImagePreview}
-                          alt="Preview"
-                          sx={{ 
-                            width: 80, 
-                            height: 80, 
-                            objectFit: 'cover', 
-                            borderRadius: 1,
-                            border: '2px solid',
-                            borderColor: 'grey.300',
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={clearEditImageWrapper}
-                          sx={{
-                            position: 'absolute',
-                            top: -8,
-                            right: -8,
-                            bgcolor: 'error.main',
-                            color: 'white',
-                            '&:hover': { bgcolor: 'error.dark' },
-                          }}
-                          aria-label="Remove image"
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    )}
-                  </Box>
+                  <ImageUploadField
+                    id="editItemImage"
+                    imagePreview={editImagePreview}
+                    imageProcessing={editImageProcessing}
+                    onImageChange={handleEditImageChange}
+                    onClearImage={clearEditImageWrapper}
+                  />
                 </Box>
                 
                 {error && (
