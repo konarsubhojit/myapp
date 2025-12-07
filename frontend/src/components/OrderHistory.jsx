@@ -83,14 +83,14 @@ const parseUrlParams = (searchParams) => {
 
 // Helper function to check if order matches filters
 const orderMatchesFilters = (order, filters) => {
-  const matchesCustomerName = order.customerName
+  const matchesCustomerName = (order.customerName || '')
     .toLowerCase()
     .includes(filters.customerName.toLowerCase());
-  const matchesCustomerId = order.customerId
+  const matchesCustomerId = (order.customerId || '')
     .toLowerCase()
     .includes(filters.customerId.toLowerCase());
   const matchesOrderFrom = !filters.orderFrom || order.orderFrom === filters.orderFrom;
-  const matchesOrderId = order.orderId
+  const matchesOrderId = (order.orderId || '')
     .toLowerCase()
     .includes(filters.orderId.toLowerCase());
   const matchesConfirmationStatus = !filters.confirmationStatus || order.confirmationStatus === filters.confirmationStatus;
