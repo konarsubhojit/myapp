@@ -148,13 +148,13 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for better SonarQube analysis
 
       - name: Download backend coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.8
         with:
           name: backend-coverage
           path: backend/coverage
 
       - name: Download frontend coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.1.8
         with:
           name: frontend-coverage
           path: frontend/coverage
