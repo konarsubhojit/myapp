@@ -78,25 +78,29 @@ function OrderHistory({ onDuplicateOrder }) {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       
       <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Priority Indicators:
+        <Typography variant="body2" fontWeight={600} color="text.secondary" gutterBottom>
+          Priority Indicators (Based on 1-2 week standard production time):
         </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Chip label="Overdue" color="error" size="small" />
-            <Typography variant="caption" color="text.secondary">Past</Typography>
+            <Chip label="🔴 Overdue" color="error" size="small" />
+            <Typography variant="caption" color="text.secondary">Past due</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Chip label="Due Today" color="warning" size="small" />
-            <Typography variant="caption" color="text.secondary">Today</Typography>
+            <Chip label="🔴 Critical" color="error" size="small" variant="outlined" />
+            <Typography variant="caption" color="text.secondary">≤3 days</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Chip label="1-3d" color="warning" variant="outlined" size="small" />
-            <Typography variant="caption" color="text.secondary">Soon</Typography>
+            <Chip label="🟠 Urgent" color="warning" size="small" />
+            <Typography variant="caption" color="text.secondary">4-7 days</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Chip label="Normal" color="success" size="small" />
-            <Typography variant="caption" color="text.secondary">Later</Typography>
+            <Chip label="🔵 Medium" color="info" size="small" />
+            <Typography variant="caption" color="text.secondary">8-14 days</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Chip label="🟢 Normal" color="success" size="small" />
+            <Typography variant="caption" color="text.secondary">&gt;14 days</Typography>
           </Box>
         </Box>
       </Box>

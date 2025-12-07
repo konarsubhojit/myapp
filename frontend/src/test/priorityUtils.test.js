@@ -15,111 +15,202 @@ describe('Priority Utils', () => {
 
     it('should return overdue status for past dates', () => {
       const pastDate = new Date();
-      pastDate.setDate(pastDate.getDate() - 1);
+      pastDate.setDate(pastDate.getDate() - 2);
 
       const result = getPriorityStatus(pastDate);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         status: 'overdue',
-        label: 'Overdue',
+        label: 'Overdue by 2 days',
         className: 'priority-overdue',
+        level: 'critical',
+        icon: '🔴',
       });
     });
 
-    it('should return due-today status for today', () => {
+    it('should return critical status for today', () => {
       const today = new Date();
 
       const result = getPriorityStatus(today);
 
-      expect(result).toEqual({
-        status: 'due-today',
+      expect(result).toMatchObject({
+        status: 'critical',
         label: 'Due Today',
-        className: 'priority-due-today',
+        className: 'priority-critical',
+        level: 'critical',
+        icon: '🔴',
       });
     });
 
-    it('should return urgent status for delivery in 1 day', () => {
+    it('should return critical status for delivery in 1 day', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const result = getPriorityStatus(tomorrow);
 
-      expect(result).toEqual({
-        status: 'urgent',
+      expect(result).toMatchObject({
+        status: 'critical',
         label: 'Due in 1 day',
-        className: 'priority-urgent',
+        className: 'priority-critical',
+        level: 'critical',
+        icon: '🔴',
       });
     });
 
-    it('should return urgent status for delivery in 2 days', () => {
-      const twoDays = new Date();
-      twoDays.setDate(twoDays.getDate() + 2);
-
-      const result = getPriorityStatus(twoDays);
-
-      expect(result).toEqual({
-        status: 'urgent',
-        label: 'Due in 2 days',
-        className: 'priority-urgent',
-      });
-    });
-
-    it('should return urgent status for delivery in 3 days', () => {
+    it('should return critical status for delivery in 3 days', () => {
       const threeDays = new Date();
       threeDays.setDate(threeDays.getDate() + 3);
 
       const result = getPriorityStatus(threeDays);
 
-      expect(result).toEqual({
-        status: 'urgent',
+      expect(result).toMatchObject({
+        status: 'critical',
         label: 'Due in 3 days',
-        className: 'priority-urgent',
+        className: 'priority-critical',
+        level: 'critical',
+        icon: '🔴',
       });
     });
 
-    it('should return normal status for delivery beyond 3 days', () => {
+    it('should return urgent status for delivery in 5 days', () => {
       const fiveDays = new Date();
       fiveDays.setDate(fiveDays.getDate() + 5);
 
       const result = getPriorityStatus(fiveDays);
 
-      expect(result).toEqual({
-        status: 'normal',
+      expect(result).toMatchObject({
+        status: 'urgent',
         label: 'Due in 5 days',
-        className: 'priority-normal',
+        className: 'priority-urgent',
+        level: 'urgent',
+        icon: '🟠',
       });
     });
 
-    it('should return short label when shortLabels option is true', () => {
+    it('should return urgent status for delivery in 7 days', () => {
+      const sevenDays = new Date();
+      sevenDays.setDate(sevenDays.getDate() + 7);
+
+      const result = getPriorityStatus(sevenDays);
+
+      expect(result).toMatchObject({
+        status: 'urgent',
+        label: 'Due in 7 days',
+        className: 'priority-urgent',
+        level: 'urgent',
+        icon: '🟠',
+      });
+    });
+
+    it('should return medium status for delivery in 10 days', () => {
+      const tenDays = new Date();
+      tenDays.setDate(tenDays.getDate() + 10);
+
+      const result = getPriorityStatus(tenDays);
+
+      expect(result).toMatchObject({
+        status: 'medium',
+        label: 'Due in 10 days',
+        className: 'priority-medium',
+        level: 'medium',
+        icon: '🔵',
+      });
+    });
+
+    it('should return medium status for delivery in 14 days', () => {
+      const fourteenDays = new Date();
+      fourteenDays.setDate(fourteenDays.getDate() + 14);
+
+      const result = getPriorityStatus(fourteenDays);
+
+      expect(result).toMatchObject({
+        status: 'medium',
+        label: 'Due in 14 days',
+        className: 'priority-medium',
+        level: 'medium',
+        icon: '🔵',
+      });
+    });
+
+    it('should return normal status for delivery beyond 14 days', () => {
+      const twentyDays = new Date();
+      twentyDays.setDate(twentyDays.getDate() + 20);
+
+      const result = getPriorityStatus(twentyDays);
+
+      expect(result).toMatchObject({
+        status: 'normal',
+        label: 'Due in 20 days',
+        className: 'priority-normal',
+        level: 'normal',
+        icon: '🟢',
+      });
+    });
+
+    it('should return short label when shortLabels option is true for critical', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const result = getPriorityStatus(tomorrow, { shortLabels: true });
 
-      expect(result).toEqual({
-        status: 'urgent',
+      expect(result).toMatchObject({
+        status: 'critical',
         label: '1d',
-        className: 'priority-urgent',
+        className: 'priority-critical',
+        level: 'critical',
       });
     });
 
-    it('should return null for normal status when shortLabels is true', () => {
+    it('should return short label for urgent status', () => {
       const fiveDays = new Date();
       fiveDays.setDate(fiveDays.getDate() + 5);
 
       const result = getPriorityStatus(fiveDays, { shortLabels: true });
 
-      expect(result).toBeNull();
+      expect(result).toMatchObject({
+        status: 'urgent',
+        label: '5d',
+        className: 'priority-urgent',
+        level: 'urgent',
+      });
+    });
+
+    it('should return short label for medium status', () => {
+      const tenDays = new Date();
+      tenDays.setDate(tenDays.getDate() + 10);
+
+      const result = getPriorityStatus(tenDays, { shortLabels: true });
+
+      expect(result).toMatchObject({
+        status: 'medium',
+        label: '10d',
+        className: 'priority-medium',
+        level: 'medium',
+      });
+    });
+
+    it('should return short label for normal status', () => {
+      const twentyDays = new Date();
+      twentyDays.setDate(twentyDays.getDate() + 20);
+
+      const result = getPriorityStatus(twentyDays, { shortLabels: true });
+
+      expect(result).toMatchObject({
+        status: 'normal',
+        label: '20d',
+        className: 'priority-normal',
+        level: 'normal',
+      });
     });
 
     it('should handle date strings', () => {
       const today = new Date();
       const result = getPriorityStatus(today.toISOString());
 
-      expect(result).toEqual({
-        status: 'due-today',
+      expect(result).toMatchObject({
+        status: 'critical',
         label: 'Due Today',
-        className: 'priority-due-today',
+        className: 'priority-critical',
       });
     });
 
@@ -139,6 +230,33 @@ describe('Priority Utils', () => {
       const result = getPriorityStatus(oneDay);
 
       expect(result.label).toBe('Due in 1 day');
+    });
+
+    it('should show overdue days for past dates', () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 1);
+
+      const result = getPriorityStatus(pastDate);
+
+      expect(result.label).toBe('Overdue by 1 day');
+    });
+
+    it('should show overdue days plural for multiple past days', () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 5);
+
+      const result = getPriorityStatus(pastDate);
+
+      expect(result.label).toBe('Overdue by 5 days');
+    });
+
+    it('should show short overdue label', () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 3);
+
+      const result = getPriorityStatus(pastDate, { shortLabels: true });
+
+      expect(result.label).toBe('3d late');
     });
   });
 });

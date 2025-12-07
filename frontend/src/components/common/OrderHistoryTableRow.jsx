@@ -3,6 +3,7 @@ import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import { getPriorityStatus } from '../../utils/priorityUtils';
+import { getOrderPriorityColor } from '../../utils/orderUtils';
 import {
   getPaymentStatusLabel,
   getConfirmationStatusLabel,
@@ -31,17 +32,6 @@ const getHistoryStatusColor = (status) => {
     case 'cancelled': return 'error';
     default: return 'default';
   }
-};
-
-/**
- * Gets color for priority indicators
- */
-const getHistoryPriorityColor = (priorityData) => {
-  if (!priorityData) return 'default';
-  if (priorityData.className.includes('overdue')) return 'error';
-  if (priorityData.className.includes('due-today')) return 'warning';
-  if (priorityData.className.includes('urgent')) return 'warning';
-  return 'success';
 };
 
 /**
@@ -111,7 +101,7 @@ function OrderHistoryTableRow({ order, formatPrice, onClick }) {
           <Chip 
             label={priority.label} 
             size="small" 
-            color={getHistoryPriorityColor(priority)}
+            color={getOrderPriorityColor(priority)}
             sx={{ mt: 0.5 }}
           />
         )}

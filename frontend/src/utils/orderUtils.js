@@ -13,12 +13,32 @@ export const getOrderStatusColor = (status) => {
 
 /**
  * Gets the color for priority chips based on priority data
+ * Matches the redesigned priority calculation logic:
+ * 🔴 CRITICAL (overdue, critical): error
+ * 🟠 URGENT: warning
+ * 🔵 MEDIUM: info
+ * 🟢 NORMAL: success
  */
 export const getOrderPriorityColor = (priorityData) => {
   if (!priorityData) return 'default';
-  if (priorityData.className.includes('overdue')) return 'error';
-  if (priorityData.className.includes('due-today')) return 'warning';
-  if (priorityData.className.includes('urgent')) return 'warning';
+  
+  // Critical priority (overdue or ≤3 days)
+  if (priorityData.className.includes('overdue') || 
+      priorityData.className.includes('critical')) {
+    return 'error';
+  }
+  
+  // Urgent priority (4-7 days)
+  if (priorityData.className.includes('urgent')) {
+    return 'warning';
+  }
+  
+  // Medium priority (8-14 days)
+  if (priorityData.className.includes('medium')) {
+    return 'info';
+  }
+  
+  // Normal priority (>14 days)
   return 'success';
 };
 
