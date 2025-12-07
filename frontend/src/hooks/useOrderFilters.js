@@ -89,19 +89,13 @@ const compareOrderValues = (aValue, bValue, sortKey, sortDirection) => {
 /**
  * Custom hook for managing order filtering and sorting
  * @param {Array} orders - Array of orders to filter and sort
- * @param {Object} initialFilters - Initial filter state
- * @param {Object} initialSortConfig - Initial sort configuration
  * @returns {Object} - Filters, sorting state and handlers
  */
-export const useOrderFilters = (orders, initialFilters = {}, initialSortConfig = {}) => {
-  const [filters, setFilters] = useState({
-    ...createEmptyFilters(),
-    ...initialFilters
-  });
+export const useOrderFilters = (orders) => {
+  const [filters, setFilters] = useState(createEmptyFilters());
   const [sortConfig, setSortConfig] = useState({
     key: 'expectedDeliveryDate',
-    direction: 'asc',
-    ...initialSortConfig
+    direction: 'asc'
   });
 
   const handleFilterChange = (field, value) => {

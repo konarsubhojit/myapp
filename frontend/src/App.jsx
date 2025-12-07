@@ -134,13 +134,8 @@ function AppContent() {
     return <LoadingScreen message="Checking authentication..." />
   }
 
-  // Show login if not authenticated - store current path for redirect after login
+  // Show login if not authenticated
   if (!isAuthenticated) {
-    // Store the intended destination for deeplink support
-    const currentPath = location.pathname + location.search
-    if (currentPath !== '/' && currentPath !== '/orders/new') {
-      sessionStorage.setItem('redirectAfterLogin', currentPath)
-    }
     return <Login />
   }
 

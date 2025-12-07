@@ -4,31 +4,14 @@ import { getOrdersPaginated } from '../services/api';
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 /**
- * Parse URL params to initial state
- */
-const parseInitialState = (getIntParam) => {
-  const page = getIntParam('page', 1);
-  const limit = getIntParam('limit', 10);
-  
-  return {
-    page: page < 1 ? 1 : page,
-    limit: PAGE_SIZE_OPTIONS.includes(limit) ? limit : 10,
-  };
-};
-
-/**
  * Custom hook for managing order pagination and fetching
- * @param {Function} getIntParam - Function to get integer URL parameter
  * @returns {Object} - Orders data, pagination state and handlers
  */
-export const useOrderPagination = (getIntParam) => {
-  // Parse initial state from URL
-  const initialState = parseInitialState(getIntParam);
-  
+export const useOrderPagination = () => {
   const [orders, setOrders] = useState([]);
   const [pagination, setPagination] = useState({ 
-    page: initialState.page, 
-    limit: initialState.limit, 
+    page: 1, 
+    limit: 10, 
     total: 0, 
     totalPages: 0 
   });
