@@ -133,6 +133,47 @@ const Order = {
     return transformOrder(order, itemsResult);
   },
 
+  async findPriorityOrders() {
+    const db = getDatabase();
+    const now = new Date();
+    
+    // Get orders that need attention:
+    // 1. High priority (priority >= 5) AND not completed/cancelled
+    // 2. Delivery date within next 3 days AND not completed/cancelled
+    // 3. Overdue (delivery date in the past) AND not completed/cancelled
+    const ordersResult = await db.select()
+      .from(orders)
+      .where(
+        sql`(
+          (${orders.priority} >= 5 OR
+          (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)}) OR
+          (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now}))
+          AND ${orders.status} NOT IN ('completed', 'cancelled')
+        )`
+      )
+      .orderBy(
+        sql`CASE 
+          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now} THEN 1
+          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 24 * 60 * 60 * 1000)} THEN 2
+          WHEN ${orders.priority} >= 8 THEN 3
+          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)} THEN 4
+          WHEN ${orders.priority} >= 5 THEN 5
+          ELSE 6
+        END`,
+        asc(orders.expectedDeliveryDate),
+        desc(orders.priority)
+      );
+    
+    const ordersWithItems = await Promise.all(
+      ordersResult.map(async (order) => {
+        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+        return transformOrder(order, itemsResult);
+      })
+    );
+    
+    return ordersWithItems;
+  },
+
   async create(data) {
     const db = getDatabase();
     const orderId = generateOrderId();
@@ -149,7 +190,7 @@ const Order = {
       confirmationStatus: data.confirmationStatus || 'unconfirmed',
       customerNotes: data.customerNotes?.trim() || null,
       priority: data.priority || 0,
-      orderDate: data.orderDate ? new Date(data.orderDate) : null,
+      orderDate: data.orderDate ? new Date(data.orderDate) : new Date(),
       expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
     }).returning();
     

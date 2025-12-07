@@ -248,6 +248,16 @@ async function processUpdateOrderItems(items) {
   return buildOrderItemsList(items);
 }
 
+router.get('/priority', async (req, res) => {
+  try {
+    const priorityOrders = await Order.findPriorityOrders();
+    res.json(priorityOrders);
+  } catch (error) {
+    logger.error('Failed to fetch priority orders', error);
+    res.status(500).json({ message: 'Failed to fetch priority orders' });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     const parsedPage = Number.parseInt(req.query.page, 10);
