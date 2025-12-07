@@ -148,14 +148,47 @@ The application is containerized and ready for deployment on cloud container pla
 
 ### CI/CD with GitHub Actions
 
-The repository includes automated Docker image building via GitHub Actions:
+The repository includes comprehensive CI/CD pipelines via GitHub Actions:
 
 #### Available Workflows
 
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
+| `build-and-test.yml` | Push to `master`/`develop`, PRs | Runs tests with coverage and SonarQube analysis |
 | `docker-build.yml` | Push to `main`, tags, PRs | Builds and pushes Docker images to GitHub Container Registry |
 | `deploy-azure-container-apps.yml` | Manual dispatch | Deploys images to Azure Container Apps |
+
+#### Testing and Code Quality
+
+The `build-and-test.yml` workflow runs all tasks in a single job for efficient SonarQube coverage tracking:
+- Runs backend tests with coverage (Jest)
+- Runs frontend tests with coverage (Vitest)
+- Lints frontend code with ESLint
+- Builds frontend for production
+- Analyzes code with SonarQube for quality and security
+- Checks Quality Gate status
+
+All steps run sequentially in one job, allowing SonarQube to directly access test coverage without artifact transfers.
+
+For complete SonarQube setup and configuration details, see [SonarQube Integration Guide](docs/SONARQUBE_INTEGRATION.md).
+
+#### Running Tests Locally
+
+**Backend Tests:**
+```bash
+cd backend
+npm run test              # Run tests
+npm run test:coverage     # Run tests with coverage
+npm run test:watch        # Run tests in watch mode
+```
+
+**Frontend Tests:**
+```bash
+cd frontend
+npm run test              # Run tests in watch mode
+npm run test:coverage     # Run tests with coverage
+npm run test:ui           # Run tests with UI
+```
 
 #### Automatic Image Building
 

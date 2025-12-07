@@ -19,23 +19,22 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
-  backend-test:
-    name: Backend Tests
+  build-test-analyze:
+    name: Build, Test, and Analyze
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for better SonarQube analysis
+          fetch-depth: 0  # Required for accurate blame and new code detection in SonarQube
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
 
+      # Backend steps
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
@@ -44,30 +43,7 @@ jobs:
         working-directory: backend
         run: npm run test:coverage
 
-      - name: Upload backend coverage reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend/coverage
-          retention-days: 7
-
-  frontend-test:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for better SonarQube analysis
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
+      # Frontend steps
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
@@ -76,89 +52,16 @@ jobs:
         working-directory: frontend
         run: npm run test:coverage
 
-      - name: Upload frontend coverage reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage
-          retention-days: 7
-
-  frontend-lint:
-    name: Frontend Lint
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
-
-  frontend-build:
-    name: Frontend Build
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
 
       - name: Build frontend
         working-directory: frontend
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-          retention-days: 7
-
-  sonarqube:
-    name: SonarQube Analysis
-    runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Shallow clones should be disabled for better SonarQube analysis
-
-      - name: Download backend coverage
-        uses: actions/download-artifact@v4.1.8
-        with:
-          name: backend-coverage
-          path: backend/coverage
-
-      - name: Download frontend coverage
-        uses: actions/download-artifact@v4.1.8
-        with:
-          name: frontend-coverage
-          path: frontend/coverage
-
+      # SonarQube analysis with coverage from both backend and frontend
+      # Coverage is generated in backend/coverage/lcov.info and frontend/coverage/lcov.info
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
@@ -176,34 +79,34 @@ jobs:
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
 
       - name: SonarQube Quality Gate Check
-        uses: sonarsource/sonarqube-quality-gate-action@master
+        uses: sonarsource/sonarqube-quality-gate-action@v2.4.0
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         continue-on-error: true
 
-  summary:
-    name: Build Summary
-    runs-on: ubuntu-latest
-    needs: [backend-test, frontend-test, frontend-lint, frontend-build, sonarqube]
-    if: always()
-    
-    steps:
-      - name: Create build summary
-        run: |
-          echo "# 🚀 Build and Test Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend Tests | ${{ needs.backend-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend Tests | ${{ needs.frontend-test.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend Lint | ${{ needs.frontend-lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend Build | ${{ needs.frontend-build.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| SonarQube Analysis | ${{ needs.sonarqube.result == 'success' && '✅ Passed' || '⚠️ Check Required' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Coverage reports are available in the workflow artifacts." >> $GITHUB_STEP_SUMMARY
+      # Upload coverage and build artifacts for reference
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+          retention-days: 7
+
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          retention-days: 7
+
+      - name: Upload frontend build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
