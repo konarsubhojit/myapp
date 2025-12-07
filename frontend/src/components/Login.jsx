@@ -24,7 +24,8 @@ function Login() {
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           padding: 2,
         }}
-        role="status"
+        component="output"
+        aria-live="polite"
         aria-label="Checking authentication"
       >
         <Card sx={{ maxWidth: 400, width: '100%', p: 4, textAlign: 'center' }}>
@@ -39,6 +40,7 @@ function Login() {
 
   return (
     <Box
+      component="main"
       sx={{
         minHeight: '100vh',
         display: 'flex',
@@ -54,8 +56,6 @@ function Login() {
           width: '100%',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)',
         }}
-        component="main"
-        role="main"
         aria-labelledby="login-title"
       >
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>

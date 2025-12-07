@@ -64,7 +64,7 @@ export const setOnUnauthorizedCallback = (callback) => {
  */
 async function authFetch(url, options = {}) {
   // Check if guest mode is enabled
-  if (isGuestModeFn && isGuestModeFn()) {
+  if (isGuestModeFn?.()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
     // Return mock empty response for guest mode
     // For list endpoints return empty array, for single item endpoints return empty object

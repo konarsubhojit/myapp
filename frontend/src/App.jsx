@@ -37,6 +37,28 @@ const TAB_ROUTES = [
   { path: '/sales', label: 'Sales Report', icon: <AssessmentIcon /> },
 ]
 
+// Loading screen component to reduce cognitive complexity
+function LoadingScreen({ message }) {
+  return (
+    <Box 
+      display="flex" 
+      flexDirection="column" 
+      alignItems="center" 
+      justifyContent="center" 
+      minHeight="100vh"
+      gap={2}
+      component="output"
+      aria-live="polite"
+      aria-label={message}
+    >
+      <CircularProgress size={48} />
+      <Typography variant="body1" color="text.secondary">
+        {message}
+      </Typography>
+    </Box>
+  )
+}
+
 function AppContent() {
   const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
   const [items, setItems] = useState([])
@@ -109,23 +131,7 @@ function AppContent() {
 
   // Show loading while checking auth
   if (authLoading) {
-    return (
-      <Box 
-        display="flex" 
-        flexDirection="column" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="100vh"
-        gap={2}
-        role="status"
-        aria-label="Checking authentication"
-      >
-        <CircularProgress size={48} />
-        <Typography variant="body1" color="text.secondary">
-          Checking authentication...
-        </Typography>
-      </Box>
-    )
+    return <LoadingScreen message="Checking authentication..." />
   }
 
   // Show login if not authenticated - store current path for redirect after login
@@ -139,23 +145,7 @@ function AppContent() {
   }
 
   if (loading) {
-    return (
-      <Box 
-        display="flex" 
-        flexDirection="column" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="100vh"
-        gap={2}
-        role="status"
-        aria-label="Loading data"
-      >
-        <CircularProgress size={48} />
-        <Typography variant="body1" color="text.secondary">
-          Loading your data...
-        </Typography>
-      </Box>
-    )
+    return <LoadingScreen message="Loading your data..." />
   }
 
   return (
@@ -183,7 +173,8 @@ function AppContent() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               color: '#ffffff',
-              textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
+              textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+              filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
             }}
           >
             {isMobile ? 'OMS' : 'Order Management System'}
@@ -237,7 +228,10 @@ function AppContent() {
               }}
               aria-label="Sign out"
             >
-              {isMobile ? <LogoutIcon fontSize="small" /> : (guestMode ? 'Exit' : 'Sign Out')}
+              {(() => {
+                if (isMobile) return <LogoutIcon fontSize="small" />;
+                return guestMode ? 'Exit' : 'Sign Out';
+              })()}
             </Button>
           </Box>
         </Toolbar>
@@ -317,7 +311,7 @@ function AppContent() {
             } 
           />
           <Route 
-            path="/items/*" 
+            path="/items" 
             element={
               <ItemPanel 
                 onItemsChange={fetchItems} 
@@ -325,7 +319,7 @@ function AppContent() {
             } 
           />
           <Route 
-            path="/history/*" 
+            path="/history" 
             element={
               <OrderHistory 
                 key={orderHistoryKey}
@@ -334,7 +328,7 @@ function AppContent() {
             } 
           />
           <Route 
-            path="/sales/*" 
+            path="/sales" 
             element={<SalesReport orders={orders} />} 
           />
           {/* Catch-all route */}
