@@ -163,9 +163,10 @@ function AppContent() {
       {/* Header */}
       <AppBar 
         position="sticky" 
-        elevation={0}
+        elevation={2}
         sx={{ 
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          bgcolor: 'primary.main',
+          backgroundImage: 'linear-gradient(135deg, #5a6fd8 0%, #6943a0 100%)',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
@@ -181,7 +182,8 @@ function AppContent() {
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              color: 'white',
+              color: '#ffffff',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
             }}
           >
             {isMobile ? 'OMS' : 'Order Management System'}
