@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PaymentInfoSection from '../../../components/common/PaymentInfoSection';
 
 describe('PaymentInfoSection', () => {
@@ -148,5 +149,60 @@ describe('PaymentInfoSection', () => {
     );
 
     expect(mockFormatPrice).toHaveBeenCalledWith(75); // Balance due
+  });
+
+  it('should call onDataChange when payment status is changed', async () => {
+    const user = userEvent.setup();
+    const data = {
+      paymentStatus: 'unpaid',
+      totalPrice: 100,
+      paidAmount: 0,
+    };
+
+    render(
+      <PaymentInfoSection
+        isEditing={true}
+        data={data}
+        formatPrice={mockFormatPrice}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    const select = screen.getByRole('combobox');
+    await user.click(select);
+    
+    const option = screen.getByRole('option', { name: 'Partially Paid' });
+    await user.click(option);
+    
+    expect(mockOnDataChange).toHaveBeenCalledWith('paymentStatus', 'partially_paid');
+  });
+
+  it('should call onDataChange when amount paid is modified', async () => {
+    const user = userEvent.setup();
+    const data = {
+      paymentStatus: 'partially_paid',
+      totalPrice: 100,
+      paidAmount: 50,
+    };
+
+    render(
+      <PaymentInfoSection
+        isEditing={true}
+        data={data}
+        formatPrice={mockFormatPrice}
+        onDataChange={mockOnDataChange}
+      />
+    );
+
+    const inputs = screen.getAllByRole('spinbutton');
+    const amountInput = inputs[0];
+    
+    await user.clear(amountInput);
+    mockOnDataChange.mockClear();
+    await user.type(amountInput, '75');
+    
+    // Check that onDataChange was called with paidAmount
+    const calls = mockOnDataChange.mock.calls.filter(call => call[0] === 'paidAmount');
+    expect(calls.length).toBeGreaterThan(0);
   });
 });

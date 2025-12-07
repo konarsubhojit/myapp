@@ -21,34 +21,11 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useOrderDetails } from '../hooks/useOrderDetails';
 import { getPriorityStatus } from '../utils/priorityUtils';
+import { getOrderStatusColor, getOrderPriorityColor } from '../utils/orderUtils';
 import CustomerInfoSection from './common/CustomerInfoSection';
 import OrderInfoSection from './common/OrderInfoSection';
 import PaymentInfoSection from './common/PaymentInfoSection';
 import OrderItemsTable from './common/OrderItemsTable';
-
-/**
- * Gets the color for order status chips
- */
-const getOrderStatusColor = (status) => {
-  switch (status) {
-    case 'pending': return 'warning';
-    case 'processing': return 'info';
-    case 'completed': return 'success';
-    case 'cancelled': return 'error';
-    default: return 'default';
-  }
-};
-
-/**
- * Gets the color for priority chips based on priority data
- */
-const getOrderPriorityColor = (priorityData) => {
-  if (!priorityData) return 'default';
-  if (priorityData.className.includes('overdue')) return 'error';
-  if (priorityData.className.includes('due-today')) return 'warning';
-  if (priorityData.className.includes('urgent')) return 'warning';
-  return 'success';
-};
 
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
