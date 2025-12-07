@@ -7,7 +7,8 @@ module.exports = {
     '!**/coverage/**',
     '!jest.config.js',
     '!**/*.test.js',
-    '!**/*.spec.js'
+    '!**/*.spec.js',
+    '!server.js'
   ],
   coverageReporters: ['text', 'lcov', 'json', 'html'],
   testMatch: ['**/__tests__/**/*.js', '**/*.test.js', '**/*.spec.js'],
