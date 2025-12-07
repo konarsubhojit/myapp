@@ -48,6 +48,72 @@ const VIEW_OPTIONS = [
 const VALID_RANGES = new Set(TIME_RANGES.map(r => r.key));
 const VALID_VIEWS = new Set(VIEW_OPTIONS.map(v => v.key));
 
+// Helper function to aggregate item counts from orders
+const aggregateItemCounts = (filteredOrders) => {
+  const itemCounts = {};
+  
+  filteredOrders.forEach(order => {
+    order.items.forEach(item => {
+      if (!itemCounts[item.name]) {
+        itemCounts[item.name] = { quantity: 0, revenue: 0 };
+      }
+      itemCounts[item.name].quantity += item.quantity;
+      itemCounts[item.name].revenue += item.price * item.quantity;
+    });
+  });
+  
+  return itemCounts;
+};
+
+// Helper function to aggregate customer data from orders
+const aggregateCustomerData = (filteredOrders) => {
+  const customerCounts = {};
+  
+  filteredOrders.forEach(order => {
+    const customerId = order.customerId;
+    const customerName = order.customerName;
+    const key = `${customerId}_${customerName}`;
+    
+    if (!customerCounts[key]) {
+      customerCounts[key] = { 
+        customerId, 
+        customerName, 
+        orderCount: 0, 
+        totalSpent: 0,
+        items: {}
+      };
+    }
+    customerCounts[key].orderCount += 1;
+    customerCounts[key].totalSpent += order.totalPrice;
+    
+    // Track items purchased by each customer
+    order.items.forEach(item => {
+      const itemName = item.name;
+      if (!customerCounts[key].items[itemName]) {
+        customerCounts[key].items[itemName] = 0;
+      }
+      customerCounts[key].items[itemName] += item.quantity;
+    });
+  });
+  
+  return customerCounts;
+};
+
+// Helper function to aggregate source breakdown from orders
+const aggregateSourceBreakdown = (filteredOrders) => {
+  const sourceBreakdown = {};
+  
+  filteredOrders.forEach(order => {
+    if (!sourceBreakdown[order.orderFrom]) {
+      sourceBreakdown[order.orderFrom] = { count: 0, revenue: 0 };
+    }
+    sourceBreakdown[order.orderFrom].count += 1;
+    sourceBreakdown[order.orderFrom].revenue += order.totalPrice;
+  });
+  
+  return sourceBreakdown;
+};
+
 function SalesReport({ orders }) {
   const { formatPrice } = useCurrency();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,18 +158,8 @@ function SalesReport({ orders }) {
       const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
       const orderCount = filteredOrders.length;
 
-      // Calculate most sold item
-      const itemCounts = {};
-      filteredOrders.forEach(order => {
-        order.items.forEach(item => {
-          if (!itemCounts[item.name]) {
-            itemCounts[item.name] = { quantity: 0, revenue: 0 };
-          }
-          itemCounts[item.name].quantity += item.quantity;
-          itemCounts[item.name].revenue += item.price * item.quantity;
-        });
-      });
-
+      // Use helper functions to aggregate data
+      const itemCounts = aggregateItemCounts(filteredOrders);
       const itemsArray = Object.entries(itemCounts).map(([name, data]) => ({
         name,
         quantity: data.quantity,
@@ -114,50 +170,14 @@ function SalesReport({ orders }) {
       const topItems = itemsArray.slice(0, 5);
       const topItemsByRevenue = [...itemsArray].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
-      // Calculate orders by source
-      const sourceBreakdown = {};
-      filteredOrders.forEach(order => {
-        if (!sourceBreakdown[order.orderFrom]) {
-          sourceBreakdown[order.orderFrom] = { count: 0, revenue: 0 };
-        }
-        sourceBreakdown[order.orderFrom].count += 1;
-        sourceBreakdown[order.orderFrom].revenue += order.totalPrice;
-      });
-
-      // Calculate customer analytics
-      const customerCounts = {};
-      filteredOrders.forEach(order => {
-        const customerId = order.customerId;
-        const customerName = order.customerName;
-        const key = `${customerId}_${customerName}`;
-        
-        if (!customerCounts[key]) {
-          customerCounts[key] = { 
-            customerId, 
-            customerName, 
-            orderCount: 0, 
-            totalSpent: 0,
-            items: {}
-          };
-        }
-        customerCounts[key].orderCount += 1;
-        customerCounts[key].totalSpent += order.totalPrice;
-        
-        order.items.forEach(item => {
-          if (!customerCounts[key].items[item.name]) {
-            customerCounts[key].items[item.name] = 0;
-          }
-          customerCounts[key].items[item.name] += item.quantity;
-        });
-      });
-
+      const sourceBreakdown = aggregateSourceBreakdown(filteredOrders);
+      
+      const customerCounts = aggregateCustomerData(filteredOrders);
       const customersArray = Object.values(customerCounts);
       customersArray.sort((a, b) => b.orderCount - a.orderCount);
       const topCustomersByOrders = customersArray.slice(0, 5);
       
       const topCustomersByRevenue = [...customersArray].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-
-      // Get highest ordering customer
       const highestOrderingCustomer = customersArray.length > 0 ? customersArray[0] : null;
 
       results[range.key] = {
