@@ -94,6 +94,152 @@ function validatePriority(priority) {
   return { valid: true, parsedPriority };
 }
 
+function validateConfirmationStatus(confirmationStatus) {
+  if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+    return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateUpdateCustomerNotes(customerNotes) {
+  if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
+    return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
+  }
+  return { valid: true };
+}
+
+function validateUpdateFields(customerName, customerId) {
+  if (customerName !== undefined && !customerName?.trim()) {
+    return { valid: false, error: 'Customer name cannot be empty' };
+  }
+  if (customerId !== undefined && !customerId?.trim()) {
+    return { valid: false, error: 'Customer ID cannot be empty' };
+  }
+  return { valid: true };
+}
+
+function validateOrderStatus(status) {
+  if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
+    return { valid: false, error: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateUpdatePaymentStatus(paymentStatus) {
+  if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
+    return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateUpdateConfirmationStatus(confirmationStatus) {
+  if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
+    return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function parseUpdatePaidAmount(paidAmount) {
+  if (paidAmount === undefined) {
+    return { valid: true, parsedAmount: undefined };
+  }
+  
+  const parsedPaidAmount = Number.parseFloat(paidAmount);
+  if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+    return { valid: false, error: 'Paid amount must be a valid non-negative number' };
+  }
+  
+  return { valid: true, parsedAmount: parsedPaidAmount };
+}
+
+function parseUpdatePriority(priority) {
+  if (priority === undefined) {
+    return { valid: true, parsedPriority: undefined };
+  }
+  
+  const parsedPriority = Number.parseInt(priority, 10);
+  if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
+    return { valid: false, error: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` };
+  }
+  
+  return { valid: true, parsedPriority };
+}
+
+function parseUpdateDeliveryDate(expectedDeliveryDate) {
+  if (expectedDeliveryDate === undefined) {
+    return { valid: true, parsedDate: undefined };
+  }
+  
+  if (expectedDeliveryDate === null || expectedDeliveryDate === '') {
+    return { valid: true, parsedDate: null };
+  }
+  
+  const parsedDeliveryDate = new Date(expectedDeliveryDate);
+  if (Number.isNaN(parsedDeliveryDate.getTime())) {
+    return { valid: false, error: 'Invalid expected delivery date' };
+  }
+  
+  return { valid: true, parsedDate: parsedDeliveryDate };
+}
+
+async function processUpdateOrderItems(items) {
+  if (items === undefined) {
+    return { valid: true, orderItems: undefined, totalPrice: undefined };
+  }
+  
+  if (!Array.isArray(items) || items.length === 0) {
+    return { valid: false, error: 'At least one item is required' };
+  }
+
+  const orderItems = [];
+  let totalPrice = 0;
+
+  for (const orderItem of items) {
+    const item = await Item.findById(orderItem.itemId);
+    if (!item) {
+      return { valid: false, error: `Item with id ${orderItem.itemId} not found` };
+    }
+    
+    const quantity = Number.parseInt(orderItem.quantity, 10);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return { valid: false, error: 'Quantity must be a positive integer' };
+    }
+
+    orderItems.push({
+      item: item._id,
+      name: item.name,
+      price: item.price,
+      quantity: quantity,
+      customizationRequest: orderItem.customizationRequest || ''
+    });
+
+    totalPrice += item.price * quantity;
+  }
+
+  return { valid: true, orderItems, totalPrice };
+}
+
+function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotalPrice, paymentStatus) {
+  if (parsedPaidAmount === undefined) {
+    return { valid: true };
+  }
+  
+  const effectiveTotalPrice = totalPrice !== undefined ? totalPrice : existingTotalPrice;
+  
+  if (parsedPaidAmount > effectiveTotalPrice) {
+    return { valid: false, error: 'Paid amount cannot exceed total price' };
+  }
+  
+  if (paymentStatus === 'partially_paid' && (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)) {
+    return { 
+      valid: false, 
+      error: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price" 
+    };
+  }
+  
+  return { valid: true };
+}
+
 async function processOrderItems(items) {
   let totalPrice = 0;
   const orderItems = [];
@@ -166,8 +312,9 @@ router.post('/', async (req, res) => {
     }
 
     // Validate confirmation status
-    if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
-      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
+    const confirmationValidation = validateConfirmationStatus(confirmationStatus);
+    if (!confirmationValidation.valid) {
+      return res.status(400).json({ message: confirmationValidation.error });
     }
 
     // Validate priority
@@ -227,122 +374,92 @@ router.put('/:id', async (req, res) => {
   try {
     const { orderFrom, customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
 
-    if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
-      return res.status(400).json({ message: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` });
+    // Validate customer notes
+    const notesValidation = validateUpdateCustomerNotes(customerNotes);
+    if (!notesValidation.valid) {
+      return res.status(400).json({ message: notesValidation.error });
     }
     
-    if (customerName !== undefined && !customerName?.trim()) {
-      return res.status(400).json({ message: 'Customer name cannot be empty' });
+    // Validate customer name and ID
+    const fieldsValidation = validateUpdateFields(customerName, customerId);
+    if (!fieldsValidation.valid) {
+      return res.status(400).json({ message: fieldsValidation.error });
     }
 
-    if (customerId !== undefined && !customerId?.trim()) {
-      return res.status(400).json({ message: 'Customer ID cannot be empty' });
+    // Validate status
+    const statusValidation = validateOrderStatus(status);
+    if (!statusValidation.valid) {
+      return res.status(400).json({ message: statusValidation.error });
     }
 
-    if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
-      return res.status(400).json({ message: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` });
+    // Validate payment status
+    const paymentStatusValidation = validateUpdatePaymentStatus(paymentStatus);
+    if (!paymentStatusValidation.valid) {
+      return res.status(400).json({ message: paymentStatusValidation.error });
     }
 
-    if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
-      return res.status(400).json({ message: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` });
+    // Validate confirmation status
+    const confirmationValidation = validateUpdateConfirmationStatus(confirmationStatus);
+    if (!confirmationValidation.valid) {
+      return res.status(400).json({ message: confirmationValidation.error });
     }
 
-    if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
-      return res.status(400).json({ message: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` });
+    // Parse paid amount
+    const paidAmountResult = parseUpdatePaidAmount(paidAmount);
+    if (!paidAmountResult.valid) {
+      return res.status(400).json({ message: paidAmountResult.error });
     }
 
-    let parsedPaidAmount;
-    if (paidAmount !== undefined) {
-      parsedPaidAmount = Number.parseFloat(paidAmount);
-      if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
-        return res.status(400).json({ message: 'Paid amount must be a valid non-negative number' });
-      }
+    // Parse priority
+    const priorityResult = parseUpdatePriority(priority);
+    if (!priorityResult.valid) {
+      return res.status(400).json({ message: priorityResult.error });
     }
 
-    let parsedPriority;
-    if (priority !== undefined) {
-      parsedPriority = Number.parseInt(priority, 10);
-      if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
-        return res.status(400).json({ message: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` });
-      }
+    // Parse delivery date
+    const dateResult = parseUpdateDeliveryDate(expectedDeliveryDate);
+    if (!dateResult.valid) {
+      return res.status(400).json({ message: dateResult.error });
     }
 
-    let parsedDeliveryDate;
-    if (expectedDeliveryDate !== undefined) {
-      if (expectedDeliveryDate === null || expectedDeliveryDate === '') {
-        parsedDeliveryDate = null;
-      } else {
-        parsedDeliveryDate = new Date(expectedDeliveryDate);
-        if (Number.isNaN(parsedDeliveryDate.getTime())) {
-          return res.status(400).json({ message: 'Invalid expected delivery date' });
-        }
-      }
+    // Process order items
+    const itemsResult = await processUpdateOrderItems(items);
+    if (!itemsResult.valid) {
+      return res.status(400).json({ message: itemsResult.error });
     }
 
-    let orderItems;
-    let totalPrice;
-    
-    if (items !== undefined) {
-      if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ message: 'At least one item is required' });
-      }
-
-      orderItems = [];
-      totalPrice = 0;
-
-      for (const orderItem of items) {
-        const item = await Item.findById(orderItem.itemId);
-        if (!item) {
-          return res.status(400).json({ message: `Item with id ${orderItem.itemId} not found` });
-        }
-        
-        const quantity = Number.parseInt(orderItem.quantity, 10);
-        if (!Number.isInteger(quantity) || quantity < 1) {
-          return res.status(400).json({ message: 'Quantity must be a positive integer' });
-        }
-
-        orderItems.push({
-          item: item._id,
-          name: item.name,
-          price: item.price,
-          quantity: quantity,
-          customizationRequest: orderItem.customizationRequest || ''
-        });
-
-        totalPrice += item.price * quantity;
-      }
-    }
-
-    if (parsedPaidAmount !== undefined) {
+    // Validate payment amount against total price
+    if (paidAmountResult.parsedAmount !== undefined) {
       const existingOrder = await Order.findById(req.params.id);
       if (!existingOrder) {
         return res.status(404).json({ message: 'Order not found' });
       }
-      const effectiveTotalPrice = totalPrice !== undefined ? totalPrice : existingOrder.totalPrice;
-      if (parsedPaidAmount > effectiveTotalPrice) {
-        return res.status(400).json({ message: 'Paid amount cannot exceed total price' });
-      }
       
-      if (paymentStatus === 'partially_paid' && (parsedPaidAmount <= 0 || parsedPaidAmount >= effectiveTotalPrice)) {
-        return res.status(400).json({
-          message: "For 'partially_paid' status, paid amount must be greater than 0 and less than total price"
-        });
+      const paymentValidation = validateUpdatePaymentAmount(
+        paidAmountResult.parsedAmount, 
+        itemsResult.totalPrice, 
+        existingOrder.totalPrice, 
+        paymentStatus
+      );
+      if (!paymentValidation.valid) {
+        return res.status(400).json({ message: paymentValidation.error });
       }
     }
 
+    // Build update data
     const updateData = {};
     if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
     if (customerName !== undefined) updateData.customerName = customerName;
     if (customerId !== undefined) updateData.customerId = customerId;
-    if (parsedDeliveryDate !== undefined) updateData.expectedDeliveryDate = parsedDeliveryDate;
+    if (dateResult.parsedDate !== undefined) updateData.expectedDeliveryDate = dateResult.parsedDate;
     if (status !== undefined) updateData.status = status;
     if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
-    if (parsedPaidAmount !== undefined) updateData.paidAmount = parsedPaidAmount;
+    if (paidAmountResult.parsedAmount !== undefined) updateData.paidAmount = paidAmountResult.parsedAmount;
     if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
     if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
-    if (parsedPriority !== undefined) updateData.priority = parsedPriority;
-    if (orderItems !== undefined) updateData.items = orderItems;
-    if (totalPrice !== undefined) updateData.totalPrice = totalPrice;
+    if (priorityResult.parsedPriority !== undefined) updateData.priority = priorityResult.parsedPriority;
+    if (itemsResult.orderItems !== undefined) updateData.items = itemsResult.orderItems;
+    if (itemsResult.totalPrice !== undefined) updateData.totalPrice = itemsResult.totalPrice;
 
     const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
     if (!updatedOrder) {
