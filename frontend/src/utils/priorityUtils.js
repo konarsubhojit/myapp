@@ -17,7 +17,8 @@ export function getPriorityStatus(expectedDeliveryDate, options = {}) {
     return { status: 'due-today', label: 'Due Today', className: 'priority-due-today' };
   }
   if (diffDays <= 3) {
-    const label = shortLabels ? `${diffDays}d` : `Due in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    const daysText = diffDays > 1 ? 's' : '';
+    const label = shortLabels ? `${diffDays}d` : `Due in ${diffDays} day${daysText}`;
     return { status: 'urgent', label, className: 'priority-urgent' };
   }
   

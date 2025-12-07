@@ -12,7 +12,7 @@ function transformOrderItem(item) {
     ...item,
     _id: item.id,
     item: item.itemId,
-    price: parseFloat(item.price),
+    price: Number.parseFloat(item.price),
     customizationRequest: item.customizationRequest || ''
   };
 }
@@ -21,8 +21,8 @@ function transformOrder(order, items = []) {
   return {
     ...order,
     _id: order.id,
-    totalPrice: parseFloat(order.totalPrice),
-    paidAmount: parseFloat(order.paidAmount || 0),
+    totalPrice: Number.parseFloat(order.totalPrice),
+    paidAmount: Number.parseFloat(order.paidAmount || 0),
     status: order.status || 'pending',
     paymentStatus: order.paymentStatus || 'unpaid',
     confirmationStatus: order.confirmationStatus || 'unconfirmed',
@@ -53,7 +53,7 @@ const Order = {
     const offset = (page - 1) * limit;
     
     const countResult = await db.select({ count: sql`count(*)` }).from(orders);
-    const total = parseInt(countResult[0].count, 10);
+    const total = Number.parseInt(countResult[0].count, 10);
     
     const ordersResult = await db.select()
       .from(orders)
@@ -80,8 +80,8 @@ const Order = {
 
   async findById(id) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const ordersResult = await db.select().from(orders).where(eq(orders.id, numericId));
     if (ordersResult.length === 0) return null;
@@ -128,8 +128,8 @@ const Order = {
 
   async findByIdAndUpdate(id, data) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const existingOrder = await db.select().from(orders).where(eq(orders.id, numericId));
     if (existingOrder.length === 0) return null;

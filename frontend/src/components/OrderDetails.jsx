@@ -126,8 +126,8 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     }
 
     // Validate paid amount
-    const parsedPaidAmount = parseFloat(editForm.paidAmount);
-    if (isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
+    const parsedPaidAmount = Number.parseFloat(editForm.paidAmount);
+    if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
       setError('Paid amount must be a valid non-negative number');
       return;
     }
@@ -158,7 +158,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
         paidAmount: parsedPaidAmount,
         confirmationStatus: editForm.confirmationStatus,
         customerNotes: editForm.customerNotes,
-        priority: parseInt(editForm.priority, 10)
+        priority: Number.parseInt(editForm.priority, 10)
       };
 
       const updatedOrder = await updateOrder(orderId, updateData);
@@ -397,7 +397,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
                           <Select
                             value={editForm.priority}
                             label="Priority Level"
-                            onChange={(e) => handleEditChange('priority', parseInt(e.target.value, 10))}
+                            onChange={(e) => handleEditChange('priority', Number.parseInt(e.target.value, 10))}
                           >
                             {PRIORITY_LEVELS.map(level => (
                               <MenuItem key={level.value} value={level.value}>

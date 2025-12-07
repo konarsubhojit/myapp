@@ -123,8 +123,8 @@ router.put('/:id', async (req, res) => {
 
     let parsedPrice;
     if (price !== undefined) {
-      parsedPrice = parseFloat(price);
-      if (isNaN(parsedPrice) || parsedPrice < 0) {
+      parsedPrice = Number.parseFloat(price);
+      if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
         return res.status(400).json({ message: 'Valid price is required' });
       }
     }

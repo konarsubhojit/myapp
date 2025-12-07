@@ -45,8 +45,8 @@ const VIEW_OPTIONS = [
   { key: 'bySource', label: 'By Source' },
 ];
 
-const VALID_RANGES = TIME_RANGES.map(r => r.key);
-const VALID_VIEWS = VIEW_OPTIONS.map(v => v.key);
+const VALID_RANGES = new Set(TIME_RANGES.map(r => r.key));
+const VALID_VIEWS = new Set(VIEW_OPTIONS.map(v => v.key));
 
 function SalesReport({ orders }) {
   const { formatPrice } = useCurrency();
@@ -58,8 +58,8 @@ function SalesReport({ orders }) {
   const rangeParam = searchParams.get('range');
   const viewParam = searchParams.get('view');
   
-  const selectedRange = VALID_RANGES.includes(rangeParam) ? rangeParam : 'month';
-  const selectedView = VALID_VIEWS.includes(viewParam) ? viewParam : 'overview';
+  const selectedRange = VALID_RANGES.has(rangeParam) ? rangeParam : 'month';
+  const selectedView = VALID_VIEWS.has(viewParam) ? viewParam : 'overview';
 
   // Update URL when state changes
   const updateUrl = useCallback((range, view) => {

@@ -57,8 +57,8 @@ const buildParamsString = (filters, pagination, sortConfig, selectedOrderId) => 
 
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
-  const page = parseInt(searchParams.get('page'), 10);
-  const limit = parseInt(searchParams.get('limit'), 10);
+  const page = Number.parseInt(searchParams.get('page'), 10);
+  const limit = Number.parseInt(searchParams.get('limit'), 10);
   const sortKey = searchParams.get('sortKey');
   const sortDir = searchParams.get('sortDir');
   

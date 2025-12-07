@@ -57,10 +57,13 @@ jobs:
           registryPassword: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output Backend deployment info
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          BACKEND_TAG: ${{ inputs.backend_tag }}
         run: |
           echo "## Backend Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ inputs.backend_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${BACKEND_TAG}" >> $GITHUB_STEP_SUMMARY
 
   deploy-frontend:
     name: Deploy Frontend to Azure Container Apps
@@ -88,10 +91,13 @@ jobs:
           registryPassword: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Output Frontend deployment info
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          FRONTEND_TAG: ${{ inputs.frontend_tag }}
         run: |
           echo "## Frontend Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ inputs.frontend_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${FRONTEND_TAG}" >> $GITHUB_STEP_SUMMARY
 
   deployment-summary:
     name: Deployment Summary
@@ -100,6 +106,10 @@ jobs:
 
     steps:
       - name: Create deployment summary
+        env:
+          BACKEND_TAG: ${{ inputs.backend_tag }}
+          FRONTEND_TAG: ${{ inputs.frontend_tag }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
           echo "# 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -107,7 +117,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Service | Image Tag | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend | ${{ inputs.backend_tag }} | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
-          echo "| Frontend | ${{ inputs.frontend_tag }} | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${BACKEND_TAG} | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${FRONTEND_TAG} | ✅ Deployed |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY

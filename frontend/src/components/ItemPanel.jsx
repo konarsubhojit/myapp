@@ -79,8 +79,8 @@ const compressImage = async (file) => {
 
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
-  const page = parseInt(searchParams.get('page'), 10);
-  const limit = parseInt(searchParams.get('limit'), 10);
+  const page = Number.parseInt(searchParams.get('page'), 10);
+  const limit = Number.parseInt(searchParams.get('limit'), 10);
   
   return {
     page: Number.isNaN(page) || page < 1 ? 1 : page,
@@ -285,7 +285,7 @@ function ItemPanel({ onItemsChange }) {
   };
 
   const handleDelete = async (id, itemName) => {
-    if (!window.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
+    if (!globalThis.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
       return;
     }
     try {
@@ -325,7 +325,7 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    if (!window.confirm(message)) {
+    if (!globalThis.confirm(message)) {
       return;
     }
 

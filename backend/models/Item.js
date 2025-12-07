@@ -15,7 +15,7 @@ function transformItem(item) {
 }
 
 function buildSearchCondition(search) {
-  if (!search || !search.trim()) return null;
+  if (!search?.trim()) return null;
   const searchTerm = `%${search.trim()}%`;
   return or(
     ilike(items.name, searchTerm),
@@ -36,8 +36,8 @@ const Item = {
 
   async findById(id) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const result = await db.select().from(items).where(eq(items.id, numericId));
     if (result.length === 0) return null;
@@ -61,8 +61,8 @@ const Item = {
 
   async findByIdAndUpdate(id, data) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const updateData = {};
     if (data.name !== undefined) updateData.name = data.name.trim();
@@ -88,8 +88,8 @@ const Item = {
 
   async findByIdAndDelete(id) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const result = await db.update(items)
       .set({ deletedAt: new Date() })
@@ -110,8 +110,8 @@ const Item = {
 
   async restore(id) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const result = await db.update(items)
       .set({ deletedAt: null })
@@ -134,7 +134,7 @@ const Item = {
     const countResult = await db.select({ count: sql`count(*)` })
       .from(items)
       .where(whereCondition);
-    const total = parseInt(countResult[0].count, 10);
+    const total = Number.parseInt(countResult[0].count, 10);
     
     const result = await db.select()
       .from(items)
@@ -161,7 +161,7 @@ const Item = {
     const countResult = await db.select({ count: sql`count(*)` })
       .from(items)
       .where(whereCondition);
-    const total = parseInt(countResult[0].count, 10);
+    const total = Number.parseInt(countResult[0].count, 10);
     
     const result = await db.select()
       .from(items)
@@ -178,8 +178,8 @@ const Item = {
 
   async permanentlyRemoveImage(id) {
     const db = getDatabase();
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) return null;
+    const numericId = Number.parseInt(id, 10);
+    if (Number.isNaN(numericId)) return null;
     
     const result = await db.update(items)
       .set({ imageUrl: null })
