@@ -129,6 +129,7 @@ When adding new features:
 - Run linting before committing: `cd frontend && npm run lint`
 - Manually test the feature in the browser
 - Test API endpoints with appropriate HTTP methods
+- Always use sonarqube MCP to review code changes and fix them
 
 ## Common Tasks
 

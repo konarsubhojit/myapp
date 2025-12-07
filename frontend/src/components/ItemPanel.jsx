@@ -77,6 +77,46 @@ const compressImage = async (file) => {
   return fileToBase64(compressedFile);
 };
 
+/**
+ * Validates an image file for size and type
+ * @param {File} file - The file to validate
+ * @returns {Object} - Returns {valid: true} or {valid: false, error: string}
+ */
+const validateImageFile = (file) => {
+  if (!file.type.startsWith('image/')) {
+    return { valid: false, error: 'Please select a valid image file' };
+  }
+
+  if (file.size > MAX_UPLOAD_SIZE) {
+    return { valid: false, error: 'Image size should be less than 5MB' };
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Process an image file upload with validation and compression
+ * @param {File} file - The image file to process
+ * @param {Function} [showSuccess] - Optional callback to show success notification
+ * @returns {Promise<string>} - Base64 encoded image string
+ * @throws {Error} - If validation fails or processing encounters an error
+ */
+const processImageUpload = async (file, showSuccess) => {
+  const validation = validateImageFile(file);
+  if (!validation.valid) {
+    throw new Error(validation.error);
+  }
+
+  const base64Image = await compressImage(file);
+  const wasCompressed = file.size > TARGET_IMAGE_SIZE;
+  
+  if (wasCompressed && showSuccess) {
+    showSuccess('Image was compressed for optimal upload');
+  }
+  
+  return base64Image;
+};
+
 // Parse URL params to state
 const parseUrlParams = (searchParams) => {
   const page = Number.parseInt(searchParams.get('page'), 10);
@@ -198,30 +238,15 @@ function ItemPanel({ onItemsChange }) {
       return;
     }
 
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file');
-      return;
-    }
-
-    // Check file size - now allowing up to 5MB with compression
-    if (file.size > MAX_UPLOAD_SIZE) {
-      setError('Image size should be less than 5MB');
-      return;
-    }
-
     setImageProcessing(true);
     setError('');
     
     try {
-      const base64Image = await compressImage(file);
+      const base64Image = await processImageUpload(file, showSuccess);
       setImage(base64Image);
       setImagePreview(base64Image);
-      if (file.size > TARGET_IMAGE_SIZE) {
-        showSuccess('Image was compressed for optimal upload');
-      }
     } catch (err) {
-      setError('Failed to process image. Please try a different file.');
+      setError(err.message || 'Failed to process image. Please try a different file.');
       console.error('Image compression error:', err);
     } finally {
       setImageProcessing(false);
@@ -393,32 +418,19 @@ function ItemPanel({ onItemsChange }) {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file');
-      return;
-    }
-
-    if (file.size > MAX_UPLOAD_SIZE) {
-      setError('Image size should be less than 5MB');
-      return;
-    }
-
     setEditImageProcessing(true);
     setError('');
     
     try {
-      const base64Image = await compressImage(file);
+      const base64Image = await processImageUpload(file, showSuccess);
       setEditingItem(prev => ({
         ...prev,
         editImage: base64Image,
         editImagePreview: base64Image,
         removeImage: false
       }));
-      if (file.size > TARGET_IMAGE_SIZE) {
-        showSuccess('Image was compressed for optimal upload');
-      }
     } catch (err) {
-      setError('Failed to process image. Please try a different file.');
+      setError(err.message || 'Failed to process image. Please try a different file.');
       console.error('Image compression error:', err);
     } finally {
       setEditImageProcessing(false);
