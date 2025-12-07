@@ -165,6 +165,8 @@ jobs:
       # Run SonarQube analysis with code coverage from both backend and frontend
       # The scan reads sonar-project.properties from the repository root
       # Coverage paths: backend/coverage/lcov.info and frontend/coverage/lcov.info
+      # Note: Configuration is provided in both sonar-project.properties (defaults) and
+      # command-line arguments (runtime overrides with secrets) following security best practices
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@v2.4.0
         env:

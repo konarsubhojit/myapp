@@ -313,6 +313,57 @@ Open these files in a browser to view detailed coverage information.
 5. **Don't ignore security vulnerabilities** reported by SonarQube
 6. **Keep dependencies updated** to avoid known vulnerabilities
 
+## Configuring Quality Gate Thresholds
+
+Quality Gates define the set of conditions that must be met for code to be considered production-ready. 
+
+### Setting Up Coverage Thresholds in SonarQube
+
+1. **Navigate to Quality Gates:**
+   - Log in to your SonarQube instance
+   - Go to **Quality Gates** in the top navigation
+   - Select your project's Quality Gate or create a new one
+
+2. **Add Coverage Conditions:**
+   - Click **Add Condition**
+   - Select **On Overall Code** or **On New Code**
+   - Choose metric: **Coverage** or **Coverage on New Code**
+   - Set operator: **is less than**
+   - Enter threshold value (e.g., 80 for 80% coverage)
+
+3. **Common Coverage Metrics:**
+   - **Coverage**: Overall code coverage percentage
+   - **Coverage on New Code**: Coverage of newly added/modified code
+   - **Line Coverage**: Percentage of lines covered by tests
+   - **Branch Coverage**: Percentage of conditional branches covered
+
+4. **Recommended Thresholds:**
+   - **Overall Coverage**: 70-80% minimum
+   - **New Code Coverage**: 80-90% minimum (stricter for new code)
+   - **Critical/Blocker Issues**: 0 (zero tolerance)
+   - **Security Vulnerabilities**: 0 (zero tolerance)
+
+### Example Quality Gate Configuration
+
+```
+Condition                           | Operator        | Threshold
+------------------------------------|-----------------|----------
+Coverage on New Code                | is less than    | 80%
+Duplicated Lines on New Code (%)    | is greater than | 3%
+Maintainability Rating on New Code  | is worse than   | A
+Reliability Rating on New Code      | is worse than   | A
+Security Rating on New Code         | is worse than   | A
+Security Hotspots Reviewed          | is less than    | 100%
+```
+
+### Applying Quality Gate to Your Project
+
+1. Go to **Project Settings** → **Quality Gate**
+2. Select your configured Quality Gate from the dropdown
+3. Save changes
+
+The Quality Gate status will now be checked on every analysis and reported back to GitHub pull requests.
+
 ## Additional Resources
 
 - [SonarQube Documentation](https://docs.sonarqube.org/)
