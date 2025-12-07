@@ -130,6 +130,51 @@ const parseUrlParams = (searchParams) => {
   };
 };
 
+/**
+ * Renders pagination controls for item lists
+ */
+const renderPaginationControls = (paginationData, onPageChange, onLimitChange) => (
+  <Box 
+    sx={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 2,
+      mt: 2,
+      p: 2,
+      bgcolor: 'grey.50',
+      borderRadius: 2,
+    }}
+  >
+    <FormControl size="small" sx={{ minWidth: 100 }}>
+      <InputLabel id="page-size-label">Per page</InputLabel>
+      <Select
+        labelId="page-size-label"
+        value={paginationData.limit}
+        label="Per page"
+        onChange={(e) => onLimitChange(parseInt(e.target.value, 10))}
+      >
+        {PAGE_SIZE_OPTIONS.map(size => (
+          <MenuItem key={size} value={size}>{size}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+    <Typography variant="body2" color="text.secondary">
+      Page {paginationData.page} of {paginationData.totalPages || 1} ({paginationData.total} items)
+    </Typography>
+    <Pagination
+      count={paginationData.totalPages || 1}
+      page={paginationData.page}
+      onChange={(event, page) => onPageChange(page)}
+      color="primary"
+      showFirstButton
+      showLastButton
+      size="small"
+    />
+  </Box>
+);
+
 function ItemPanel({ onItemsChange }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
@@ -537,48 +582,6 @@ function ItemPanel({ onItemsChange }) {
     return item.name;
   };
 
-  const renderPagination = (paginationData, onPageChange, onLimitChange) => (
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 2,
-        mt: 2,
-        p: 2,
-        bgcolor: 'grey.50',
-        borderRadius: 2,
-      }}
-    >
-      <FormControl size="small" sx={{ minWidth: 100 }}>
-        <InputLabel id="page-size-label">Per page</InputLabel>
-        <Select
-          labelId="page-size-label"
-          value={paginationData.limit}
-          label="Per page"
-          onChange={(e) => onLimitChange(parseInt(e.target.value, 10))}
-        >
-          {PAGE_SIZE_OPTIONS.map(size => (
-            <MenuItem key={size} value={size}>{size}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <Typography variant="body2" color="text.secondary">
-        Page {paginationData.page} of {paginationData.totalPages || 1} ({paginationData.total} items)
-      </Typography>
-      <Pagination
-        count={paginationData.totalPages || 1}
-        page={paginationData.page}
-        onChange={(event, page) => onPageChange(page)}
-        color="primary"
-        showFirstButton
-        showLastButton
-        size="small"
-      />
-    </Box>
-  );
-
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
       <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
@@ -871,7 +874,7 @@ function ItemPanel({ onItemsChange }) {
                 </Grid>
               ))}
             </Grid>
-            {renderPagination(
+            {renderPaginationControls(
               activeItemsData.pagination,
               (page) => setActivePagination(prev => ({ ...prev, page })),
               (limit) => setActivePagination({ page: 1, limit })
@@ -975,7 +978,7 @@ function ItemPanel({ onItemsChange }) {
                   </Card>
                 ))}
               </Stack>
-              {renderPagination(
+              {renderPaginationControls(
                 deletedItemsData.pagination,
                 (page) => setDeletedPagination(prev => ({ ...prev, page })),
                 (limit) => setDeletedPagination({ page: 1, limit })
