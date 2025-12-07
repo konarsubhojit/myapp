@@ -56,10 +56,10 @@ function calculateEffectivePriority(order) {
 /**
  * Get urgency level for visual styling
  * Aligns with priorityUtils.js priority classifications:
- * - CRITICAL: Overdue or due today/tomorrow (≤1 day)
- * - HIGH: Due in 2-3 days
- * - MEDIUM: Due in 4-7 days
- * - NORMAL: Due in >7 days
+ * - CRITICAL: Overdue or ≤3 days (rush needed)
+ * - HIGH: 4-7 days (tight, <1 week)
+ * - MEDIUM: 8-14 days (standard 1-2 weeks)
+ * - NORMAL: >14 days (comfortable)
  */
 function getUrgencyLevel(order) {
   if (!order.expectedDeliveryDate) {
@@ -72,15 +72,13 @@ function getUrgencyLevel(order) {
   deliveryDate.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
   
-  // Overdue
-  if (diffDays < 0) return 'critical';
-  // Due today or tomorrow (0-1 days)
-  if (diffDays <= 1) return 'critical';
-  // Due in 2-3 days
-  if (diffDays <= 3) return 'high';
-  // Due in 4-7 days
-  if (diffDays <= 7) return 'medium';
-  // More than a week out
+  // Overdue or ≤3 days = critical
+  if (diffDays < 0 || diffDays <= 3) return 'critical';
+  // 4-7 days = high
+  if (diffDays <= 7) return 'high';
+  // 8-14 days = medium
+  if (diffDays <= 14) return 'medium';
+  // >14 days = normal
   return 'normal';
 }
 
