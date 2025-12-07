@@ -55,6 +55,11 @@ function calculateEffectivePriority(order) {
 
 /**
  * Get urgency level for visual styling
+ * Aligns with priorityUtils.js priority classifications:
+ * - CRITICAL: Overdue or due today/tomorrow (≤1 day)
+ * - HIGH: Due in 2-3 days
+ * - MEDIUM: Due in 4-7 days
+ * - NORMAL: Due in >7 days
  */
 function getUrgencyLevel(order) {
   if (!order.expectedDeliveryDate) {
@@ -67,9 +72,15 @@ function getUrgencyLevel(order) {
   deliveryDate.setHours(0, 0, 0, 0);
   const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
   
+  // Overdue
   if (diffDays < 0) return 'critical';
-  if (diffDays === 0) return 'high';
-  if (diffDays <= 3) return 'medium';
+  // Due today or tomorrow (0-1 days)
+  if (diffDays <= 1) return 'critical';
+  // Due in 2-3 days
+  if (diffDays <= 3) return 'high';
+  // Due in 4-7 days
+  if (diffDays <= 7) return 'medium';
+  // More than a week out
   return 'normal';
 }
 
@@ -115,8 +126,11 @@ function PriorityDashboard({ onRefresh }) {
     try {
       const data = await getPriorityOrders();
       
+      // Ensure data is an array
+      const ordersArray = Array.isArray(data) ? data : [];
+      
       // Calculate effective priority and sort
-      const ordersWithPriority = data.map(order => ({
+      const ordersWithPriority = ordersArray.map(order => ({
         ...order,
         effectivePriority: calculateEffectivePriority(order),
         urgency: getUrgencyLevel(order)

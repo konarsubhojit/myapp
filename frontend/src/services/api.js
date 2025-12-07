@@ -77,8 +77,9 @@ async function authFetch(url, options = {}) {
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
       };
-    } else if (url.includes('/items/') || url.includes('/orders/')) {
-      // Single item endpoint - return empty object
+    } else if (url.match(/\/(items|orders)\/[^/]+$/)) {
+      // Single item endpoint (with ID at the end) - return empty object
+      // e.g., /items/123 or /orders/456
       mockData = {};
     } else {
       // List endpoint without pagination - return empty array
