@@ -27,7 +27,7 @@ function PriorityLegend() {
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
           <Chip label="Normal" color="success" size="small" />
-          <Typography variant="caption" color="text.secondary">>14 days (comfortable)</Typography>
+          <Typography variant="caption" color="text.secondary">&gt;14 days (comfortable)</Typography>
         </Box>
       </Box>
     </Box>
