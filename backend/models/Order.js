@@ -33,6 +33,41 @@ function transformOrder(order, items = []) {
   };
 }
 
+function buildOrderUpdateData(data) {
+  const updateData = {};
+  if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
+  if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
+  if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
+  if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
+  if (data.expectedDeliveryDate !== undefined) {
+    updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
+  }
+  if (data.status !== undefined) updateData.status = data.status;
+  if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
+  if (data.paidAmount !== undefined) updateData.paidAmount = data.paidAmount.toString();
+  if (data.confirmationStatus !== undefined) updateData.confirmationStatus = data.confirmationStatus;
+  if (data.customerNotes !== undefined) updateData.customerNotes = data.customerNotes?.trim() || null;
+  if (data.priority !== undefined) updateData.priority = data.priority;
+  return updateData;
+}
+
+async function updateOrderItems(db, orderId, items) {
+  await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
+  
+  if (items.length > 0) {
+    const orderItemsData = items.map(item => ({
+      orderId: orderId,
+      itemId: item.item,
+      name: item.name,
+      price: item.price.toString(),
+      quantity: item.quantity,
+      customizationRequest: item.customizationRequest?.trim() || null
+    }));
+    
+    await db.insert(orderItems).values(orderItemsData);
+  }
+}
+
 const Order = {
   async find() {
     const db = getDatabase();
@@ -134,20 +169,7 @@ const Order = {
     const existingOrder = await db.select().from(orders).where(eq(orders.id, numericId));
     if (existingOrder.length === 0) return null;
     
-    const updateData = {};
-    if (data.orderFrom !== undefined) updateData.orderFrom = data.orderFrom;
-    if (data.customerName !== undefined) updateData.customerName = data.customerName.trim();
-    if (data.customerId !== undefined) updateData.customerId = data.customerId.trim();
-    if (data.totalPrice !== undefined) updateData.totalPrice = data.totalPrice.toString();
-    if (data.expectedDeliveryDate !== undefined) {
-      updateData.expectedDeliveryDate = data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null;
-    }
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
-    if (data.paidAmount !== undefined) updateData.paidAmount = data.paidAmount.toString();
-    if (data.confirmationStatus !== undefined) updateData.confirmationStatus = data.confirmationStatus;
-    if (data.customerNotes !== undefined) updateData.customerNotes = data.customerNotes?.trim() || null;
-    if (data.priority !== undefined) updateData.priority = data.priority;
+    const updateData = buildOrderUpdateData(data);
     
     if (Object.keys(updateData).length > 0) {
       await db.update(orders)
@@ -156,20 +178,7 @@ const Order = {
     }
     
     if (data.items && Array.isArray(data.items)) {
-      await db.delete(orderItems).where(eq(orderItems.orderId, numericId));
-      
-      if (data.items.length > 0) {
-        const orderItemsData = data.items.map(item => ({
-          orderId: numericId,
-          itemId: item.item,
-          name: item.name,
-          price: item.price.toString(),
-          quantity: item.quantity,
-          customizationRequest: item.customizationRequest?.trim() || null
-        }));
-        
-        await db.insert(orderItems).values(orderItemsData);
-      }
+      await updateOrderItems(db, numericId, data.items);
     }
     
     return this.findById(numericId);
