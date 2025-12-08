@@ -550,4 +550,143 @@ describe('Order Model', () => {
       expect(new Date(result.orderDate).toISOString()).toBe(specificDate.toISOString());
     });
   });
+
+  describe('findPriorityOrders', () => {
+    it('should return priority orders sorted by urgency', async () => {
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      
+      const mockOrders = [
+        {
+          id: 1,
+          orderId: 'ORD-001',
+          orderFrom: 'instagram',
+          customerName: 'Priority Customer',
+          customerId: 'CUST-001',
+          address: '123 Main St',
+          totalPrice: '100.00',
+          status: 'pending',
+          paymentStatus: 'unpaid',
+          paidAmount: '0',
+          confirmationStatus: 'confirmed',
+          customerNotes: '',
+          priority: 8,
+          orderDate: now,
+          expectedDeliveryDate: tomorrow,
+          deliveryStatus: 'not_shipped',
+          trackingId: '',
+          deliveryPartner: '',
+          actualDeliveryDate: null,
+          createdAt: now,
+        },
+      ];
+
+      const mockItems = [
+        {
+          id: 1,
+          orderId: 1,
+          itemId: 1,
+          name: 'Test Item',
+          price: '100.00',
+          quantity: 1,
+          customizationRequest: '',
+        },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => Promise.resolve(mockOrders)),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockItems)),
+          })),
+        });
+
+      const result = await Order.findPriorityOrders();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].orderId).toBe('ORD-001');
+      expect(result[0].priority).toBe(8);
+    });
+
+    it('should return empty array when no priority orders exist', async () => {
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => ({
+            orderBy: jest.fn(() => Promise.resolve([])),
+          })),
+        })),
+      }));
+
+      const result = await Order.findPriorityOrders();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should include orders with delivery dates in the past', async () => {
+      const now = new Date();
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      
+      const mockOrders = [
+        {
+          id: 2,
+          orderId: 'ORD-002',
+          orderFrom: 'facebook',
+          customerName: 'Overdue Customer',
+          customerId: 'CUST-002',
+          address: '456 Oak Ave',
+          totalPrice: '200.00',
+          status: 'processing',
+          paymentStatus: 'paid',
+          paidAmount: '200.00',
+          confirmationStatus: 'confirmed',
+          customerNotes: '',
+          priority: 5,
+          orderDate: yesterday,
+          expectedDeliveryDate: yesterday,
+          deliveryStatus: 'shipped',
+          trackingId: 'TRK-123',
+          deliveryPartner: 'FedEx',
+          actualDeliveryDate: null,
+          createdAt: yesterday,
+        },
+      ];
+
+      const mockItems = [
+        {
+          id: 2,
+          orderId: 2,
+          itemId: 2,
+          name: 'Overdue Item',
+          price: '200.00',
+          quantity: 1,
+          customizationRequest: 'Rush order',
+        },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => Promise.resolve(mockOrders)),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockItems)),
+          })),
+        });
+
+      const result = await Order.findPriorityOrders();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].orderId).toBe('ORD-002');
+    });
+  });
 });

@@ -9,6 +9,71 @@
  * 🔵 MEDIUM: 8-14 days (standard 1-2 weeks)
  * 🟢 NORMAL: >14 days (comfortable)
  */
+
+/**
+ * Creates a priority status object
+ */
+function createPriorityStatus(status, label, className, level, icon) {
+  return { status, label, className, level, icon };
+}
+
+/**
+ * Generates a label for a given number of days
+ */
+function generateLabel(diffDays, shortLabels, isDueToday = false) {
+  if (shortLabels) {
+    return `${diffDays}d`;
+  }
+  if (isDueToday) {
+    return 'Due Today';
+  }
+  const daysText = diffDays === 1 ? 'day' : 'days';
+  return `Due in ${diffDays} ${daysText}`;
+}
+
+/**
+ * Handles overdue orders
+ */
+function getOverdueStatus(diffDays, shortLabels) {
+  const overdueDays = Math.abs(diffDays);
+  const label = shortLabels 
+    ? `${overdueDays}d late` 
+    : `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
+  return createPriorityStatus('overdue', label, 'priority-overdue', 'critical', '🔴');
+}
+
+/**
+ * Handles critical priority (≤3 days)
+ */
+function getCriticalStatus(diffDays, shortLabels) {
+  const label = generateLabel(diffDays, shortLabels, diffDays === 0);
+  return createPriorityStatus('critical', label, 'priority-critical', 'critical', '🔴');
+}
+
+/**
+ * Handles urgent priority (4-7 days)
+ */
+function getUrgentStatus(diffDays, shortLabels) {
+  const label = generateLabel(diffDays, shortLabels);
+  return createPriorityStatus('urgent', label, 'priority-urgent', 'urgent', '🟠');
+}
+
+/**
+ * Handles medium priority (8-14 days)
+ */
+function getMediumStatus(diffDays, shortLabels) {
+  const label = generateLabel(diffDays, shortLabels);
+  return createPriorityStatus('medium', label, 'priority-medium', 'medium', '🔵');
+}
+
+/**
+ * Handles normal priority (>14 days)
+ */
+function getNormalStatus(diffDays, shortLabels) {
+  const label = generateLabel(diffDays, shortLabels);
+  return createPriorityStatus('normal', label, 'priority-normal', 'normal', '🟢');
+}
+
 export function getPriorityStatus(expectedDeliveryDate, options = {}) {
   if (!expectedDeliveryDate) return null;
   
@@ -21,66 +86,9 @@ export function getPriorityStatus(expectedDeliveryDate, options = {}) {
   
   const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
   
-  // 🔴 OVERDUE: Past due date
-  if (diffDays < 0) {
-    const overdueDays = Math.abs(diffDays);
-    const label = shortLabels ? `${overdueDays}d late` : `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
-    return { 
-      status: 'overdue', 
-      label, 
-      className: 'priority-overdue',
-      level: 'critical',
-      icon: '🔴'
-    };
-  }
-  
-  // 🔴 CRITICAL: ≤3 days (rush needed)
-  if (diffDays <= 3) {
-    const label = shortLabels 
-      ? `${diffDays}d` 
-      : diffDays === 0 
-        ? 'Due Today' 
-        : `Due in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
-    return { 
-      status: 'critical', 
-      label, 
-      className: 'priority-critical',
-      level: 'critical',
-      icon: '🔴'
-    };
-  }
-  
-  // 🟠 URGENT: 4-7 days (tight, <1 week)
-  if (diffDays <= 7) {
-    const label = shortLabels ? `${diffDays}d` : `Due in ${diffDays} days`;
-    return { 
-      status: 'urgent', 
-      label, 
-      className: 'priority-urgent',
-      level: 'urgent',
-      icon: '🟠'
-    };
-  }
-  
-  // 🔵 MEDIUM: 8-14 days (standard 1-2 weeks)
-  if (diffDays <= 14) {
-    const label = shortLabels ? `${diffDays}d` : `Due in ${diffDays} days`;
-    return { 
-      status: 'medium', 
-      label, 
-      className: 'priority-medium',
-      level: 'medium',
-      icon: '🔵'
-    };
-  }
-  
-  // 🟢 NORMAL: >14 days (comfortable)
-  const label = shortLabels ? `${diffDays}d` : `Due in ${diffDays} days`;
-  return { 
-    status: 'normal', 
-    label, 
-    className: 'priority-normal',
-    level: 'normal',
-    icon: '🟢'
-  };
+  if (diffDays < 0) return getOverdueStatus(diffDays, shortLabels);
+  if (diffDays <= 3) return getCriticalStatus(diffDays, shortLabels);
+  if (diffDays <= 7) return getUrgentStatus(diffDays, shortLabels);
+  if (diffDays <= 14) return getMediumStatus(diffDays, shortLabels);
+  return getNormalStatus(diffDays, shortLabels);
 }

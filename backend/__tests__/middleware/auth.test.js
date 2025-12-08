@@ -118,6 +118,35 @@ describe('Auth Middleware', () => {
       expect(res.json).toHaveBeenCalledWith({ message: 'Invalid or expired token' });
       expect(next).not.toHaveBeenCalled();
     });
+
+    it('should successfully authenticate with valid Google token', async () => {
+      delete process.env.AUTH_DISABLED;
+      req.headers.authorization = 'Bearer valid-google-token';
+
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { iss: 'https://accounts.google.com', sub: 'user789', email: 'auth@example.com', name: 'Auth User' },
+      });
+
+      jwt.verify.mockImplementation((token, key, options, callback) => {
+        callback(null, {
+          sub: 'user789',
+          email: 'auth@example.com',
+          name: 'Auth User',
+        });
+      });
+
+      await authMiddleware(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(req.user).toEqual({
+        id: 'user789',
+        email: 'auth@example.com',
+        name: 'Auth User',
+        provider: 'google',
+      });
+      expect(res.status).not.toHaveBeenCalled();
+    });
   });
 
   describe('optionalAuthMiddleware', () => {
@@ -145,6 +174,46 @@ describe('Auth Middleware', () => {
 
       expect(next).toHaveBeenCalled();
     });
+
+    it('should successfully authenticate with valid token when provided', async () => {
+      req.headers.authorization = 'Bearer valid-token';
+
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { iss: 'https://accounts.google.com', sub: 'user-opt', email: 'opt@example.com', name: 'Opt User' },
+      });
+
+      jwt.verify.mockImplementation((token, key, options, callback) => {
+        callback(null, {
+          sub: 'user-opt',
+          email: 'opt@example.com',
+          name: 'Opt User',
+        });
+      });
+
+      await optionalAuthMiddleware(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(req.user).toEqual({
+        id: 'user-opt',
+        email: 'opt@example.com',
+        name: 'Opt User',
+        provider: 'google',
+      });
+    });
+
+    it('should handle token with missing issuer', async () => {
+      req.headers.authorization = 'Bearer token-no-issuer';
+
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { sub: 'user-no-iss' },
+      });
+
+      await optionalAuthMiddleware(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+    });
   });
 
   describe('validateToken', () => {
@@ -161,6 +230,67 @@ describe('Auth Middleware', () => {
       });
 
       await expect(validateToken('token')).rejects.toThrow('Unsupported token issuer');
+    });
+
+    it('should validate a valid Google token successfully', async () => {
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { iss: 'https://accounts.google.com', sub: 'user123', email: 'test@example.com', name: 'Test User' },
+      });
+
+      jwt.verify.mockImplementation((token, key, options, callback) => {
+        callback(null, {
+          sub: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+        });
+      });
+
+      const result = await validateToken('valid-google-token');
+
+      expect(result).toEqual({
+        id: 'user123',
+        email: 'test@example.com',
+        name: 'Test User',
+        provider: 'google',
+      });
+    });
+
+    it('should validate token with alternate Google issuer format', async () => {
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { iss: 'accounts.google.com', sub: 'user456', email: 'user@test.com', name: 'User Test' },
+      });
+
+      jwt.verify.mockImplementation((token, key, options, callback) => {
+        callback(null, {
+          sub: 'user456',
+          email: 'user@test.com',
+          name: 'User Test',
+        });
+      });
+
+      const result = await validateToken('valid-token');
+
+      expect(result).toEqual({
+        id: 'user456',
+        email: 'user@test.com',
+        name: 'User Test',
+        provider: 'google',
+      });
+    });
+
+    it('should reject token when signature verification fails', async () => {
+      jwt.decode.mockReturnValue({
+        header: { kid: 'key-id' },
+        payload: { iss: 'https://accounts.google.com' },
+      });
+
+      jwt.verify.mockImplementation((token, key, options, callback) => {
+        callback(new Error('Invalid signature'));
+      });
+
+      await expect(validateToken('invalid-signature-token')).rejects.toThrow('Invalid signature');
     });
   });
 });

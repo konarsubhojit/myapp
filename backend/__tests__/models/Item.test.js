@@ -460,4 +460,152 @@ describe('Item Model', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('findDeleted', () => {
+    it('should return all deleted items', async () => {
+      const mockItems = [
+        {
+          id: 1,
+          name: 'Deleted Item 1',
+          price: '50.00',
+          color: 'Red',
+          fabric: 'Cotton',
+          special_features: 'Vintage',
+          image_url: 'http://example.com/deleted.jpg',
+          created_at: new Date('2024-01-01'),
+          deleted_at: new Date('2024-01-15'),
+        },
+        {
+          id: 2,
+          name: 'Deleted Item 2',
+          price: '75.00',
+          color: null,
+          fabric: null,
+          special_features: null,
+          image_url: null,
+          created_at: new Date('2024-01-02'),
+          deleted_at: new Date('2024-01-16'),
+        },
+      ];
+
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => ({
+            orderBy: jest.fn(() => Promise.resolve(mockItems)),
+          })),
+        })),
+      }));
+
+      const result = await Item.findDeleted();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe(1);
+      expect(result[0].name).toBe('Deleted Item 1');
+      expect(result[0].deleted_at).toEqual(mockItems[0].deleted_at);
+      expect(result[1].id).toBe(2);
+      expect(result[1].name).toBe('Deleted Item 2');
+    });
+
+    it('should return empty array when no deleted items exist', async () => {
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => ({
+            orderBy: jest.fn(() => Promise.resolve([])),
+          })),
+        })),
+      }));
+
+      const result = await Item.findDeleted();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findDeletedPaginated', () => {
+    it('should return paginated deleted items', async () => {
+      const mockCountResult = [{ count: '5' }];
+      const mockItems = [
+        {
+          id: 1,
+          name: 'Deleted Item 1',
+          price: '50.00',
+          color: null,
+          fabric: null,
+          special_features: null,
+          image_url: null,
+          created_at: new Date(),
+          deleted_at: new Date(),
+        },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockCountResult)),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => ({
+                limit: jest.fn(() => ({
+                  offset: jest.fn(() => Promise.resolve(mockItems)),
+                })),
+              })),
+            })),
+          })),
+        });
+
+      const result = await Item.findDeletedPaginated({ page: 1, limit: 10, search: '' });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe('Deleted Item 1');
+      expect(result.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 5,
+        totalPages: 1,
+      });
+    });
+
+    it('should support search in deleted items', async () => {
+      const mockCountResult = [{ count: '1' }];
+      const mockItems = [
+        {
+          id: 1,
+          name: 'Special Deleted Item',
+          price: '100.00',
+          color: null,
+          fabric: null,
+          special_features: null,
+          image_url: null,
+          created_at: new Date(),
+          deleted_at: new Date(),
+        },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockCountResult)),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => ({
+                limit: jest.fn(() => ({
+                  offset: jest.fn(() => Promise.resolve(mockItems)),
+                })),
+              })),
+            })),
+          })),
+        });
+
+      const result = await Item.findDeletedPaginated({ page: 1, limit: 10, search: 'Special' });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe('Special Deleted Item');
+    });
+  });
 });
