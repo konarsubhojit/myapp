@@ -426,4 +426,182 @@ describe('Orders Routes', () => {
       expect(response.body).toHaveProperty('message', 'Failed to update order');
     });
   });
+
+  describe('Delivery Tracking', () => {
+    beforeEach(() => {
+      Item.findById.mockResolvedValue({
+        _id: 1,
+        name: 'Test Item',
+        price: 50.0,
+      });
+    });
+
+    it('should create order with delivery tracking fields', async () => {
+      const orderData = {
+        orderFrom: 'instagram',
+        customerName: 'John Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 2 }],
+        deliveryStatus: 'not_shipped',
+        trackingId: 'AWB123456789',
+        deliveryPartner: 'Delhivery',
+        actualDeliveryDate: null,
+      };
+
+      const mockCreatedOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        ...orderData,
+        totalPrice: 100.0,
+        deliveryStatus: 'not_shipped',
+        trackingId: 'AWB123456789',
+        deliveryPartner: 'Delhivery',
+        actualDeliveryDate: null,
+        items: [{ item: 1, name: 'Test Item', price: 50.0, quantity: 2 }],
+      };
+
+      Order.create.mockResolvedValue(mockCreatedOrder);
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(201);
+      expect(response.body.deliveryStatus).toBe('not_shipped');
+      expect(response.body.trackingId).toBe('AWB123456789');
+      expect(response.body.deliveryPartner).toBe('Delhivery');
+    });
+
+    it('should update order to mark as delivered', async () => {
+      const updateData = {
+        deliveryStatus: 'delivered',
+        actualDeliveryDate: '2024-12-08',
+      };
+
+      const mockOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        totalPrice: 100.0,
+      };
+
+      const mockUpdatedOrder = {
+        ...mockOrder,
+        deliveryStatus: 'delivered',
+        actualDeliveryDate: '2024-12-08T00:00:00.000Z',
+      };
+
+      Order.findById.mockResolvedValue(mockOrder);
+      Order.findByIdAndUpdate.mockResolvedValue(mockUpdatedOrder);
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.deliveryStatus).toBe('delivered');
+      expect(response.body.actualDeliveryDate).toBeTruthy();
+    });
+
+    it('should update order with tracking information', async () => {
+      const updateData = {
+        deliveryStatus: 'shipped',
+        trackingId: 'DTDC987654321',
+        deliveryPartner: 'DTDC',
+      };
+
+      const mockOrder = {
+        _id: 1,
+        orderId: 'ORD123456',
+        totalPrice: 100.0,
+      };
+
+      const mockUpdatedOrder = {
+        ...mockOrder,
+        deliveryStatus: 'shipped',
+        trackingId: 'DTDC987654321',
+        deliveryPartner: 'DTDC',
+      };
+
+      Order.findById.mockResolvedValue(mockOrder);
+      Order.findByIdAndUpdate.mockResolvedValue(mockUpdatedOrder);
+
+      const response = await request(app).put('/api/orders/1').send(updateData);
+
+      expect(response.status).toBe(200);
+      expect(response.body.deliveryStatus).toBe('shipped');
+      expect(response.body.trackingId).toBe('DTDC987654321');
+      expect(response.body.deliveryPartner).toBe('DTDC');
+    });
+
+    it('should reject invalid delivery status', async () => {
+      const orderData = {
+        orderFrom: 'instagram',
+        customerName: 'John Doe',
+        customerId: 'CUST001',
+        items: [{ itemId: 1, quantity: 2 }],
+        deliveryStatus: 'invalid_status',
+      };
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('Invalid delivery status');
+    });
+
+    it('should accept all valid delivery statuses', async () => {
+      const validStatuses = ['not_shipped', 'shipped', 'in_transit', 'out_for_delivery', 'delivered', 'returned'];
+
+      for (const status of validStatuses) {
+        const orderData = {
+          orderFrom: 'instagram',
+          customerName: 'John Doe',
+          customerId: 'CUST001',
+          items: [{ itemId: 1, quantity: 2 }],
+          deliveryStatus: status,
+        };
+
+        const mockCreatedOrder = {
+          _id: 1,
+          orderId: 'ORD123456',
+          ...orderData,
+          totalPrice: 100.0,
+          items: [{ item: 1, name: 'Test Item', price: 50.0, quantity: 2 }],
+        };
+
+        Order.create.mockResolvedValue(mockCreatedOrder);
+
+        const response = await request(app).post('/api/orders').send(orderData);
+
+        expect(response.status).toBe(201);
+        expect(response.body.deliveryStatus).toBe(status);
+      }
+    });
+
+    it('should allow tracking from multiple delivery partners', async () => {
+      const deliveryPartners = ['Delhivery', 'DTDC', 'Blue Dart', 'FedEx', 'DHL'];
+
+      for (const partner of deliveryPartners) {
+        const updateData = {
+          deliveryPartner: partner,
+          trackingId: `${partner}_12345`,
+        };
+
+        const mockOrder = {
+          _id: 1,
+          orderId: 'ORD123456',
+          totalPrice: 100.0,
+        };
+
+        const mockUpdatedOrder = {
+          ...mockOrder,
+          deliveryPartner: partner,
+          trackingId: `${partner}_12345`,
+        };
+
+        Order.findById.mockResolvedValue(mockOrder);
+        Order.findByIdAndUpdate.mockResolvedValue(mockUpdatedOrder);
+
+        const response = await request(app).put('/api/orders/1').send(updateData);
+
+        expect(response.status).toBe(200);
+        expect(response.body.deliveryPartner).toBe(partner);
+      }
+    });
+  });
 });

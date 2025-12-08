@@ -28,6 +28,15 @@ export const CONFIRMATION_STATUSES = [
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
+export const DELIVERY_STATUSES = [
+  { value: 'not_shipped', label: 'Not Shipped' },
+  { value: 'shipped', label: 'Shipped' },
+  { value: 'in_transit', label: 'In Transit' },
+  { value: 'out_for_delivery', label: 'Out for Delivery' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'returned', label: 'Returned' },
+];
+
 export const PRIORITY_LEVELS = [
   { value: 0, label: 'Normal' },
   { value: 1, label: 'Low Priority' },
@@ -44,3 +53,4 @@ export const getPaymentStatusLabel = (status) => findLabel(PAYMENT_STATUSES, sta
 export const getConfirmationStatusLabel = (status) => findLabel(CONFIRMATION_STATUSES, status, 'Unconfirmed');
 export const getPriorityLabel = (priority) => findLabel(PRIORITY_LEVELS, priority, 'Normal');
 export const getOrderStatusLabel = (status) => findLabel(ORDER_STATUSES, status, 'Pending');
+export const getDeliveryStatusLabel = (status) => findLabel(DELIVERY_STATUSES, status, 'Not Shipped');

@@ -13,8 +13,9 @@ function OrderHistoryTableHeader({ sortConfig, onSort }) {
     { key: 'confirmationStatus', label: 'Confirmation' },
     { key: 'status', label: 'Status' },
     { key: 'paymentStatus', label: 'Payment' },
+    { key: 'deliveryStatus', label: 'Delivery' },
     { key: 'totalPrice', label: 'Total', align: 'right' },
-    { key: 'expectedDeliveryDate', label: 'Delivery' },
+    { key: 'expectedDeliveryDate', label: 'Expected' },
   ];
 
   return (
