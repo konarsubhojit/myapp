@@ -5,13 +5,14 @@ require('dotenv').config();
 const { connectToDatabase } = require('./db/connection');
 const { createLogger } = require('./utils/logger');
 const { authMiddleware } = require('./middleware/auth');
+const { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } = require('./constants/httpConstants');
 
 const logger = createLogger('Server');
 const app = express();
 
-app.set('trust proxy', 1);
+app.set('trust proxy', SERVER_CONFIG.TRUST_PROXY_LEVEL);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || SERVER_CONFIG.DEFAULT_PORT;
 logger.info('Starting application', { 
   nodeEnv: process.env.NODE_ENV || 'development',
   port: PORT,
@@ -20,15 +21,15 @@ logger.info('Starting application', {
 });
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: RATE_LIMIT.WINDOW_MS,
+  max: RATE_LIMIT.MAX_REQUESTS,
   message: { message: 'Too many requests, please try again later.' }
 });
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: BODY_LIMITS.JSON }));
+app.use(express.urlencoded({ limit: BODY_LIMITS.URLENCODED, extended: true }));
 app.use('/api/', limiter);
 
 (async () => {

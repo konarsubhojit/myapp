@@ -19,6 +19,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import { getPriorityOrders } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
+import { MILLISECONDS, POLLING_INTERVALS } from '../constants/timeConstants';
 
 /**
  * Calculate how many days until/since delivery date
@@ -31,7 +32,7 @@ function getDaysUntilDelivery(deliveryDate) {
   const delivery = new Date(deliveryDate);
   delivery.setHours(0, 0, 0, 0);
   
-  const diffDays = Math.ceil((delivery - today) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.ceil((delivery - today) / MILLISECONDS.PER_DAY);
   return diffDays;
 }
 
@@ -119,7 +120,7 @@ function PriorityNotificationPanel() {
     fetchPriorityOrders();
     
     // Refresh every 5 minutes
-    const interval = setInterval(fetchPriorityOrders, 5 * 60 * 1000);
+    const interval = setInterval(fetchPriorityOrders, POLLING_INTERVALS.PRIORITY_ORDERS);
     
     return () => clearInterval(interval);
   }, [fetchPriorityOrders]);

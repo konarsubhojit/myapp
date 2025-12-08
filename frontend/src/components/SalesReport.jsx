@@ -29,11 +29,12 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { DATE_RANGES, MILLISECONDS } from '../constants/timeConstants';
 
 const TIME_RANGES = [
-  { key: 'week', label: 'Last Week', days: 7 },
-  { key: 'month', label: 'Last Month', days: 30 },
-  { key: 'quarter', label: 'Last Quarter', days: 90 },
+  { key: 'week', label: 'Last Week', days: DATE_RANGES.WEEK },
+  { key: 'month', label: 'Last Month', days: DATE_RANGES.MONTH },
+  { key: 'quarter', label: 'Last Quarter', days: DATE_RANGES.QUARTER },
   { key: 'halfYear', label: 'Last 6 Months', days: 180 },
   { key: 'year', label: 'Last Year', days: 365 },
 ];
@@ -165,7 +166,7 @@ function SalesReport({ orders }) {
     const results = {};
 
     TIME_RANGES.forEach(range => {
-      const cutoffDate = new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
+      const cutoffDate = new Date(now.getTime() - range.days * MILLISECONDS.PER_DAY);
       
       const filteredOrders = orders.filter(order => {
         // Use orderDate if available, otherwise fall back to createdAt

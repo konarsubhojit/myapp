@@ -12,9 +12,11 @@ const {
   PRIORITY_MIN,
   PRIORITY_MAX,
 } = require('../constants/orderConstants');
+const { HTTP_STATUS } = require('../constants/httpConstants');
+const { PAGINATION } = require('../constants/paginationConstants');
 
 const logger = createLogger('OrdersRoute');
-const ALLOWED_LIMITS = new Set([10, 20, 50]);
+const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
 function validateCustomerNotes(customerNotes) {
   if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
@@ -299,7 +301,7 @@ router.get('/priority', async (req, res) => {
     res.json(priorityOrders);
   } catch (error) {
     logger.error('Failed to fetch priority orders', error);
-    res.status(500).json({ message: 'Failed to fetch priority orders' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch priority orders' });
   }
 });
 
@@ -319,7 +321,7 @@ router.get('/', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to fetch orders', error);
-    res.status(500).json({ message: 'Failed to fetch orders' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch orders' });
   }
 });
 
@@ -330,55 +332,55 @@ router.post('/', async (req, res) => {
     // Validate customer notes
     const notesValidation = validateCustomerNotes(customerNotes);
     if (!notesValidation.valid) {
-      return res.status(400).json({ message: notesValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: notesValidation.error });
     }
 
     // Validate required fields
     const fieldsValidation = validateRequiredFields(orderFrom, customerName, customerId, items);
     if (!fieldsValidation.valid) {
-      return res.status(400).json({ message: fieldsValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: fieldsValidation.error });
     }
 
     // Validate delivery date
     const dateValidation = validateDeliveryDate(expectedDeliveryDate);
     if (!dateValidation.valid) {
-      return res.status(400).json({ message: dateValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: dateValidation.error });
     }
 
     // Validate confirmation status
     const confirmationValidation = validateConfirmationStatus(confirmationStatus);
     if (!confirmationValidation.valid) {
-      return res.status(400).json({ message: confirmationValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: confirmationValidation.error });
     }
 
     // Validate priority
     const priorityValidation = validatePriority(priority);
     if (!priorityValidation.valid) {
-      return res.status(400).json({ message: priorityValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: priorityValidation.error });
     }
 
     // Validate delivery status
     const deliveryStatusValidation = validateDeliveryStatus(deliveryStatus);
     if (!deliveryStatusValidation.valid) {
-      return res.status(400).json({ message: deliveryStatusValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: deliveryStatusValidation.error });
     }
 
     // Validate actual delivery date
     const actualDeliveryDateValidation = validateActualDeliveryDate(actualDeliveryDate);
     if (!actualDeliveryDateValidation.valid) {
-      return res.status(400).json({ message: actualDeliveryDateValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: actualDeliveryDateValidation.error });
     }
 
     // Process order items
     const itemsResult = await processOrderItems(items);
     if (!itemsResult.valid) {
-      return res.status(400).json({ message: itemsResult.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: itemsResult.error });
     }
 
     // Validate payment data
     const paymentValidation = validatePaymentData(paymentStatus, paidAmount, itemsResult.totalPrice);
     if (!paymentValidation.valid) {
-      return res.status(400).json({ message: paymentValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: paymentValidation.error });
     }
 
     const newOrder = await Order.create({
@@ -405,7 +407,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(newOrder);
   } catch (error) {
     logger.error('Failed to create order', error);
-    res.status(500).json({ message: 'Failed to create order' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create order' });
   }
 });
 
@@ -413,12 +415,12 @@ router.get('/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
     }
     res.json(order);
   } catch (error) {
     logger.error('Failed to fetch order', error);
-    res.status(500).json({ message: 'Failed to fetch order' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch order' });
   }
 });
 
@@ -513,7 +515,7 @@ router.put('/:id', async (req, res) => {
   try {
     const validation = await validateUpdateRequest(req.body);
     if (!validation.valid) {
-      return res.status(400).json({ message: validation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: validation.error });
     }
 
     const { paidAmountResult, itemsResult, paymentStatus } = validation.data;
@@ -522,7 +524,7 @@ router.put('/:id', async (req, res) => {
     if (paidAmountResult.parsedAmount !== undefined) {
       const existingOrder = await Order.findById(req.params.id);
       if (!existingOrder) {
-        return res.status(404).json({ message: 'Order not found' });
+        return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
       }
       
       const paymentValidation = validateUpdatePaymentAmount(
@@ -532,21 +534,21 @@ router.put('/:id', async (req, res) => {
         paymentStatus
       );
       if (!paymentValidation.valid) {
-        return res.status(400).json({ message: paymentValidation.error });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: paymentValidation.error });
       }
     }
 
     const updateData = buildUpdateData(validation.data, req.body);
     const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
     if (!updatedOrder) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
     }
 
     logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
     res.json(updatedOrder);
   } catch (error) {
     logger.error('Failed to update order', error);
-    res.status(500).json({ message: 'Failed to update order' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update order' });
   }
 });
 
