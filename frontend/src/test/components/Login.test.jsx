@@ -88,4 +88,9 @@ describe('Login', () => {
     render(<Login />);
     expect(screen.getByText(/terms of service and privacy policy/i)).toBeInTheDocument();
   });
+
+  it('should display version information', () => {
+    render(<Login />);
+    expect(screen.getByText(/Version/i)).toBeInTheDocument();
+  });
 });
