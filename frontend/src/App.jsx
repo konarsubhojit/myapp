@@ -12,6 +12,7 @@ import Paper from '@mui/material/Paper'
 import CircularProgress from '@mui/material/CircularProgress'
 import Avatar from '@mui/material/Avatar'
 import Chip from '@mui/material/Chip'
+import Tooltip from '@mui/material/Tooltip'
 import LogoutIcon from '@mui/icons-material/Logout'
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
 import InventoryIcon from '@mui/icons-material/Inventory'
@@ -33,6 +34,7 @@ import { CurrencyProvider } from './contexts/CurrencyContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
+import { APP_VERSION } from './config/version'
 
 const TAB_ROUTES = [
   { path: '/priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
@@ -162,23 +164,26 @@ function AppContent() {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
-          <Typography 
-            variant="h6" 
-            component="h1" 
-            sx={{ 
-              fontWeight: 600,
-              letterSpacing: '0.01em',
-              fontSize: { xs: '1rem', sm: '1.25rem' },
-              flexShrink: 1,
-              minWidth: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              color: '#ffffff',
-            }}
-          >
-            {isMobile ? 'OMS' : 'Order Management System'}
-          </Typography>
+          <Tooltip title={`Version ${APP_VERSION}`} arrow>
+            <Typography 
+              variant="h6" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 600,
+                letterSpacing: '0.01em',
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                flexShrink: 1,
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                color: '#ffffff',
+                cursor: 'default',
+              }}
+            >
+              {isMobile ? 'OMS' : 'Order Management System'}
+            </Typography>
+          </Tooltip>
           <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
             {!guestMode && <PriorityNotificationPanel />}
             {guestMode && (

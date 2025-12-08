@@ -29,10 +29,44 @@ jobs:
         with:
           fetch-depth: 0  # Required for accurate blame and new code detection in SonarQube
 
+      # Generate version from VERSION file with auto-incrementing build number
+      - name: Generate Version
+        id: version
+        run: |
+          # Read base version from VERSION file
+          if [ -f VERSION ]; then
+            BASE_VERSION=$(cat VERSION)
+          else
+            BASE_VERSION="0.0.0"
+          fi
+          
+          # Parse major.minor.patch
+          MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+          MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+          PATCH=$(echo $BASE_VERSION | cut -d. -f3)
+          
+          # Use GitHub run number as build number (auto-increments on each run)
+          BUILD_NUMBER=${{ github.run_number }}
+          
+          # Full version: major.minor.build_number
+          FULL_VERSION="${MAJOR}.${MINOR}.${BUILD_NUMBER}"
+          
+          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "📦 Version: $FULL_VERSION (Base: $BASE_VERSION, Build: $BUILD_NUMBER)"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       # Backend steps
       - name: Install backend dependencies
@@ -59,6 +93,8 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ steps.version.outputs.full_version }}
 
       # SonarQube analysis with coverage from both backend and frontend
       # Coverage is generated in backend/coverage/lcov.info and frontend/coverage/lcov.info
@@ -71,6 +107,7 @@ jobs:
           args: >
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectVersion=${{ steps.version.outputs.full_version }}
             -Dsonar.sources=backend,frontend/src
             -Dsonar.tests=backend/__tests__,frontend/src/test
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,frontend/src/test/**
@@ -91,7 +128,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage
+          name: backend-coverage-v${{ steps.version.outputs.full_version }}
           path: backend/coverage
           retention-days: 7
 
@@ -99,7 +136,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-coverage
+          name: frontend-coverage-v${{ steps.version.outputs.full_version }}
           path: frontend/coverage
           retention-days: 7
 
@@ -107,6 +144,19 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
+          name: frontend-dist-v${{ steps.version.outputs.full_version }}
           path: frontend/dist
           retention-days: 7
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 📦 Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | \`${{ steps.version.outputs.full_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Base Version | \`${{ steps.version.outputs.base_version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Number | \`${{ steps.version.outputs.build_number }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY

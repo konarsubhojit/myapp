@@ -9,6 +9,7 @@ import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
 import PreviewIcon from '@mui/icons-material/Preview';
 import { useAuth } from '../contexts/AuthContext';
+import { APP_VERSION } from '../config/version';
 
 function Login() {
   const { handleGoogleSuccess, handleGoogleError, loading, error, enableGuestMode } = useAuth();
@@ -126,6 +127,16 @@ function Login() {
             textAlign="center"
           >
             By signing in, you agree to our terms of service and privacy policy.
+          </Typography>
+          
+          <Typography 
+            variant="caption" 
+            color="text.disabled" 
+            display="block" 
+            textAlign="center"
+            sx={{ mt: 2 }}
+          >
+            Version {APP_VERSION}
           </Typography>
         </CardContent>
       </Card>
