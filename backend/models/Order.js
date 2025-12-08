@@ -31,6 +31,10 @@ function transformOrder(order, items = []) {
     priority: order.priority || 0,
     orderDate: order.orderDate ? order.orderDate.toISOString() : null,
     expectedDeliveryDate: order.expectedDeliveryDate ? order.expectedDeliveryDate.toISOString() : null,
+    deliveryStatus: order.deliveryStatus || 'not_shipped',
+    trackingId: order.trackingId || '',
+    deliveryPartner: order.deliveryPartner || '',
+    actualDeliveryDate: order.actualDeliveryDate ? order.actualDeliveryDate.toISOString() : null,
     items: items.map(transformOrderItem)
   };
 }
@@ -57,6 +61,10 @@ function buildOrderUpdateData(data) {
   setFieldIfDefined(updateData, 'confirmationStatus', data.confirmationStatus);
   setFieldIfDefined(updateData, 'customerNotes', data.customerNotes, v => v?.trim() || null);
   setFieldIfDefined(updateData, 'priority', data.priority);
+  setFieldIfDefined(updateData, 'deliveryStatus', data.deliveryStatus);
+  setFieldIfDefined(updateData, 'trackingId', data.trackingId, v => v?.trim() || null);
+  setFieldIfDefined(updateData, 'deliveryPartner', data.deliveryPartner, v => v?.trim() || null);
+  setFieldIfDefined(updateData, 'actualDeliveryDate', data.actualDeliveryDate, v => v ? new Date(v) : null);
   
   return updateData;
 }
@@ -195,7 +203,11 @@ const Order = {
       customerNotes: data.customerNotes?.trim() || null,
       priority: data.priority || 0,
       orderDate: data.orderDate ? new Date(data.orderDate) : new Date(),
-      expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null
+      expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+      deliveryStatus: data.deliveryStatus || 'not_shipped',
+      trackingId: data.trackingId?.trim() || null,
+      deliveryPartner: data.deliveryPartner?.trim() || null,
+      actualDeliveryDate: data.actualDeliveryDate ? new Date(data.actualDeliveryDate) : null
     }).returning();
     
     const newOrder = orderResult[0];

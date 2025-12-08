@@ -7,6 +7,7 @@ const {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
   VALID_CONFIRMATION_STATUSES,
+  VALID_DELIVERY_STATUSES,
   MAX_CUSTOMER_NOTES_LENGTH,
   PRIORITY_MIN,
   PRIORITY_MAX,
@@ -99,6 +100,50 @@ function validateConfirmationStatus(confirmationStatus) {
     return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
   }
   return { valid: true };
+}
+
+function validateDeliveryStatus(deliveryStatus) {
+  if (deliveryStatus && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
+    return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateUpdateDeliveryStatus(deliveryStatus) {
+  if (deliveryStatus !== undefined && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
+    return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
+  }
+  return { valid: true };
+}
+
+function validateActualDeliveryDate(actualDeliveryDate) {
+  if (!actualDeliveryDate) {
+    return { valid: true, parsedDate: null };
+  }
+  
+  const parsedDate = new Date(actualDeliveryDate);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return { valid: false, error: 'Invalid actual delivery date' };
+  }
+  
+  return { valid: true, parsedDate };
+}
+
+function parseUpdateActualDeliveryDate(actualDeliveryDate) {
+  if (actualDeliveryDate === undefined) {
+    return { valid: true, parsedDate: undefined };
+  }
+  
+  if (actualDeliveryDate === null || actualDeliveryDate === '') {
+    return { valid: true, parsedDate: null };
+  }
+  
+  const parsedDate = new Date(actualDeliveryDate);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return { valid: false, error: 'Invalid actual delivery date' };
+  }
+  
+  return { valid: true, parsedDate };
 }
 
 function validateUpdateCustomerNotes(customerNotes) {
@@ -280,7 +325,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { orderFrom, customerName, customerId, address, orderDate, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = req.body;
+    const { orderFrom, customerName, customerId, address, orderDate, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, trackingId, deliveryPartner, actualDeliveryDate } = req.body;
 
     // Validate customer notes
     const notesValidation = validateCustomerNotes(customerNotes);
@@ -312,6 +357,18 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: priorityValidation.error });
     }
 
+    // Validate delivery status
+    const deliveryStatusValidation = validateDeliveryStatus(deliveryStatus);
+    if (!deliveryStatusValidation.valid) {
+      return res.status(400).json({ message: deliveryStatusValidation.error });
+    }
+
+    // Validate actual delivery date
+    const actualDeliveryDateValidation = validateActualDeliveryDate(actualDeliveryDate);
+    if (!actualDeliveryDateValidation.valid) {
+      return res.status(400).json({ message: actualDeliveryDateValidation.error });
+    }
+
     // Process order items
     const itemsResult = await processOrderItems(items);
     if (!itemsResult.valid) {
@@ -337,7 +394,11 @@ router.post('/', async (req, res) => {
       paidAmount: paymentValidation.parsedAmount,
       confirmationStatus: confirmationStatus || 'unconfirmed',
       customerNotes: customerNotes || '',
-      priority: priorityValidation.parsedPriority
+      priority: priorityValidation.parsedPriority,
+      deliveryStatus: deliveryStatus || 'not_shipped',
+      trackingId: trackingId || '',
+      deliveryPartner: deliveryPartner || '',
+      actualDeliveryDate: actualDeliveryDateValidation.parsedDate
     });
 
     logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
@@ -367,7 +428,7 @@ router.get('/:id', async (req, res) => {
  * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
  */
 async function validateUpdateRequest(requestBody) {
-  const { customerName, customerId, items, orderDate, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority } = requestBody;
+  const { customerName, customerId, items, orderDate, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, trackingId, deliveryPartner, actualDeliveryDate } = requestBody;
 
   const notesValidation = validateUpdateCustomerNotes(customerNotes);
   if (!notesValidation.valid) return notesValidation;
@@ -384,6 +445,9 @@ async function validateUpdateRequest(requestBody) {
   const confirmationValidation = validateUpdateConfirmationStatus(confirmationStatus);
   if (!confirmationValidation.valid) return confirmationValidation;
 
+  const deliveryStatusValidation = validateUpdateDeliveryStatus(deliveryStatus);
+  if (!deliveryStatusValidation.valid) return deliveryStatusValidation;
+
   const paidAmountResult = parseUpdatePaidAmount(paidAmount);
   if (!paidAmountResult.valid) return paidAmountResult;
 
@@ -392,6 +456,9 @@ async function validateUpdateRequest(requestBody) {
 
   const dateResult = parseUpdateDeliveryDate(expectedDeliveryDate);
   if (!dateResult.valid) return dateResult;
+
+  const actualDeliveryDateResult = parseUpdateActualDeliveryDate(actualDeliveryDate);
+  if (!actualDeliveryDateResult.valid) return actualDeliveryDateResult;
 
   const itemsResult = await processUpdateOrderItems(items);
   if (!itemsResult.valid) return itemsResult;
@@ -402,6 +469,7 @@ async function validateUpdateRequest(requestBody) {
       paidAmountResult, 
       priorityResult, 
       dateResult, 
+      actualDeliveryDateResult,
       itemsResult, 
       paymentStatus
     } 
@@ -415,8 +483,8 @@ async function validateUpdateRequest(requestBody) {
  * @returns {Object} - The update data object with only defined fields
  */
 function buildUpdateData(validationData, requestBody) {
-  const { orderFrom, customerName, customerId, address, orderDate, status, paymentStatus, confirmationStatus, customerNotes } = requestBody;
-  const { paidAmountResult, priorityResult, dateResult, itemsResult } = validationData;
+  const { orderFrom, customerName, customerId, address, orderDate, status, paymentStatus, confirmationStatus, customerNotes, deliveryStatus, trackingId, deliveryPartner } = requestBody;
+  const { paidAmountResult, priorityResult, dateResult, actualDeliveryDateResult, itemsResult } = validationData;
   
   const updateData = {};
   if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
@@ -431,6 +499,10 @@ function buildUpdateData(validationData, requestBody) {
   if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
   if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
   if (priorityResult.parsedPriority !== undefined) updateData.priority = priorityResult.parsedPriority;
+  if (deliveryStatus !== undefined) updateData.deliveryStatus = deliveryStatus;
+  if (trackingId !== undefined) updateData.trackingId = trackingId;
+  if (deliveryPartner !== undefined) updateData.deliveryPartner = deliveryPartner;
+  if (actualDeliveryDateResult.parsedDate !== undefined) updateData.actualDeliveryDate = actualDeliveryDateResult.parsedDate;
   if (itemsResult.orderItems !== undefined) updateData.items = itemsResult.orderItems;
   if (itemsResult.totalPrice !== undefined) updateData.totalPrice = itemsResult.totalPrice;
   

@@ -31,6 +31,10 @@ const orders = pgTable('orders', {
   priority: integer('priority').default(0),
   orderDate: timestamp('order_date'),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
+  deliveryStatus: text('delivery_status').default('not_shipped'),
+  trackingId: text('tracking_id'),
+  deliveryPartner: text('delivery_partner'),
+  actualDeliveryDate: timestamp('actual_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
