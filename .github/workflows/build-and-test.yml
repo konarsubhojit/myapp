@@ -37,13 +37,12 @@ jobs:
           if [ -f VERSION ]; then
             BASE_VERSION=$(cat VERSION)
           else
-            BASE_VERSION="0.0.0"
+            BASE_VERSION="0.0"
           fi
           
-          # Parse major.minor.patch
+          # Parse major.minor from VERSION (PATCH is ignored)
           MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
           MINOR=$(echo $BASE_VERSION | cut -d. -f2)
-          PATCH=$(echo $BASE_VERSION | cut -d. -f3)
           
           # Use GitHub run number as build number (auto-increments on each run)
           BUILD_NUMBER=${{ github.run_number }}
