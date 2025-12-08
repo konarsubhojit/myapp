@@ -479,6 +479,18 @@ async function validateUpdateRequest(requestBody) {
 }
 
 /**
+ * Adds a field to update data if it's defined
+ * @param {Object} target - The target object to update
+ * @param {string} key - The key to set
+ * @param {*} value - The value to set
+ */
+function addIfDefined(target, key, value) {
+  if (value !== undefined) {
+    target[key] = value;
+  }
+}
+
+/**
  * Builds the update data object from validated request data
  * @param {Object} validationData - The validated data from validateUpdateRequest
  * @param {Object} requestBody - The original request body
@@ -489,24 +501,32 @@ function buildUpdateData(validationData, requestBody) {
   const { paidAmountResult, priorityResult, dateResult, actualDeliveryDateResult, itemsResult } = validationData;
   
   const updateData = {};
-  if (orderFrom !== undefined) updateData.orderFrom = orderFrom;
-  if (customerName !== undefined) updateData.customerName = customerName;
-  if (customerId !== undefined) updateData.customerId = customerId;
-  if (address !== undefined) updateData.address = address;
-  if (orderDate !== undefined) updateData.orderDate = orderDate;
-  if (dateResult.parsedDate !== undefined) updateData.expectedDeliveryDate = dateResult.parsedDate;
-  if (status !== undefined) updateData.status = status;
-  if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
-  if (paidAmountResult.parsedAmount !== undefined) updateData.paidAmount = paidAmountResult.parsedAmount;
-  if (confirmationStatus !== undefined) updateData.confirmationStatus = confirmationStatus;
-  if (customerNotes !== undefined) updateData.customerNotes = customerNotes;
-  if (priorityResult.parsedPriority !== undefined) updateData.priority = priorityResult.parsedPriority;
-  if (deliveryStatus !== undefined) updateData.deliveryStatus = deliveryStatus;
-  if (trackingId !== undefined) updateData.trackingId = trackingId;
-  if (deliveryPartner !== undefined) updateData.deliveryPartner = deliveryPartner;
-  if (actualDeliveryDateResult.parsedDate !== undefined) updateData.actualDeliveryDate = actualDeliveryDateResult.parsedDate;
-  if (itemsResult.orderItems !== undefined) updateData.items = itemsResult.orderItems;
-  if (itemsResult.totalPrice !== undefined) updateData.totalPrice = itemsResult.totalPrice;
+  
+  // Direct fields from request body
+  const directFields = [
+    ['orderFrom', orderFrom],
+    ['customerName', customerName],
+    ['customerId', customerId],
+    ['address', address],
+    ['orderDate', orderDate],
+    ['status', status],
+    ['paymentStatus', paymentStatus],
+    ['confirmationStatus', confirmationStatus],
+    ['customerNotes', customerNotes],
+    ['deliveryStatus', deliveryStatus],
+    ['trackingId', trackingId],
+    ['deliveryPartner', deliveryPartner]
+  ];
+  
+  directFields.forEach(([key, value]) => addIfDefined(updateData, key, value));
+  
+  // Parsed fields from validation results
+  addIfDefined(updateData, 'expectedDeliveryDate', dateResult.parsedDate);
+  addIfDefined(updateData, 'paidAmount', paidAmountResult.parsedAmount);
+  addIfDefined(updateData, 'priority', priorityResult.parsedPriority);
+  addIfDefined(updateData, 'actualDeliveryDate', actualDeliveryDateResult.parsedDate);
+  addIfDefined(updateData, 'items', itemsResult.orderItems);
+  addIfDefined(updateData, 'totalPrice', itemsResult.totalPrice);
   
   return updateData;
 }
