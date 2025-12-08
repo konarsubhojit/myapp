@@ -2,301 +2,183 @@
 
 A full-stack application for managing orders with React frontend and Node.js/PostgreSQL backend.
 
-## Features
+> 📚 **For complete documentation**, see [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)
 
-- **Order Management**: Create orders with customer information and multiple items
-- **Item Management**: Add and manage items with name, price, color, fabric, and image
-- **Order Tracking**: Auto-generated order IDs and total price calculation
-- **Order History**: View all past orders with filtering, sorting, and pagination
-- **Sales Analytics**: Comprehensive sales reports by time period, item, customer, and source
-- **Authentication**: Google OAuth integration
-- **Soft Delete**: Items can be soft-deleted and restored
-- **Permanent Image Deletion**: Remove images from soft-deleted items while preserving records for historical orders
+## Quick Start
+
+### Prerequisites
+- Node.js v18+
+- Neon PostgreSQL database
+- Vercel Blob Storage (for images)
+- Google OAuth credentials
+
+### Installation
+
+```bash
+# Clone repository
+git clone https://github.com/konarsubhojit/Order-Management.git
+cd Order-Management
+
+# Install dependencies
+npm run install:all
+
+# Configure environment variables
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+# Edit .env files with your credentials
+```
+
+### Run Locally
+
+```bash
+# Terminal 1: Start backend
+npm run backend
+# Runs on http://localhost:5000
+
+# Terminal 2: Start frontend
+npm run frontend
+# Runs on http://localhost:5173
+```
+
+## Key Features
+
+- ✅ **Order Management** - Create and track orders with multiple items
+- ✅ **Item Management** - Manage inventory with images and details
+- ✅ **Delivery Tracking** - Track shipments with AWB numbers
+- ✅ **Sales Reports** - Analyze sales by time, customer, and source
+- ✅ **Priority Dashboard** - Visual indicators for urgent orders
+- ✅ **Multi-Currency** - Support for USD, EUR, GBP, INR
+- ✅ **Google OAuth** - Secure authentication
+- ✅ **Soft Delete** - Restore accidentally deleted items
 
 ## Tech Stack
 
-- **Frontend**: React 19 with Vite
-- **Backend**: Node.js with Express
-- **Database**: Neon PostgreSQL with Drizzle ORM
-- **Image Storage**: Vercel Blob Storage
-- **Authentication**: Google OAuth
-- **Deployment**: Vercel
-
-## Prerequisites
-
-- Node.js (v18 or higher)
-- Neon PostgreSQL database (https://neon.tech)
-
-## Installation
-
-1. Install all dependencies:
-```bash
-npm run install:all
-```
-
-Or install separately:
-```bash
-cd backend && npm install
-cd ../frontend && npm install
-```
-
-2. Set up environment variables:
-```bash
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
-
-## Running the Application
-
-1. Start the backend server:
-```bash
-npm run backend
-```
-Backend will run on http://localhost:5000
-
-2. In a separate terminal, start the frontend:
-```bash
-npm run frontend
-```
-Frontend will run on http://localhost:5173
-
-## API Endpoints
-
-### Items
-- `GET /api/items` - Get all items (supports pagination with `page` and `limit` params)
-- `GET /api/items/deleted` - Get soft-deleted items
-- `POST /api/items` - Create a new item
-- `PUT /api/items/:id` - Update an item
-- `DELETE /api/items/:id` - Soft delete an item
-- `POST /api/items/:id/restore` - Restore a soft-deleted item
-- `DELETE /api/items/:id/permanent` - Permanently remove image from a soft-deleted item
-
-### Orders
-- `GET /api/orders` - Get all orders (supports pagination)
-- `POST /api/orders` - Create a new order
-- `GET /api/orders/:id` - Get a specific order
-- `PUT /api/orders/:id` - Update an order
-
-### Health
-- `GET /api/health` - Health check endpoint (no auth required)
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEON_DATABASE_URL` | Neon PostgreSQL connection string | Yes |
-| `PORT` | Server port (default: 5000) | No |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob Storage token | Yes (for images) |
-| `AUTH_DISABLED` | Set to 'true' to disable auth (dev only) | No |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID | Yes (for auth) |
-
-### Frontend (`frontend/.env`)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `VITE_API_URL` | Backend API URL | No (defaults to localhost) |
-| `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID | Yes (for auth) |
+**Frontend**: React 19, Vite, Material-UI, React Router  
+**Backend**: Node.js, Express, PostgreSQL, Drizzle ORM  
+**Deployment**: Vercel, Docker support  
+**Testing**: Jest (backend), Vitest (frontend)
 
 ## Project Structure
 
 ```
-├── backend/
-│   ├── constants/         # Shared constants
-│   ├── db/                # Database connection and schema
-│   ├── middleware/        # Express middleware (auth)
-│   ├── models/            # Data models (Item, Order)
-│   ├── routes/            # API routes
-│   ├── utils/             # Utilities (logger)
-│   └── server.js          # Main server entry
-├── frontend/
+├── backend/          # Node.js/Express API
+│   ├── models/       # Data models
+│   ├── routes/       # API endpoints
+│   ├── db/           # Database schema
+│   └── __tests__/    # Backend tests
+├── frontend/         # React application
 │   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── config/        # Configuration
-│   │   ├── constants/     # Shared constants
-│   │   ├── contexts/      # React contexts
-│   │   ├── services/      # API service layer
-│   │   ├── utils/         # Utility functions
-│   │   ├── App.jsx        # Main App component
-│   │   └── main.jsx       # Entry point
-│   └── package.json
-├── docs/                  # Additional documentation
-└── package.json           # Root package.json with workspace scripts
+│   │   ├── components/  # React components
+│   │   ├── hooks/       # Custom hooks
+│   │   ├── contexts/    # Context providers
+│   │   ├── services/    # API client
+│   │   └── test/        # Frontend tests
+│   └── ...
+└── docs/            # Additional documentation
 ```
 
-## Development Commands
+## API Endpoints
 
-### Frontend
+### Items
+- `GET /api/items` - Get all items (with pagination)
+- `POST /api/items` - Create item
+- `PUT /api/items/:id` - Update item
+- `DELETE /api/items/:id` - Soft delete item
+- `POST /api/items/:id/restore` - Restore item
+
+### Orders
+- `GET /api/orders` - Get all orders (with pagination)
+- `POST /api/orders` - Create order
+- `GET /api/orders/:id` - Get order details
+- `PUT /api/orders/:id` - Update order
+
+### Health
+- `GET /api/health` - Health check (no auth)
+
+## Testing
+
 ```bash
-cd frontend
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run lint     # Run ESLint
-npm run preview  # Preview production build
+# Backend tests
+cd backend && npm test
+
+# Frontend tests
+cd frontend && npm test
+
+# With coverage
+npm run test:coverage
 ```
 
-### Backend
+## Deployment
+
+### Vercel (Recommended)
+1. Deploy backend: Set root to `backend`, add environment variables
+2. Deploy frontend: Set root to `frontend`, add environment variables, set VITE_API_URL
+
+### Docker
 ```bash
-cd backend
-npm start        # Start the server
-```
-
-## Docker Deployment
-
-The application is containerized and ready for deployment on cloud container platforms like Azure Container Apps, AWS ECS, Google Cloud Run, etc.
-
-### CI/CD with GitHub Actions
-
-The repository includes comprehensive CI/CD pipelines via GitHub Actions:
-
-#### Available Workflows
-
-| Workflow | Trigger | Description |
-|----------|---------|-------------|
-| `build-and-test.yml` | Push to `master`/`develop`, PRs | Runs tests with coverage and SonarQube analysis |
-| `docker-build.yml` | Push to `main`, tags, PRs | Builds and pushes Docker images to GitHub Container Registry |
-| `deploy-azure-container-apps.yml` | Manual dispatch | Deploys images to Azure Container Apps |
-
-#### Testing and Code Quality
-
-The `build-and-test.yml` workflow runs all tasks in a single job for efficient SonarQube coverage tracking:
-- Runs backend tests with coverage (Jest)
-- Runs frontend tests with coverage (Vitest)
-- Lints frontend code with ESLint
-- Builds frontend for production
-- Analyzes code with SonarQube for quality and security
-- Checks Quality Gate status
-
-All steps run sequentially in one job, allowing SonarQube to directly access test coverage without artifact transfers.
-
-For complete SonarQube setup and configuration details, see [SonarQube Integration Guide](docs/SONARQUBE_INTEGRATION.md).
-
-#### Running Tests Locally
-
-**Backend Tests:**
-```bash
-cd backend
-npm run test              # Run tests
-npm run test:coverage     # Run tests with coverage
-npm run test:watch        # Run tests in watch mode
-```
-
-**Frontend Tests:**
-```bash
-cd frontend
-npm run test              # Run tests in watch mode
-npm run test:coverage     # Run tests with coverage
-npm run test:ui           # Run tests with UI
-```
-
-#### Automatic Image Building
-
-On every push to `main` or when a version tag (e.g., `v1.0.0`) is created:
-- Docker images are automatically built for both backend and frontend
-- Images are pushed to GitHub Container Registry (ghcr.io)
-- Security scanning with Trivy is performed on the images
-
-#### Pull Published Images
-
-```bash
-# Backend
-docker pull ghcr.io/<your-username>/myapp-backend:latest
-
-# Frontend
-docker pull ghcr.io/<your-username>/myapp-frontend:latest
-```
-
-#### Required Repository Settings
-
-1. **Repository Variables** (Settings → Secrets and variables → Actions → Variables):
-   - `VITE_API_URL` - Backend API URL for frontend build
-   - `VITE_GOOGLE_CLIENT_ID` - Google OAuth Client ID
-
-2. **For Azure Container Apps deployment** (optional):
-   - `AZURE_RESOURCE_GROUP` - Azure resource group name
-   - `AZURE_BACKEND_APP_NAME` - Backend container app name
-   - `AZURE_FRONTEND_APP_NAME` - Frontend container app name
-   - `AZURE_CONTAINER_APP_ENVIRONMENT` - Container Apps environment name
-
-3. **Repository Secrets** (for Azure deployment):
-   - `AZURE_CREDENTIALS` - Azure service principal credentials JSON
-
-### Quick Start with Docker Compose
-
-1. Copy the environment template:
-```bash
+# Using Docker Compose
 cp .env.docker.example .env
-```
-
-2. Edit `.env` with your actual values (database URL, OAuth credentials, etc.)
-
-3. Build and run the containers:
-```bash
 docker-compose up --build
 ```
 
-The application will be available at:
-- Frontend: http://localhost:80
-- Backend API: http://localhost:5000
+## Environment Variables
 
-### Building Individual Containers
-
-#### Backend Container
-```bash
-cd backend
-docker build -t order-management-backend .
-docker run -p 5000:5000 \
-  -e NEON_DATABASE_URL=your_database_url \
-  -e GOOGLE_CLIENT_ID=your_google_client_id \
-  order-management-backend
+**Backend** (.env):
+```env
+NEON_DATABASE_URL=postgresql://...
+GOOGLE_CLIENT_ID=...
+BLOB_READ_WRITE_TOKEN=...
+PORT=5000
 ```
 
-#### Frontend Container
-```bash
-cd frontend
-docker build -t order-management-frontend \
-  --build-arg VITE_API_URL=http://your-backend-url/api \
-  --build-arg VITE_GOOGLE_CLIENT_ID=your_google_client_id .
-docker run -p 80:80 order-management-frontend
+**Frontend** (.env):
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_GOOGLE_CLIENT_ID=...
 ```
 
-### Cloud Container Deployment
+## Documentation
 
-#### Azure Container Apps
+- [Complete Project Documentation](./PROJECT_DOCUMENTATION.md) - Full technical documentation
+- [API Documentation](./PROJECT_DOCUMENTATION.md#api-documentation) - Detailed API reference
+- [Database Schema](./PROJECT_DOCUMENTATION.md#database-schema) - Database structure
+- [Development Guidelines](./PROJECT_DOCUMENTATION.md#development-guidelines) - Coding standards
+- [Deployment Guide](./PROJECT_DOCUMENTATION.md#deployment) - Deployment instructions
+
+## Development
+
 ```bash
-# Build and push to Azure Container Registry
-az acr build --registry <your-registry> --image order-backend:latest ./backend
-az acr build --registry <your-registry> --image order-frontend:latest ./frontend
+# Frontend linting
+cd frontend && npm run lint
 
-# Deploy to Azure Container Apps
-az containerapp create --name order-backend --resource-group <rg> \
-  --image <your-registry>.azurecr.io/order-backend:latest \
-  --target-port 5000 --ingress external
+# Frontend build
+cd frontend && npm run build
 
-az containerapp create --name order-frontend --resource-group <rg> \
-  --image <your-registry>.azurecr.io/order-frontend:latest \
-  --target-port 80 --ingress external
+# Backend start
+cd backend && npm start
 ```
 
-#### Google Cloud Run
-```bash
-# Backend
-gcloud builds submit --tag gcr.io/<project>/order-backend ./backend
-gcloud run deploy order-backend --image gcr.io/<project>/order-backend --port 5000
+## Contributing
 
-# Frontend
-gcloud builds submit --tag gcr.io/<project>/order-frontend ./frontend
-gcloud run deploy order-frontend --image gcr.io/<project>/order-frontend --port 80
-```
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Make changes with tests
+4. Run tests and linting
+5. Submit pull request
 
-#### AWS ECS / Fargate
-Build images and push to ECR, then deploy using ECS service definitions or the AWS Console.
+## Support
 
-### Container Environment Variables
+For issues or questions:
+- Check [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)
+- Search existing GitHub issues
+- Create new issue with details
 
-See `.env.docker.example` for all available environment variables and their descriptions.
+## License
 
-## Deployment (Vercel)
+Proprietary. All rights reserved.
 
-For Azure deployment setup, see [docs/AZURE_DEPLOYMENT_SETUP.md](docs/AZURE_DEPLOYMENT_SETUP.md).
+---
+
+**Version**: 1.0.0  
+**Repository**: https://github.com/konarsubhojit/Order-Management  
+**Author**: konarsubhojit

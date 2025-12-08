@@ -3,11 +3,13 @@ const router = express.Router();
 const { put, del } = require('@vercel/blob');
 const Item = require('../models/Item');
 const { createLogger } = require('../utils/logger');
+const { HTTP_STATUS } = require('../constants/httpConstants');
+const { PAGINATION } = require('../constants/paginationConstants');
+const { IMAGE_CONFIG } = require('../constants/imageConstants');
 
 const logger = createLogger('ItemsRoute');
 
-const ALLOWED_LIMITS = new Set([10, 20, 50]);
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
 async function uploadImage(image) {
   const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -19,8 +21,8 @@ async function uploadImage(image) {
   const base64Data = matches[2];
   const buffer = Buffer.from(base64Data, 'base64');
   
-  if (buffer.length > MAX_IMAGE_SIZE) {
-    throw new Error('Image size should be less than 2MB');
+  if (buffer.length > IMAGE_CONFIG.MAX_SIZE) {
+    throw new Error(`Image size should be less than ${IMAGE_CONFIG.MAX_SIZE_MB}MB`);
   }
   
   const filename = `items/${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
@@ -97,7 +99,7 @@ router.get('/', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to fetch items', error);
-    res.status(500).json({ message: 'Failed to fetch items' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch items' });
   }
 });
 
@@ -114,7 +116,7 @@ router.get('/deleted', async (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Failed to fetch deleted items', error);
-    res.status(500).json({ message: 'Failed to fetch deleted items' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch deleted items' });
   }
 });
 
@@ -123,12 +125,12 @@ router.post('/', async (req, res) => {
     const { name, price, color, fabric, specialFeatures, image } = req.body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({ message: 'Item name is required' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Item name is required' });
     }
 
     const parsedPrice = parseFloat(price);
     if (price === undefined || price === null || isNaN(parsedPrice) || parsedPrice < 0) {
-      return res.status(400).json({ message: 'Valid price is required' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Valid price is required' });
     }
 
     let imageUrl = '';
@@ -139,7 +141,7 @@ router.post('/', async (req, res) => {
         logger.info('Image uploaded to blob storage', { url: imageUrl });
       } catch (uploadError) {
         logger.error('Failed to upload image to blob storage', uploadError);
-        return res.status(400).json({ message: uploadError.message });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: uploadError.message });
       }
     }
 
@@ -156,7 +158,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(newItem);
   } catch (error) {
     logger.error('Failed to create item', error);
-    res.status(500).json({ message: 'Failed to create item' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create item' });
   }
 });
 
@@ -167,18 +169,18 @@ router.put('/:id', async (req, res) => {
     // Validate name
     const nameValidation = validateItemName(name);
     if (!nameValidation.valid) {
-      return res.status(400).json({ message: nameValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: nameValidation.error });
     }
 
     // Validate price
     const priceValidation = validateItemPrice(price);
     if (!priceValidation.valid) {
-      return res.status(400).json({ message: priceValidation.error });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: priceValidation.error });
     }
 
     const existingItem = await Item.findById(req.params.id);
     if (!existingItem) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
     }
 
     // Handle image update
@@ -187,7 +189,7 @@ router.put('/:id', async (req, res) => {
       imageResult = await handleImageUpdate(image, existingItem.imageUrl);
     } catch (uploadError) {
       logger.error('Failed to upload image to blob storage', uploadError);
-      return res.status(400).json({ message: uploadError.message });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: uploadError.message });
     }
 
     // Build update data
@@ -201,7 +203,7 @@ router.put('/:id', async (req, res) => {
 
     const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData);
     if (!updatedItem) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
     }
 
     // Delete old image if needed
@@ -211,7 +213,7 @@ router.put('/:id', async (req, res) => {
     res.json(updatedItem);
   } catch (error) {
     logger.error('Failed to update item', error);
-    res.status(500).json({ message: 'Failed to update item' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update item' });
   }
 });
 
@@ -219,14 +221,14 @@ router.delete('/:id', async (req, res) => {
   try {
     const item = await Item.findByIdAndDelete(req.params.id);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
     }
     
     logger.info('Item soft deleted', { itemId: req.params.id });
     res.json({ message: 'Item deleted' });
   } catch (error) {
     logger.error('Failed to delete item', error);
-    res.status(500).json({ message: 'Failed to delete item' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to delete item' });
   }
 });
 
@@ -234,14 +236,14 @@ router.post('/:id/restore', async (req, res) => {
   try {
     const item = await Item.restore(req.params.id);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
     }
     
     logger.info('Item restored', { itemId: req.params.id });
     res.json(item);
   } catch (error) {
     logger.error('Failed to restore item', error);
-    res.status(500).json({ message: 'Failed to restore item' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to restore item' });
   }
 });
 
@@ -249,12 +251,12 @@ router.delete('/:id/permanent', async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
     }
 
     // Check if item is soft deleted
     if (!item.deletedAt) {
-      return res.status(400).json({ message: 'Item must be soft-deleted before permanent image removal' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Item must be soft-deleted before permanent image removal' });
     }
 
     const imageUrl = item.imageUrl;
@@ -276,7 +278,7 @@ router.delete('/:id/permanent', async (req, res) => {
     res.json({ message: 'Item image permanently removed' });
   } catch (error) {
     logger.error('Failed to permanently remove item image', error);
-    res.status(500).json({ message: 'Failed to permanently remove item image' });
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to permanently remove item image' });
   }
 });
 

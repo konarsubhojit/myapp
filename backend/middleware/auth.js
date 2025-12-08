@@ -1,11 +1,10 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 const { createLogger } = require('../utils/logger');
+const { HTTP_STATUS } = require('../constants/httpConstants');
+const { GOOGLE_ISSUERS, JWKS_CONFIG } = require('../constants/authConstants');
 
 const logger = createLogger('AuthMiddleware');
-
-// Valid Google issuer values
-const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 
 /**
  * Check if issuer matches Google issuers
@@ -20,9 +19,9 @@ function isGoogleIssuer(issuer) {
 const googleJwksClient = jwksClient({
   jwksUri: 'https://www.googleapis.com/oauth2/v3/certs',
   cache: true,
-  cacheMaxAge: 86400000, // 24 hours
+  cacheMaxAge: JWKS_CONFIG.CACHE_MAX_AGE,
   rateLimit: true,
-  jwksRequestsPerMinute: 10,
+  jwksRequestsPerMinute: JWKS_CONFIG.RATE_LIMIT_PER_MINUTE,
 });
 
 /**
@@ -112,7 +111,7 @@ async function authMiddleware(req, res, next) {
   if (process.env.AUTH_DISABLED === 'true') {
     if (process.env.NODE_ENV === 'production') {
       logger.error('AUTH_DISABLED is set to true in production - this is a security risk!');
-      return res.status(500).json({ message: 'Server configuration error' });
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Server configuration error' });
     }
     logger.warn('Authentication is disabled - dev mode active');
     req.user = { id: 'dev-user', email: 'dev@localhost', name: 'Dev User', provider: 'dev' };
@@ -123,13 +122,13 @@ async function authMiddleware(req, res, next) {
 
   if (!authHeader) {
     logger.warn('Missing Authorization header');
-    return res.status(401).json({ message: 'Authorization header is required' });
+    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: 'Authorization header is required' });
   }
 
   const parts = authHeader.split(' ');
   if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
     logger.warn('Invalid Authorization header format');
-    return res.status(401).json({ message: 'Authorization header must be Bearer token' });
+    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: 'Authorization header must be Bearer token' });
   }
 
   const token = parts[1];
@@ -141,7 +140,7 @@ async function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     logger.error('Token validation failed', error);
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: 'Invalid or expired token' });
   }
 }
 
