@@ -7,6 +7,7 @@ import { getOrderPriorityColor } from '../../utils/orderUtils';
 import {
   getPaymentStatusLabel,
   getConfirmationStatusLabel,
+  getDeliveryStatusLabel,
 } from '../../constants/orderConstants';
 
 /**
@@ -42,6 +43,21 @@ const getHistoryPaymentColor = (status) => {
     case 'paid': return 'success';
     case 'partially_paid': return 'warning';
     case 'unpaid': return 'default';
+    default: return 'default';
+  }
+};
+
+/**
+ * Gets color for delivery status
+ */
+const getHistoryDeliveryColor = (status) => {
+  switch (status) {
+    case 'delivered': return 'success';
+    case 'out_for_delivery': return 'info';
+    case 'in_transit': return 'info';
+    case 'shipped': return 'primary';
+    case 'returned': return 'error';
+    case 'not_shipped': return 'default';
     default: return 'default';
   }
 };
@@ -86,6 +102,13 @@ function OrderHistoryTableRow({ order, formatPrice, onClick }) {
           label={getPaymentStatusLabel(order.paymentStatus)} 
           size="small" 
           color={getHistoryPaymentColor(order.paymentStatus)}
+        />
+      </TableCell>
+      <TableCell>
+        <Chip 
+          label={getDeliveryStatusLabel(order.deliveryStatus)} 
+          size="small" 
+          color={getHistoryDeliveryColor(order.deliveryStatus)}
         />
       </TableCell>
       <TableCell align="right">

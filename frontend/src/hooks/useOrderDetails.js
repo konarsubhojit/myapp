@@ -16,7 +16,11 @@ const createEditFormFromOrder = (data) => ({
   paidAmount: data.paidAmount || 0,
   confirmationStatus: data.confirmationStatus || 'unconfirmed',
   customerNotes: data.customerNotes || '',
-  priority: data.priority || 0
+  priority: data.priority || 0,
+  deliveryStatus: data.deliveryStatus || 'not_shipped',
+  trackingId: data.trackingId || '',
+  deliveryPartner: data.deliveryPartner || '',
+  actualDeliveryDate: data.actualDeliveryDate ? data.actualDeliveryDate.split('T')[0] : ''
 });
 
 /**
@@ -72,7 +76,11 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
     paidAmount: '',
     confirmationStatus: '',
     customerNotes: '',
-    priority: 0
+    priority: 0,
+    deliveryStatus: 'not_shipped',
+    trackingId: '',
+    deliveryPartner: '',
+    actualDeliveryDate: ''
   });
 
   const fetchOrder = useCallback(async () => {
@@ -121,7 +129,11 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
         paidAmount: validation.parsedPaidAmount,
         confirmationStatus: editForm.confirmationStatus,
         customerNotes: editForm.customerNotes,
-        priority: Number.parseInt(editForm.priority, 10)
+        priority: Number.parseInt(editForm.priority, 10),
+        deliveryStatus: editForm.deliveryStatus,
+        trackingId: editForm.trackingId.trim(),
+        deliveryPartner: editForm.deliveryPartner.trim(),
+        actualDeliveryDate: editForm.actualDeliveryDate || null
       };
 
       const updatedOrder = await updateOrder(orderId, updateData);

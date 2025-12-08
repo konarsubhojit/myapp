@@ -11,6 +11,7 @@ import {
   ORDER_SOURCES,
   ORDER_STATUSES,
   CONFIRMATION_STATUSES,
+  DELIVERY_STATUSES,
   PRIORITY_LEVELS,
 } from '../../constants/orderConstants';
 import {
@@ -123,6 +124,56 @@ function OrderInfoSection({
             </FormControl>
           </Grid>
         </Grid>
+
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 3 }}>
+          Delivery Tracking
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <FormControl fullWidth>
+              <InputLabel>Delivery Status</InputLabel>
+              <Select
+                value={data.deliveryStatus || 'not_shipped'}
+                label="Delivery Status"
+                onChange={(e) => onDataChange('deliveryStatus', e.target.value)}
+              >
+                {DELIVERY_STATUSES.map(status => (
+                  <MenuItem key={status.value} value={status.value}>
+                    {status.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Tracking ID / AWB Number"
+              value={data.trackingId || ''}
+              onChange={(e) => onDataChange('trackingId', e.target.value)}
+              fullWidth
+              placeholder="Enter tracking/AWB number"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Delivery Partner"
+              value={data.deliveryPartner || ''}
+              onChange={(e) => onDataChange('deliveryPartner', e.target.value)}
+              fullWidth
+              placeholder="e.g. Delhivery, DTDC, Blue Dart"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="Actual Delivery Date"
+              type="date"
+              value={data.actualDeliveryDate || ''}
+              onChange={(e) => onDataChange('actualDeliveryDate', e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              fullWidth
+            />
+          </Grid>
+        </Grid>
       </Box>
     );
   }
@@ -197,6 +248,52 @@ function OrderInfoSection({
             )}
           </Typography>
         </Grid>
+      </Grid>
+
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+        Delivery Tracking
+      </Typography>
+      <Grid container spacing={1} alignItems="center">
+        <Grid size={{ xs: 6 }}>
+          <Typography variant="body2" color="text.secondary">Delivery Status:</Typography>
+        </Grid>
+        <Grid size={{ xs: 6 }}>
+          <Chip 
+            label={DELIVERY_STATUSES.find(s => s.value === (data.deliveryStatus || 'not_shipped'))?.label || 'Not Shipped'} 
+            size="small" 
+            color={data.deliveryStatus === 'delivered' ? 'success' : 'default'}
+          />
+        </Grid>
+        {data.trackingId && (
+          <>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" color="text.secondary">Tracking ID:</Typography>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" fontFamily="monospace">{data.trackingId}</Typography>
+            </Grid>
+          </>
+        )}
+        {data.deliveryPartner && (
+          <>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" color="text.secondary">Delivery Partner:</Typography>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2">{data.deliveryPartner}</Typography>
+            </Grid>
+          </>
+        )}
+        {data.actualDeliveryDate && (
+          <>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2" color="text.secondary">Actual Delivery:</Typography>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <Typography variant="body2">{formatOrderDate(data.actualDeliveryDate)}</Typography>
+            </Grid>
+          </>
+        )}
       </Grid>
     </Box>
   );
