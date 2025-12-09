@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -133,5 +134,16 @@ function OrderDialogContent({
     </DialogContent>
   );
 }
+
+OrderDialogContent.propTypes = {
+  order: PropTypes.object,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  isEditing: PropTypes.bool.isRequired,
+  editForm: PropTypes.object,
+  formatPrice: PropTypes.func.isRequired,
+  priority: PropTypes.number,
+  onEditChange: PropTypes.func.isRequired,
+};
 
 export default OrderDialogContent;

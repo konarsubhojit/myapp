@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Table from '@mui/material/Table';
@@ -62,5 +63,15 @@ function OrderItemsTable({ items, formatPrice }) {
     </Box>
   );
 }
+
+OrderItemsTable.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string.isRequired,
+    price: PropTypes.number.isRequired,
+    quantity: PropTypes.number.isRequired,
+    customizationRequest: PropTypes.string,
+  })).isRequired,
+  formatPrice: PropTypes.func.isRequired,
+};
 
 export default OrderItemsTable;

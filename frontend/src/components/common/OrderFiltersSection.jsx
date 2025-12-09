@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
@@ -120,5 +121,18 @@ function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
     </Paper>
   );
 }
+
+OrderFiltersSection.propTypes = {
+  filters: PropTypes.shape({
+    orderId: PropTypes.string,
+    customerName: PropTypes.string,
+    customerId: PropTypes.string,
+    orderFrom: PropTypes.string,
+    confirmationStatus: PropTypes.string,
+    paymentStatus: PropTypes.string,
+  }).isRequired,
+  onFilterChange: PropTypes.func.isRequired,
+  onClearFilters: PropTypes.func.isRequired,
+};
 
 export default OrderFiltersSection;

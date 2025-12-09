@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -184,5 +185,9 @@ function OrderHistory({ onDuplicateOrder }) {
     </Paper>
   );
 }
+
+OrderHistory.propTypes = {
+  onDuplicateOrder: PropTypes.func.isRequired,
+};
 
 export default OrderHistory;

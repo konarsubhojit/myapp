@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
@@ -8,6 +9,15 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import { PAYMENT_STATUSES } from '../../constants/orderConstants';
+
+/**
+ * Helper function to get chip color for payment status
+ */
+const getPaymentStatusColor = (paymentStatus) => {
+  if (paymentStatus === 'paid') return 'success';
+  if (paymentStatus === 'partially_paid') return 'warning';
+  return 'default';
+};
 
 /**
  * Reusable payment information section
@@ -72,7 +82,7 @@ function PaymentInfoSection({
           <Chip 
             label={PAYMENT_STATUSES.find(s => s.value === data.paymentStatus)?.label || 'Unpaid'} 
             size="small"
-            color={data.paymentStatus === 'paid' ? 'success' : data.paymentStatus === 'partially_paid' ? 'warning' : 'default'}
+            color={getPaymentStatusColor(data.paymentStatus)}
           />
         </Grid>
         {data.paymentStatus === 'partially_paid' && (
@@ -101,5 +111,16 @@ function PaymentInfoSection({
     </Box>
   );
 }
+
+PaymentInfoSection.propTypes = {
+  isEditing: PropTypes.bool.isRequired,
+  data: PropTypes.shape({
+    paymentStatus: PropTypes.string.isRequired,
+    paidAmount: PropTypes.number,
+    totalPrice: PropTypes.number.isRequired,
+  }).isRequired,
+  formatPrice: PropTypes.func.isRequired,
+  onDataChange: PropTypes.func,
+};
 
 export default PaymentInfoSection;
