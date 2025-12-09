@@ -139,6 +139,7 @@ OrderHistoryTableRow.propTypes = {
     _id: PropTypes.string.isRequired,
     orderId: PropTypes.string.isRequired,
     customerName: PropTypes.string.isRequired,
+    customerId: PropTypes.string,
     orderFrom: PropTypes.string,
     confirmationStatus: PropTypes.string,
     status: PropTypes.string,

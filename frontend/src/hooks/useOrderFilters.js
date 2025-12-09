@@ -81,8 +81,8 @@ const normalizeDateValues = (aValue, bValue, sortDirection) => {
  */
 const normalizeStringValues = (aValue, bValue) => {
   return { 
-    a: aValue != null ? String(aValue).toLowerCase() : '', 
-    b: bValue != null ? String(bValue).toLowerCase() : '' 
+    a: aValue == null ? '' : String(aValue).toLowerCase(), 
+    b: bValue == null ? '' : String(bValue).toLowerCase() 
   };
 };
 
