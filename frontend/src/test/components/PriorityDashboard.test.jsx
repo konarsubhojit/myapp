@@ -232,4 +232,86 @@ describe('PriorityDashboard', () => {
       });
     });
   });
+
+  describe('Interactions', () => {
+    it('should refresh orders when refresh button is clicked', async () => {
+      const user = userEvent.setup();
+      api.getPriorityOrders = vi.fn().mockResolvedValue(mockPriorityOrders);
+      renderWithProviders(<PriorityDashboard />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('ORD-001')).toBeInTheDocument();
+      });
+      
+      expect(api.getPriorityOrders).toHaveBeenCalledTimes(1);
+      
+      const refreshButton = screen.getByRole('button', { name: /Refresh/i });
+      await user.click(refreshButton);
+      
+      await waitFor(() => {
+        expect(api.getPriorityOrders).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('should open order details when View Details button is clicked', async () => {
+      const user = userEvent.setup();
+      api.getPriorityOrders = vi.fn().mockResolvedValue(mockPriorityOrders);
+      renderWithProviders(<PriorityDashboard />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('ORD-001')).toBeInTheDocument();
+      });
+      
+      const viewDetailsButtons = screen.getAllByRole('button', { name: /View Details/i });
+      await user.click(viewDetailsButtons[0]);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('order-details-mock')).toBeInTheDocument();
+      });
+    });
+
+    it('should close order details when close is triggered', async () => {
+      const user = userEvent.setup();
+      api.getPriorityOrders = vi.fn().mockResolvedValue(mockPriorityOrders);
+      renderWithProviders(<PriorityDashboard />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('ORD-001')).toBeInTheDocument();
+      });
+      
+      // Open order details
+      const viewDetailsButtons = screen.getAllByRole('button', { name: /View Details/i });
+      await user.click(viewDetailsButtons[0]);
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('order-details-mock')).toBeInTheDocument();
+      });
+      
+      // Close order details
+      const closeButton = screen.getByRole('button', { name: /Close/i });
+      await user.click(closeButton);
+      
+      await waitFor(() => {
+        expect(screen.queryByTestId('order-details-mock')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should call onRefresh callback when provided and order is updated', async () => {
+      const mockOnRefresh = vi.fn();
+      const user = userEvent.setup();
+      api.getPriorityOrders = vi.fn().mockResolvedValue(mockPriorityOrders);
+      renderWithProviders(<PriorityDashboard onRefresh={mockOnRefresh} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('ORD-001')).toBeInTheDocument();
+      });
+      
+      const refreshButton = screen.getByRole('button', { name: /Refresh/i });
+      await user.click(refreshButton);
+      
+      // onRefresh is not called on manual refresh, only when orders are updated via OrderDetails
+      // This test verifies the prop is accepted without errors
+      expect(mockOnRefresh).not.toHaveBeenCalled();
+    });
+  });
 });

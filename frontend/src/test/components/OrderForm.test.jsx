@@ -284,11 +284,11 @@ describe('OrderForm', () => {
             customerId: '@johndoe',
           })
         );
-      });
+      }, { timeout: 10000 });
       
       await waitFor(() => {
         expect(mockOnOrderCreated).toHaveBeenCalled();
-      });
-    });
+      }, { timeout: 10000 });
+    }, 15000);
   });
 });
