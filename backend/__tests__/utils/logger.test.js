@@ -1,4 +1,4 @@
-const { createLogger } = require('../../utils/logger');
+import { createLogger } from '../../utils/logger.js';
 
 describe('Logger', () => {
   let consoleLogSpy;

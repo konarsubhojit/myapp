@@ -1,4 +1,4 @@
-const { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } = require('../../constants/httpConstants');
+import { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } from '../../constants/httpConstants.js';
 
 describe('HTTP Constants', () => {
   describe('HTTP_STATUS', () => {

@@ -1,4 +1,4 @@
-const { items, orders, orderItems, orderFromEnum, orderStatusEnum } = require('../../db/schema');
+import { items, orders, orderItems, orderFromEnum, orderStatusEnum } from '../../db/schema.js';
 
 describe('Database Schema', () => {
   describe('items table', () => {
@@ -80,8 +80,8 @@ describe('Database Schema', () => {
   });
 
   describe('module exports', () => {
-    it('should export all required schema objects', () => {
-      const schema = require('../../db/schema');
+    it('should export all required schema objects', async () => {
+      const schema = await import('../../db/schema.js');
       expect(schema).toHaveProperty('items');
       expect(schema).toHaveProperty('orders');
       expect(schema).toHaveProperty('orderItems');

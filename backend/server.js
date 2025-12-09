@@ -1,11 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
-const { connectToDatabase } = require('./db/connection');
-const { createLogger } = require('./utils/logger');
-const { authMiddleware } = require('./middleware/auth');
-const { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } = require('./constants/httpConstants');
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import 'dotenv/config';
+import { connectToDatabase } from './db/connection.js';
+import { createLogger } from './utils/logger.js';
+import { authMiddleware } from './middleware/auth.js';
+import { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } from './constants/httpConstants.js';
 
 const logger = createLogger('Server');
 const app = express();
@@ -42,8 +42,8 @@ app.use('/api/', limiter);
   }
 })();
 
-const itemRoutes = require('./routes/items');
-const orderRoutes = require('./routes/orders');
+import itemRoutes from './routes/items.js';
+import orderRoutes from './routes/orders.js';
 
 app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);

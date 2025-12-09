@@ -1,4 +1,4 @@
-const { IMAGE_CONFIG } = require('../../constants/imageConstants');
+import { IMAGE_CONFIG } from '../../constants/imageConstants.js';
 
 describe('Image Constants', () => {
   describe('IMAGE_CONFIG', () => {

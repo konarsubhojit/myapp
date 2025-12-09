@@ -1,7 +1,7 @@
-const { drizzle } = require('drizzle-orm/neon-http');
-const { neon } = require('@neondatabase/serverless');
-const { createLogger } = require('../utils/logger');
-const schema = require('./schema');
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import { createLogger } from '../utils/logger.js';
+import * as schema from './schema.js';
 
 const logger = createLogger('PostgreSQL');
 
@@ -11,7 +11,7 @@ if (!cached) {
   cached = global.neonDb = { db: null };
 }
 
-function getDatabase() {
+export function getDatabase() {
   const uri = process.env.NEON_DATABASE_URL;
 
   if (cached.db) {
@@ -38,8 +38,6 @@ function getDatabase() {
   }
 }
 
-async function connectToDatabase() {
+export async function connectToDatabase() {
   return getDatabase();
 }
-
-module.exports = { connectToDatabase, getDatabase };
