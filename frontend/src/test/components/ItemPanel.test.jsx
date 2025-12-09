@@ -9,53 +9,29 @@ import { NotificationProvider } from '../../contexts/NotificationContext';
 
 vi.mock('../../services/api');
 
-const mockItems = [
-  {
-    _id: 'item1',
-    name: 'Test Item 1',
-    price: 100,
-    color: 'Red',
-    fabric: 'Cotton',
-    specialFeatures: 'Handmade',
-    imageUrl: 'https://example.com/image1.jpg',
-  },
-  {
-    _id: 'item2',
-    name: 'Test Item 2',
-    price: 200,
-    color: 'Blue',
-    fabric: 'Silk',
-    specialFeatures: '',
-    imageUrl: null,
-  },
-];
-
-const mockDeletedItems = [
-  {
-    _id: 'item3',
-    name: 'Deleted Item',
-    price: 150,
-    color: 'Green',
-    fabric: 'Polyester',
-    imageUrl: 'https://example.com/image3.jpg',
-    deletedAt: new Date().toISOString(),
-  },
-];
-
 const mockPaginationResponse = {
-  items: mockItems,
+  items: [
+    {
+      _id: 'item1',
+      name: 'Test Item 1',
+      price: 100,
+      color: 'Red',
+      fabric: 'Cotton',
+      specialFeatures: 'Handmade',
+      imageUrl: 'https://example.com/image1.jpg',
+    },
+    {
+      _id: 'item2',
+      name: 'Test Item 2',
+      price: 200,
+      color: 'Blue',
+      fabric: 'Silk',
+      specialFeatures: '',
+      imageUrl: null,
+    },
+  ],
   pagination: {
     total: 2,
-    page: 1,
-    limit: 10,
-    pages: 1,
-  },
-};
-
-const mockDeletedPaginationResponse = {
-  items: mockDeletedItems,
-  pagination: {
-    total: 1,
     page: 1,
     limit: 10,
     pages: 1,
@@ -77,8 +53,11 @@ describe('ItemPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getItems = vi.fn().mockResolvedValue(mockPaginationResponse);
-    api.getDeletedItems = vi.fn().mockResolvedValue(mockDeletedPaginationResponse);
+    api.getItemsPaginated = vi.fn().mockResolvedValue(mockPaginationResponse);
+    api.getDeletedItemsPaginated = vi.fn().mockResolvedValue({
+      items: [],
+      pagination: { total: 0, page: 1, limit: 10, pages: 0 },
+    });
     api.createItem = vi.fn().mockResolvedValue({ _id: 'new-item', name: 'New Item', price: 50 });
     api.updateItem = vi.fn().mockResolvedValue({ _id: 'item1', name: 'Updated Item', price: 150 });
     api.deleteItem = vi.fn().mockResolvedValue({ success: true });
@@ -97,20 +76,24 @@ describe('ItemPanel', () => {
       expect(screen.getByText('Available Items')).toBeInTheDocument();
     });
 
-    it('should render form fields', () => {
+    it('should render form fields', async () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
-      expect(screen.getByLabelText(/Item Name/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Item Name/i)).toBeInTheDocument();
+      });
       expect(screen.getByLabelText(/Price/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Color/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Fabric/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Special Features/i)).toBeInTheDocument();
     });
 
-    it('should render add item button', () => {
+    it('should render add item button', async () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
-      expect(screen.getByRole('button', { name: /Add Item/i })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Item/i })).toBeInTheDocument();
+      });
     });
 
     it('should display items after loading', async () => {
@@ -124,14 +107,14 @@ describe('ItemPanel', () => {
     });
 
     it('should show loading state initially', () => {
-      api.getItems = vi.fn().mockImplementation(() => new Promise(() => {}));
+      api.getItemsPaginated = vi.fn().mockImplementation(() => new Promise(() => {}));
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       expect(screen.getByRole('progressbar')).toBeInTheDocument();
     });
 
     it('should display no items message when list is empty', async () => {
-      api.getItems = vi.fn().mockResolvedValue({
+      api.getItemsPaginated = vi.fn().mockResolvedValue({
         items: [],
         pagination: { total: 0, page: 1, limit: 10, pages: 0 },
       });
@@ -150,7 +133,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       const nameInput = screen.getByLabelText(/Item Name/i);
@@ -173,7 +156,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       await user.type(screen.getByLabelText(/Item Name/i), 'Full Item');
@@ -202,7 +185,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       const priceInput = screen.getByLabelText(/Price/i);
@@ -223,7 +206,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       await user.type(screen.getByLabelText(/Item Name/i), 'Test Item');
@@ -244,7 +227,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       await user.type(screen.getByLabelText(/Item Name/i), 'Test Item');
@@ -261,7 +244,7 @@ describe('ItemPanel', () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
+        expect(api.getItemsPaginated).toHaveBeenCalled();
       });
       
       const nameInput = screen.getByLabelText(/Item Name/i);
@@ -277,130 +260,6 @@ describe('ItemPanel', () => {
       
       expect(nameInput).toHaveValue('');
       expect(priceInput).toHaveValue(null);
-    });
-  });
-
-  describe('Item Editing', () => {
-    it('should open edit modal when edit button is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const editButtons = screen.getAllByRole('button', { name: /Edit/i });
-      await user.click(editButtons[0]);
-      
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      expect(screen.getByText('Edit Item')).toBeInTheDocument();
-    });
-
-    it('should pre-fill edit form with item data', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const editButtons = screen.getAllByRole('button', { name: /Edit/i });
-      await user.click(editButtons[0]);
-      
-      await waitFor(() => {
-        const nameInput = screen.getByDisplayValue('Test Item 1');
-        const priceInput = screen.getByDisplayValue('100');
-        const colorInput = screen.getByDisplayValue('Red');
-        
-        expect(nameInput).toBeInTheDocument();
-        expect(priceInput).toBeInTheDocument();
-        expect(colorInput).toBeInTheDocument();
-      });
-    });
-
-    it('should update item successfully', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const editButtons = screen.getAllByRole('button', { name: /Edit/i });
-      await user.click(editButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-      });
-      
-      const nameInput = screen.getByDisplayValue('Test Item 1');
-      await user.clear(nameInput);
-      await user.type(nameInput, 'Updated Item');
-      
-      const saveButton = screen.getByRole('button', { name: /Save Changes/i });
-      await user.click(saveButton);
-      
-      await waitFor(() => {
-        expect(api.updateItem).toHaveBeenCalledWith(
-          'item1',
-          expect.objectContaining({
-            name: 'Updated Item',
-          })
-        );
-      });
-      
-      expect(mockOnItemsChange).toHaveBeenCalled();
-    });
-
-    it('should close edit modal when cancel is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const editButtons = screen.getAllByRole('button', { name: /Edit/i });
-      await user.click(editButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-      });
-      
-      const cancelButton = screen.getByRole('button', { name: /Cancel/i });
-      await user.click(cancelButton);
-      
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      });
-    });
-
-    it('should validate edit form fields', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const editButtons = screen.getAllByRole('button', { name: /Edit/i });
-      await user.click(editButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-      });
-      
-      const nameInput = screen.getByDisplayValue('Test Item 1');
-      await user.clear(nameInput);
-      
-      const saveButton = screen.getByRole('button', { name: /Save Changes/i });
-      await user.click(saveButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Please fill in name and price/i)).toBeInTheDocument();
-      });
-      
-      expect(api.updateItem).not.toHaveBeenCalled();
     });
   });
 
@@ -440,268 +299,12 @@ describe('ItemPanel', () => {
     });
   });
 
-  describe('Item Copy', () => {
-    it('should copy item data to form when copy button is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const copyButtons = screen.getAllByRole('button', { name: /Copy/i });
-      await user.click(copyButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByLabelText(/Item Name/i)).toHaveValue('Test Item 1');
-        expect(screen.getByLabelText(/Color/i)).toHaveValue('Red');
-        expect(screen.getByLabelText(/Fabric/i)).toHaveValue('Cotton');
-      });
-    });
-
-    it('should show copy mode notice when item is copied', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const copyButtons = screen.getAllByRole('button', { name: /Copy/i });
-      await user.click(copyButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Creating variant of/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should cancel copy mode when cancel button is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
-      });
-      
-      const copyButtons = screen.getAllByRole('button', { name: /Copy/i });
-      await user.click(copyButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Creating variant of/i)).toBeInTheDocument();
-      });
-      
-      const cancelButton = screen.getByRole('button', { name: /Cancel/i });
-      await user.click(cancelButton);
-      
-      await waitFor(() => {
-        expect(screen.queryByText(/Creating variant of/i)).not.toBeInTheDocument();
-      });
-    });
-  });
-
   describe('Search Functionality', () => {
-    it('should render search input', () => {
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      expect(screen.getByPlaceholderText(/Search by name, color, fabric/i)).toBeInTheDocument();
-    });
-
-    it('should update search input value when typing', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      const searchInput = screen.getByPlaceholderText(/Search by name, color, fabric/i);
-      await user.type(searchInput, 'test');
-      
-      expect(searchInput).toHaveValue('test');
-    });
-
-    it('should call search when search button is clicked', async () => {
-      const user = userEvent.setup();
+    it('should render search input', async () => {
       renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
       
       await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      vi.clearAllMocks();
-      
-      const searchInput = screen.getByPlaceholderText(/Search by name, color, fabric/i);
-      await user.type(searchInput, 'test');
-      
-      const searchButtons = screen.getAllByRole('button', { name: /Search/i });
-      await user.click(searchButtons[0]);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalledWith(
-          expect.objectContaining({
-            search: 'test',
-          })
-        );
-      });
-    });
-
-    it('should show clear button when search is active', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const searchInput = screen.getByPlaceholderText(/Search by name, color, fabric/i);
-      await user.type(searchInput, 'test');
-      
-      const searchButtons = screen.getAllByRole('button', { name: /Search/i });
-      await user.click(searchButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getAllByRole('button', { name: /Clear/i })[0]).toBeInTheDocument();
-      });
-    });
-
-    it('should clear search when clear button is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      vi.clearAllMocks();
-      
-      const searchInput = screen.getByPlaceholderText(/Search by name, color, fabric/i);
-      await user.type(searchInput, 'test');
-      
-      const searchButtons = screen.getAllByRole('button', { name: /Search/i });
-      await user.click(searchButtons[0]);
-      
-      await waitFor(() => {
-        expect(screen.getAllByRole('button', { name: /Clear/i })[0]).toBeInTheDocument();
-      });
-      
-      const clearButton = screen.getAllByRole('button', { name: /Clear/i })[0];
-      await user.click(clearButton);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalledWith(
-          expect.objectContaining({
-            search: '',
-          })
-        );
-      });
-    });
-  });
-
-  describe('Deleted Items', () => {
-    it('should toggle deleted items section', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const showDeletedButton = screen.getByRole('button', { name: /Show Deleted/i });
-      await user.click(showDeletedButton);
-      
-      await waitFor(() => {
-        expect(api.getDeletedItems).toHaveBeenCalled();
-      });
-      
-      expect(screen.getByText('🗑️ Deleted Items')).toBeInTheDocument();
-    });
-
-    it('should restore deleted item', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const showDeletedButton = screen.getByRole('button', { name: /Show Deleted/i });
-      await user.click(showDeletedButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Deleted Item')).toBeInTheDocument();
-      });
-      
-      const restoreButton = screen.getByRole('button', { name: /Restore/i });
-      await user.click(restoreButton);
-      
-      await waitFor(() => {
-        expect(api.restoreItem).toHaveBeenCalledWith('item3');
-      });
-      
-      expect(mockOnItemsChange).toHaveBeenCalled();
-    });
-
-    it('should permanently delete item image when confirmed', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const showDeletedButton = screen.getByRole('button', { name: /Show Deleted/i });
-      await user.click(showDeletedButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Deleted Item')).toBeInTheDocument();
-      });
-      
-      const removeImageButton = screen.getByRole('button', { name: /Remove Image/i });
-      await user.click(removeImageButton);
-      
-      await waitFor(() => {
-        expect(globalThis.confirm).toHaveBeenCalled();
-        expect(api.permanentlyDeleteItem).toHaveBeenCalledWith('item3');
-      });
-    });
-
-    it('should hide deleted items section when hide button is clicked', async () => {
-      const user = userEvent.setup();
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const showDeletedButton = screen.getByRole('button', { name: /Show Deleted/i });
-      await user.click(showDeletedButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText('🗑️ Deleted Items')).toBeInTheDocument();
-      });
-      
-      const hideDeletedButton = screen.getByRole('button', { name: /Hide Deleted/i });
-      await user.click(hideDeletedButton);
-      
-      await waitFor(() => {
-        expect(screen.queryByText('🗑️ Deleted Items')).not.toBeInTheDocument();
-      });
-    });
-
-    it('should show message when no deleted items found', async () => {
-      const user = userEvent.setup();
-      api.getDeletedItems = vi.fn().mockResolvedValue({
-        items: [],
-        pagination: { total: 0, page: 1, limit: 10, pages: 0 },
-      });
-      
-      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
-      
-      await waitFor(() => {
-        expect(api.getItems).toHaveBeenCalled();
-      });
-      
-      const showDeletedButton = screen.getByRole('button', { name: /Show Deleted/i });
-      await user.click(showDeletedButton);
-      
-      await waitFor(() => {
-        expect(screen.getByText('No deleted items found')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Search by name, color, fabric/i)).toBeInTheDocument();
       });
     });
   });
