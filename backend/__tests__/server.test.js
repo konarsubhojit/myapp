@@ -1,11 +1,12 @@
+import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 
 // Mock dependencies BEFORE requiring any modules
-jest.mock('../db/connection', () => ({
+jest.unstable_mockModule('../db/connection', () => ({
   connectToDatabase: jest.fn().mockResolvedValue(),
 }));
-jest.mock('../utils/logger', () => ({
+jest.unstable_mockModule('../utils/logger', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
     error: jest.fn(),
@@ -13,11 +14,11 @@ jest.mock('../utils/logger', () => ({
     debug: jest.fn(),
   })),
 }));
-jest.mock('../middleware/auth', () => ({
+jest.unstable_mockModule('../middleware/auth', () => ({
   authMiddleware: (req, res, next) => next(),
 }));
 
-import cors from 'cors';
+const cors = (await import('cors')).default;
 
 describe('Server Configuration', () => {
   let app;

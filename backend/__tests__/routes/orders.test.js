@@ -1,13 +1,24 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import orderRoutes from '../../routes/orders.js';
-import Order from '../../models/Order.js';
-import Item from '../../models/Item.js';
 
 // Mock dependencies
-jest.mock('../../models/Order');
-jest.mock('../../models/Item');
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../models/Order', () => ({
+  default: {
+    find: jest.fn(),
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    create: jest.fn(),
+    findPaginated: jest.fn(),
+    findPriorityOrders: jest.fn(),
+  },
+}));
+jest.unstable_mockModule('../../models/Item', () => ({
+  default: {
+    findById: jest.fn(),
+  },
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({
   createLogger: () => ({
     error: jest.fn(),
     warn: jest.fn(),
@@ -15,6 +26,10 @@ jest.mock('../../utils/logger', () => ({
     debug: jest.fn(),
   }),
 }));
+
+const { default: orderRoutes } = await import('../../routes/orders.js');
+const { default: Order } = await import('../../models/Order.js');
+const { default: Item } = await import('../../models/Item.js');
 
 const app = express();
 app.use(express.json());

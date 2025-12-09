@@ -1,11 +1,14 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import orderRoutes from '../../routes/orders.js';
-import Order from '../../models/Order.js';
 
 // Mock dependencies
-jest.mock('../../models/Order');
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../models/Order', () => ({
+  default: {
+    findPriorityOrders: jest.fn(),
+  },
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({
   createLogger: () => ({
     error: jest.fn(),
     warn: jest.fn(),
@@ -13,6 +16,9 @@ jest.mock('../../utils/logger', () => ({
     debug: jest.fn(),
   }),
 }));
+
+const { default: orderRoutes } = await import('../../routes/orders.js');
+const { default: Order } = await import('../../models/Order.js');
 
 const app = express();
 app.use(express.json());
