@@ -36,7 +36,7 @@ export function CurrencyProvider({ children }) {
     setCurrency,
     currencies: CURRENCIES,
     formatPrice
-  }), [currency, formatPrice]);
+  }), [currency, setCurrency, formatPrice]);
 
   return (
     <CurrencyContext.Provider value={contextValue}>

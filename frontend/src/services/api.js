@@ -77,7 +77,7 @@ async function authFetch(url, options = {}) {
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
       };
-    } else if (/\/(items|orders)\/[^/]+$/.exec(url)) {
+    } else if (/\/(items|orders)\/[^/]+$/.test(url)) {
       // Single item endpoint (with ID at the end) - return empty object
       // e.g., /items/123 or /orders/456
       mockData = {};
