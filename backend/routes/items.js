@@ -128,8 +128,8 @@ router.post('/', async (req, res) => {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Item name is required' });
     }
 
-    const parsedPrice = parseFloat(price);
-    if (price === undefined || price === null || isNaN(parsedPrice) || parsedPrice < 0) {
+    const parsedPrice = Number.parseFloat(price);
+    if (price === undefined || price === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Valid price is required' });
     }
 
