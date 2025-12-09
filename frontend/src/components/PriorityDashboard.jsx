@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -385,5 +386,9 @@ function PriorityDashboard({ onRefresh }) {
     </Paper>
   );
 }
+
+PriorityDashboard.propTypes = {
+  onRefresh: PropTypes.func
+};
 
 export default PriorityDashboard;
