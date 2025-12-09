@@ -241,3 +241,61 @@ export const updateOrder = async (id, order) => {
   }
   return response.json();
 };
+
+// Feedbacks API
+export const getFeedbacks = async () => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks`);
+  if (!response.ok) throw new Error('Failed to fetch feedbacks');
+  return response.json();
+};
+
+export const getFeedbacksPaginated = async ({ page = 1, limit = 10 } = {}) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks?page=${page}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch feedbacks');
+  return response.json();
+};
+
+export const getFeedbackStats = async () => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/stats`);
+  if (!response.ok) throw new Error('Failed to fetch feedback statistics');
+  return response.json();
+};
+
+export const getFeedback = async (id) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch feedback');
+  return response.json();
+};
+
+export const getFeedbackByOrderId = async (orderId) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/order/${orderId}`);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error('Failed to fetch order feedback');
+  }
+  return response.json();
+};
+
+export const createFeedback = async (feedback) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks`, {
+    method: 'POST',
+    body: JSON.stringify(feedback),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create feedback');
+  }
+  return response.json();
+};
+
+export const updateFeedback = async (id, feedback) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(feedback),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update feedback');
+  }
+  return response.json();
+};
