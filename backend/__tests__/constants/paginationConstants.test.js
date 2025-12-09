@@ -1,4 +1,4 @@
-const { PAGINATION } = require('../../constants/paginationConstants');
+import { PAGINATION } from '../../constants/paginationConstants.js';
 
 describe('Pagination Constants', () => {
   describe('PAGINATION', () => {

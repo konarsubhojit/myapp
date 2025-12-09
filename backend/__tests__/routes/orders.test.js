@@ -1,8 +1,8 @@
-const request = require('supertest');
-const express = require('express');
-const orderRoutes = require('../../routes/orders');
-const Order = require('../../models/Order');
-const Item = require('../../models/Item');
+import request from 'supertest';
+import express from 'express';
+import orderRoutes from '../../routes/orders.js';
+import Order from '../../models/Order.js';
+import Item from '../../models/Item.js';
 
 // Mock dependencies
 jest.mock('../../models/Order');

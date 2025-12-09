@@ -1,6 +1,6 @@
-const { eq, desc, isNull, isNotNull, ilike, or, sql, and } = require('drizzle-orm');
-const { getDatabase } = require('../db/connection');
-const { items } = require('../db/schema');
+import { eq, desc, isNull, isNotNull, ilike, or, sql, and } from 'drizzle-orm';
+import { getDatabase } from '../db/connection.js';
+import { items } from '../db/schema.js';
 
 function transformItem(item) {
   return {
@@ -191,4 +191,4 @@ const Item = {
   }
 };
 
-module.exports = Item;
+export default Item;

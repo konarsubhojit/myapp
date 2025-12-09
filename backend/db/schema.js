@@ -1,9 +1,9 @@
-const { pgTable, serial, text, numeric, timestamp, integer, pgEnum } = require('drizzle-orm/pg-core');
+import { pgTable, serial, text, numeric, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
 
-const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
-const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
+export const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
+export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
 
-const items = pgTable('items', {
+export const items = pgTable('items', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
@@ -15,7 +15,7 @@ const items = pgTable('items', {
   deletedAt: timestamp('deleted_at')
 });
 
-const orders = pgTable('orders', {
+export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   orderId: text('order_id').notNull().unique(),
   orderFrom: orderFromEnum('order_from').notNull(),
@@ -38,7 +38,7 @@ const orders = pgTable('orders', {
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
 
-const orderItems = pgTable('order_items', {
+export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   itemId: integer('item_id').notNull().references(() => items.id),
@@ -47,5 +47,3 @@ const orderItems = pgTable('order_items', {
   quantity: integer('quantity').notNull(),
   customizationRequest: text('customization_request')
 });
-
-module.exports = { items, orders, orderItems, orderFromEnum, orderStatusEnum };

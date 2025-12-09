@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const Order = require('../models/Order');
-const Item = require('../models/Item');
-const { createLogger } = require('../utils/logger');
-const {
+import Order from '../models/Order.js';
+import Item from '../models/Item.js';
+import { createLogger } from '../utils/logger.js';
+import {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
   VALID_CONFIRMATION_STATUSES,
@@ -11,9 +11,9 @@ const {
   MAX_CUSTOMER_NOTES_LENGTH,
   PRIORITY_MIN,
   PRIORITY_MAX,
-} = require('../constants/orderConstants');
-const { HTTP_STATUS } = require('../constants/httpConstants');
-const { PAGINATION } = require('../constants/paginationConstants');
+} from '../constants/orderConstants.js';
+import { HTTP_STATUS } from '../constants/httpConstants.js';
+import { PAGINATION } from '../constants/paginationConstants.js';
 
 const logger = createLogger('OrdersRoute');
 const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
@@ -572,4 +572,4 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

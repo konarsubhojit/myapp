@@ -1,11 +1,11 @@
-const Item = require('../../models/Item');
+import Item from '../../models/Item.js';
 
 // Mock the database connection
 jest.mock('../../db/connection', () => ({
   getDatabase: jest.fn(),
 }));
 
-const { getDatabase } = require('../../db/connection');
+import { getDatabase } from '../../db/connection.js';
 
 describe('Item Model', () => {
   let mockDb;

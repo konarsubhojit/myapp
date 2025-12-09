@@ -1,8 +1,8 @@
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
-const { createLogger } = require('../utils/logger');
-const { HTTP_STATUS } = require('../constants/httpConstants');
-const { GOOGLE_ISSUERS, JWKS_CONFIG } = require('../constants/authConstants');
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
+import { createLogger } from '../utils/logger.js';
+import { HTTP_STATUS } from '../constants/httpConstants.js';
+import { GOOGLE_ISSUERS, JWKS_CONFIG } from '../constants/authConstants.js';
 
 const logger = createLogger('AuthMiddleware');
 
@@ -173,7 +173,7 @@ async function optionalAuthMiddleware(req, res, next) {
   next();
 }
 
-module.exports = {
+export {
   authMiddleware,
   optionalAuthMiddleware,
   validateToken,
