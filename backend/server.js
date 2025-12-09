@@ -44,9 +44,11 @@ app.use('/api/', limiter);
 
 import itemRoutes from './routes/items.js';
 import orderRoutes from './routes/orders.js';
+import feedbackRoutes from './routes/feedbacks.js';
 
 app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
+app.use('/api/feedbacks', authMiddleware, feedbackRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

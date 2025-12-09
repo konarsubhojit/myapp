@@ -47,3 +47,18 @@ export const orderItems = pgTable('order_items', {
   quantity: integer('quantity').notNull(),
   customizationRequest: text('customization_request')
 });
+
+export const feedbacks = pgTable('feedbacks', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  rating: integer('rating').notNull(),
+  comment: text('comment'),
+  productQuality: integer('product_quality'),
+  deliveryExperience: integer('delivery_experience'),
+  customerService: integer('customer_service'),
+  isPublic: integer('is_public').default(1),
+  responseText: text('response_text'),
+  respondedAt: timestamp('responded_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
