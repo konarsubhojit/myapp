@@ -32,13 +32,15 @@ app.use(express.json({ limit: BODY_LIMITS.JSON }));
 app.use(express.urlencoded({ limit: BODY_LIMITS.URLENCODED, extended: true }));
 app.use('/api/', limiter);
 
-try {
-  await connectToDatabase();
-  logger.info('PostgreSQL connection successful');
-} catch (err) {
-  logger.error('Database initialization failed', err);
-  process.exit(1);
-}
+(async () => {
+  try {
+    await connectToDatabase();
+    logger.info('PostgreSQL connection successful');
+  } catch (err) {
+    logger.error('Database initialization failed', err);
+    process.exit(1);
+  }
+})();
 
 const itemRoutes = require('./routes/items');
 const orderRoutes = require('./routes/orders');
