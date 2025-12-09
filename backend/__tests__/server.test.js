@@ -46,8 +46,8 @@ describe('Server Module', () => {
     const serverModule = await import('../server.js');
     app = serverModule.app;
     
-    // Give time for async operations to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for database connection to complete
+    await new Promise(resolve => setImmediate(resolve));
   });
 
   it('should export express app', () => {
@@ -159,10 +159,12 @@ describe('Server Database Error Handling', () => {
     process.env.NEON_DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 
     // Import server module which should fail to connect to DB
-    await import('../server.js?t=' + Date.now()); // Add timestamp to force re-import
+    // Using dynamic import with a unique module specifier to avoid cache
+    const modulePath = `../server.js`;
+    await import(modulePath);
     
-    // Give time for async operations to complete
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for database connection promise to reject
+    await new Promise(resolve => setImmediate(resolve));
   });
 
   afterAll(() => {
