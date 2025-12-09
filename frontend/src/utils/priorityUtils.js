@@ -36,9 +36,13 @@ function generateLabel(diffDays, shortLabels, isDueToday = false) {
  */
 function getOverdueStatus(diffDays, shortLabels) {
   const overdueDays = Math.abs(diffDays);
-  const label = shortLabels 
-    ? `${overdueDays}d late` 
-    : `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
+  let label;
+  if (shortLabels) {
+    label = `${overdueDays}d late`;
+  } else {
+    const dayPlural = overdueDays > 1 ? 's' : '';
+    label = `Overdue by ${overdueDays} day${dayPlural}`;
+  }
   return createPriorityStatus('overdue', label, 'priority-overdue', 'critical', '🔴');
 }
 

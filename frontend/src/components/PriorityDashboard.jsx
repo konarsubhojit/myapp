@@ -64,7 +64,9 @@ function calculateEffectivePriority(order) {
  */
 function getUrgencyLevel(order) {
   if (!order.expectedDeliveryDate) {
-    return order.priority >= 8 ? 'critical' : order.priority >= 5 ? 'high' : 'normal';
+    if (order.priority >= 8) return 'critical';
+    if (order.priority >= 5) return 'high';
+    return 'normal';
   }
   
   const today = new Date();
@@ -305,12 +307,13 @@ function PriorityDashboard({ onRefresh }) {
                           label={priorityStatus.label} 
                           size="small" 
                           sx={{ mt: 0.5 }}
-                          color={
-                            priorityStatus.status === 'overdue' ? 'error' :
-                            priorityStatus.status === 'critical' ? 'error' :
-                            priorityStatus.status === 'urgent' ? 'warning' :
-                            priorityStatus.status === 'medium' ? 'info' : 'success'
-                          }
+                          color={(() => {
+                            if (priorityStatus.status === 'overdue') return 'error';
+                            if (priorityStatus.status === 'critical') return 'error';
+                            if (priorityStatus.status === 'urgent') return 'warning';
+                            if (priorityStatus.status === 'medium') return 'info';
+                            return 'success';
+                          })()}
                           variant="outlined"
                         />
                       )}
