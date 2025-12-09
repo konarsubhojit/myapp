@@ -235,10 +235,7 @@ function AppContent() {
               }}
               aria-label="Sign out"
             >
-              {(() => {
-                if (isMobile) return <LogoutIcon fontSize="small" />;
-                return guestMode ? 'Exit' : 'Sign Out';
-              })()}
+              {isMobile ? <LogoutIcon fontSize="small" /> : (guestMode ? 'Exit' : 'Sign Out')}
             </Button>
           </Box>
         </Toolbar>
