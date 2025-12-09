@@ -150,7 +150,7 @@ function OrderForm({ items, onOrderCreated }) {
     return orderItems.reduce((total, orderItem) => {
       const item = items.find((i) => String(i._id) === String(orderItem.itemId));
       const qty = parseInt(orderItem.quantity, 10);
-      if (item && !isNaN(qty) && qty > 0) {
+      if (item && !Number.isNaN(qty) && qty > 0) {
         return total + item.price * qty;
       }
       return total;
@@ -475,7 +475,7 @@ function OrderForm({ items, onOrderCreated }) {
             {orderItems.map((orderItem, index) => {
               const selectedItem = items.find(i => String(i._id) === String(orderItem.itemId));
               const qty = parseInt(orderItem.quantity, 10);
-              const lineTotal = selectedItem && !isNaN(qty) && qty > 0 ? selectedItem.price * qty : 0;
+              const lineTotal = selectedItem && !Number.isNaN(qty) && qty > 0 ? selectedItem.price * qty : 0;
               
               return (
                 <Card key={index} variant="outlined">
@@ -511,12 +511,12 @@ function OrderForm({ items, onOrderCreated }) {
                               handleItemChange(index, 'quantity', '');
                             } else {
                               const parsed = parseInt(val, 10);
-                              handleItemChange(index, 'quantity', isNaN(parsed) ? '' : parsed);
+                              handleItemChange(index, 'quantity', Number.isNaN(parsed) ? '' : parsed);
                             }
                           }}
                           onBlur={(e) => {
                             const val = parseInt(e.target.value, 10);
-                            if (isNaN(val) || val < 1) {
+                            if (Number.isNaN(val) || val < 1) {
                               handleItemChange(index, 'quantity', 1);
                             }
                           }}
