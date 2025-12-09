@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -30,12 +30,7 @@ const FeedbackPanel = () => {
 
   const ITEMS_PER_PAGE = 10;
 
-  useEffect(() => {
-    fetchFeedbacks();
-    fetchStats();
-  }, [paginationData.page]);
-
-  const fetchFeedbacks = async () => {
+  const fetchFeedbacks = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getFeedbacksPaginated({ page: paginationData.page, limit: ITEMS_PER_PAGE });
@@ -51,16 +46,21 @@ const FeedbackPanel = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paginationData.page, showNotification]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const statsData = await getFeedbackStats();
       setStats(statsData);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchFeedbacks();
+    fetchStats();
+  }, [fetchFeedbacks, fetchStats]);
 
   const getRatingLabel = (rating) => {
     const labels = {

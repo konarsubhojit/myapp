@@ -1,6 +1,6 @@
-import { eq, desc, sql, and } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
-import { feedbacks, orders } from '../db/schema.js';
+import { feedbacks } from '../db/schema.js';
 
 function transformFeedback(feedback) {
   return {
