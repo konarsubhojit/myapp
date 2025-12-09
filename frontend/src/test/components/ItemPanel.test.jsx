@@ -186,4 +186,186 @@ describe('ItemPanel', () => {
       });
     });
   });
+
+  describe('Form Submission', () => {
+    it('should create item with valid data', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Item/i })).toBeInTheDocument();
+      });
+
+      // Fill in the form
+      const nameInput = screen.getByLabelText(/Item Name/i);
+      await user.type(nameInput, 'New Test Item');
+      
+      const priceInput = screen.getByLabelText(/Price/i);
+      await user.clear(priceInput);
+      await user.type(priceInput, '150');
+      
+      const colorInput = screen.getByLabelText(/Color/i);
+      await user.type(colorInput, 'Green');
+      
+      // Submit the form
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      // Should call API with form data
+      await waitFor(() => {
+        expect(api.createItem).toHaveBeenCalled();
+      });
+    });
+
+    it('should reset form after successful submission', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Item/i })).toBeInTheDocument();
+      });
+
+      // Fill in the form
+      const nameInput = screen.getByLabelText(/Item Name/i);
+      await user.type(nameInput, 'New Test Item');
+      
+      const priceInput = screen.getByLabelText(/Price/i);
+      await user.clear(priceInput);
+      await user.type(priceInput, '150');
+      
+      // Submit the form
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      // Wait for submission
+      await waitFor(() => {
+        expect(api.createItem).toHaveBeenCalled();
+      });
+      
+      // Form should be reset
+      await waitFor(() => {
+        expect(nameInput).toHaveValue('');
+        expect(priceInput).toHaveValue(null);
+      });
+    });
+
+    it('should call onItemsChange callback after submission', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Add Item/i })).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByLabelText(/Item Name/i);
+      await user.type(nameInput, 'New Test Item');
+      
+      const priceInput = screen.getByLabelText(/Price/i);
+      await user.clear(priceInput);
+      await user.type(priceInput, '150');
+      
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      await waitFor(() => {
+        expect(mockOnItemsChange).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Item Actions', () => {
+    beforeEach(() => {
+      api.updateItem = vi.fn().mockResolvedValue({ _id: 'item1', name: 'Updated Item', price: 150 });
+      api.deleteItem = vi.fn().mockResolvedValue({ success: true });
+      globalThis.confirm = vi.fn().mockReturnValue(true);
+    });
+
+    it('should show edit dialog when edit button is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
+      });
+
+      // Find and click edit button using aria-label
+      const editButton = screen.getByLabelText(/Edit Test Item 1/i);
+      await user.click(editButton);
+      
+      // Dialog should open
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Edit Item')).toBeInTheDocument();
+      });
+    });
+
+    it('should delete item when delete is confirmed', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
+      });
+
+      // Find and click delete button using aria-label
+      const deleteButton = screen.getByLabelText(/Delete Test Item 1/i);
+      await user.click(deleteButton);
+      
+      // Should call delete API
+      await waitFor(() => {
+        expect(api.deleteItem).toHaveBeenCalledWith('item1');
+      });
+    });
+
+    it('should copy item to form when copy button is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Test Item 1')).toBeInTheDocument();
+      });
+
+      // Find and click copy button using aria-label
+      const copyButton = screen.getByLabelText(/Copy Test Item 1/i);
+      await user.click(copyButton);
+      
+      // Form should be populated with item data
+      await waitFor(() => {
+        const nameInput = screen.getByLabelText(/Item Name/i);
+        expect(nameInput).toHaveValue('Test Item 1');
+      });
+    });
+  });
+
+  describe('Search Functionality', () => {
+    it('should render search input', async () => {
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Search by name, color, fabric/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should call API with search query when search is submitted', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ItemPanel onItemsChange={mockOnItemsChange} />);
+      
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Search by name, color, fabric/i)).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText(/Search by name, color, fabric/i);
+      await user.type(searchInput, 'test');
+      
+      const searchButton = screen.getByRole('button', { name: /^Search$/i });
+      await user.click(searchButton);
+      
+      // Should call API with search parameter
+      await waitFor(() => {
+        expect(api.getItemsPaginated).toHaveBeenCalledWith(
+          expect.objectContaining({ search: 'test' })
+        );
+      });
+    });
+  });
 });
