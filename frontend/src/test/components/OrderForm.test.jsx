@@ -98,4 +98,95 @@ describe('OrderForm', () => {
       expect(screen.getByRole('button', { name: /Create Order/i })).toBeDisabled();
     });
   });
+
+  describe('Form Interactions', () => {
+    it('should add an item to the order when Add Item button is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      // Should show item selection dropdown
+      expect(screen.getByLabelText(/Select Item/i)).toBeInTheDocument();
+    });
+
+    it('should allow adding multiple items', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      
+      // Add first item
+      await user.click(addButton);
+      await waitFor(() => {
+        expect(screen.getAllByLabelText(/Select Item/i)).toHaveLength(1);
+      });
+      
+      // Add second item
+      await user.click(addButton);
+      await waitFor(() => {
+        expect(screen.getAllByLabelText(/Select Item/i)).toHaveLength(2);
+      });
+    });
+
+    it('should remove an item from the order when delete button is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Select Item/i)).toBeInTheDocument();
+      });
+      
+      const deleteButton = screen.getByRole('button', { name: /Remove item/i });
+      await user.click(deleteButton);
+      
+      await waitFor(() => {
+        expect(screen.queryByLabelText(/Select Item/i)).not.toBeInTheDocument();
+      });
+    });
+
+    it('should update customer name field', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const customerNameInput = screen.getByLabelText(/Customer Name/i);
+      await user.type(customerNameInput, 'John Doe');
+      
+      expect(customerNameInput).toHaveValue('John Doe');
+    });
+
+    it('should update order source field', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const orderSourceSelect = screen.getByLabelText(/Order Source/i);
+      await user.click(orderSourceSelect);
+      
+      const instagramOption = screen.getByRole('option', { name: /Instagram/i });
+      await user.click(instagramOption);
+      
+      await waitFor(() => {
+        expect(orderSourceSelect).toHaveTextContent('Instagram');
+      });
+    });
+
+    it('should show paid amount field when payment status is partially_paid', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      const paymentStatusSelect = screen.getByLabelText(/Payment Status/i);
+      await user.click(paymentStatusSelect);
+      
+      const partiallyPaidOption = screen.getByRole('option', { name: /Partially Paid/i });
+      await user.click(partiallyPaidOption);
+      
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Amount Paid/i)).toBeInTheDocument();
+      });
+    });
+  });
 });
