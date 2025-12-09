@@ -45,7 +45,12 @@ app.use('/api/', limiter);
 import itemRoutes from './routes/items.js';
 import orderRoutes from './routes/orders.js';
 import feedbackRoutes from './routes/feedbacks.js';
+import publicFeedbackRoutes from './routes/publicFeedbacks.js';
 
+// Public routes (no authentication)
+app.use('/api/public/feedbacks', publicFeedbackRoutes);
+
+// Authenticated routes
 app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 app.use('/api/feedbacks', authMiddleware, feedbackRoutes);

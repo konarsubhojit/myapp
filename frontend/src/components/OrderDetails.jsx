@@ -1,24 +1,21 @@
 import PropTypes from 'prop-types';
-import { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import SaveIcon from '@mui/icons-material/Save';
-import FeedbackIcon from '@mui/icons-material/Feedback';
+import LinkIcon from '@mui/icons-material/Link';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useOrderDetails } from '../hooks/useOrderDetails';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDialogTitle from './common/OrderDialogTitle';
 import OrderDialogContent from './common/OrderDialogContent';
-import FeedbackDialog from './FeedbackDialog';
 
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
-  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   
   const {
     order,
@@ -40,12 +37,18 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     onClose();
   };
 
-  const handleFeedbackClick = () => {
-    setFeedbackDialogOpen(true);
-  };
-
-  const handleFeedbackClose = () => {
-    setFeedbackDialogOpen(false);
+  const handleGenerateFeedbackLink = () => {
+    // Generate feedback link for customer
+    const feedbackAppUrl = import.meta.env.VITE_FEEDBACK_APP_URL || 'http://localhost:3001';
+    const feedbackLink = `${feedbackAppUrl}/?orderId=${order._id}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(feedbackLink).then(() => {
+      showSuccess('Feedback link copied to clipboard! Share this link with the customer.');
+    }).catch(() => {
+      // Fallback: show the link
+      showSuccess(`Feedback link: ${feedbackLink}`);
+    });
   };
 
   return (
@@ -83,11 +86,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
           <Box>
             {order && order.status === 'completed' && !isEditing && (
               <Button 
-                onClick={handleFeedbackClick}
-                startIcon={<FeedbackIcon />}
+                onClick={handleGenerateFeedbackLink}
+                startIcon={<LinkIcon />}
                 color="primary"
+                variant="outlined"
               >
-                Give Feedback
+                Get Feedback Link
               </Button>
             )}
           </Box>
@@ -110,18 +114,6 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
           </Box>
         </DialogActions>
       </Dialog>
-
-      {order && (
-        <FeedbackDialog
-          open={feedbackDialogOpen}
-          onClose={handleFeedbackClose}
-          order={order}
-          onFeedbackSubmitted={() => {
-            handleFeedbackClose();
-            showSuccess('Thank you for your feedback!');
-          }}
-        />
-      )}
     </>
   );
 }
