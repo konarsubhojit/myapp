@@ -1,8 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 import { connectToDatabase } from './db/connection.js';
 import { createLogger } from './utils/logger.js';
 import { authMiddleware } from './middleware/auth.js';

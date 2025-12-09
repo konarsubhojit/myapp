@@ -1,5 +1,5 @@
-const express = require('express');
-const request = require('supertest');
+import express from 'express';
+import request from 'supertest';
 
 // Mock dependencies BEFORE requiring any modules
 jest.mock('../db/connection', () => ({
@@ -23,7 +23,7 @@ describe('Server Configuration', () => {
   beforeEach(() => {
     // Create a simple app for testing
     app = express();
-    const cors = require('cors');
+    import cors from 'cors';
     
     app.set('trust proxy', 1);
     app.use(cors());

@@ -1,4 +1,4 @@
-const { authMiddleware, optionalAuthMiddleware, validateToken } = require('../../middleware/auth');
+import { authMiddleware, optionalAuthMiddleware, validateToken } from '../../middleware/auth.js';
 
 // Mock dependencies
 jest.mock('jsonwebtoken');
@@ -18,7 +18,7 @@ jest.mock('../../utils/logger', () => ({
   }),
 }));
 
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 describe('Auth Middleware', () => {
   let req;

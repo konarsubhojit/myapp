@@ -1,4 +1,4 @@
-const {
+import {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
   VALID_CONFIRMATION_STATUSES,
@@ -7,7 +7,7 @@ const {
   MAX_CUSTOMER_NOTES_LENGTH,
   PRIORITY_MIN,
   PRIORITY_MAX,
-} = require('../../constants/orderConstants');
+} from '../../constants/orderConstants.js';
 
 describe('Order Constants', () => {
   describe('VALID_ORDER_STATUSES', () => {

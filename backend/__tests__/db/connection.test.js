@@ -1,4 +1,4 @@
-const { createLogger } = require('../../utils/logger');
+import { createLogger } from '../../utils/logger.js';
 
 // Mock dependencies BEFORE requiring the module under test
 jest.mock('../../utils/logger', () => ({
@@ -17,7 +17,7 @@ jest.mock('@neondatabase/serverless', () => ({
   neon: jest.fn(() => ({ mockSql: true })),
 }));
 
-const { connectToDatabase, getDatabase } = require('../../db/connection');
+import { connectToDatabase, getDatabase } from '../../db/connection.js';
 
 describe('Database Connection', () => {
   const originalEnv = process.env.NEON_DATABASE_URL;
@@ -63,7 +63,7 @@ describe('Database Connection', () => {
     });
 
     it('should handle database connection errors', () => {
-      const { drizzle } = require('drizzle-orm/neon-http');
+      import { drizzle } from 'drizzle-orm/neon-http';
       drizzle.mockImplementationOnce(() => {
         throw new Error('Connection failed');
       });

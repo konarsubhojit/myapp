@@ -1,7 +1,7 @@
-const request = require('supertest');
-const express = require('express');
-const itemRoutes = require('../../routes/items');
-const Item = require('../../models/Item');
+import request from 'supertest';
+import express from 'express';
+import itemRoutes from '../../routes/items.js';
+import Item from '../../models/Item.js';
 
 // Mock dependencies
 jest.mock('../../models/Item');
@@ -15,7 +15,7 @@ jest.mock('../../utils/logger', () => ({
   }),
 }));
 
-const { put, del } = require('@vercel/blob');
+import { put, del } from '@vercel/blob';
 
 const app = express();
 app.use(express.json());
