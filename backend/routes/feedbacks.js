@@ -56,7 +56,7 @@ router.get('/', async (req, res) => {
     const parsedPage = Number.parseInt(req.query.page, 10);
     const parsedLimit = Number.parseInt(req.query.limit, 10);
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
+    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT;
     
     if (req.query.page || req.query.limit) {
       const result = await Feedback.findPaginated({ page, limit });
@@ -68,6 +68,20 @@ router.get('/', async (req, res) => {
   } catch (error) {
     logger.error('Failed to fetch feedbacks', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch feedbacks' });
+  }
+});
+
+// GET /api/feedbacks/order/:orderId - Get feedback for a specific order
+router.get('/order/:orderId', async (req, res) => {
+  try {
+    const feedback = await Feedback.findByOrderId(req.params.orderId);
+    if (!feedback) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'No feedback found for this order' });
+    }
+    res.json(feedback);
+  } catch (error) {
+    logger.error('Failed to fetch order feedback', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch order feedback' });
   }
 });
 
@@ -243,20 +257,6 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     logger.error('Failed to update feedback', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update feedback' });
-  }
-});
-
-// GET /api/feedbacks/order/:orderId - Get feedback for a specific order
-router.get('/order/:orderId', async (req, res) => {
-  try {
-    const feedback = await Feedback.findByOrderId(req.params.orderId);
-    if (!feedback) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'No feedback found for this order' });
-    }
-    res.json(feedback);
-  } catch (error) {
-    logger.error('Failed to fetch order feedback', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch order feedback' });
   }
 });
 

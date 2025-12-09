@@ -20,8 +20,12 @@ const FeedbackPanel = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [paginationData, setPaginationData] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1
+  });
   const { showNotification } = useNotification();
 
   const ITEMS_PER_PAGE = 10;
@@ -29,14 +33,19 @@ const FeedbackPanel = () => {
   useEffect(() => {
     fetchFeedbacks();
     fetchStats();
-  }, [page]);
+  }, [paginationData.page]);
 
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      const data = await getFeedbacksPaginated({ page, limit: ITEMS_PER_PAGE });
+      const data = await getFeedbacksPaginated({ page: paginationData.page, limit: ITEMS_PER_PAGE });
       setFeedbacks(data.feedbacks || []);
-      setTotalPages(data.pagination?.totalPages || 1);
+      setPaginationData(data.pagination || {
+        page: 1,
+        limit: ITEMS_PER_PAGE,
+        total: 0,
+        totalPages: 1
+      });
     } catch (error) {
       showNotification('Failed to fetch feedbacks: ' + error.message, 'error');
     } finally {
@@ -259,9 +268,9 @@ const FeedbackPanel = () => {
           {/* Pagination */}
           <Box sx={{ mt: 3 }}>
             <PaginationControls
-              page={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
+              paginationData={paginationData}
+              onPageChange={(newPage) => setPaginationData(prev => ({ ...prev, page: newPage }))}
+              onLimitChange={(newLimit) => setPaginationData(prev => ({ ...prev, limit: newLimit, page: 1 }))}
             />
           </Box>
         </>

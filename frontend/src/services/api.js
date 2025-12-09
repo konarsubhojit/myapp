@@ -71,15 +71,18 @@ async function authFetch(url, options = {}) {
     let mockData;
     if (url.includes('?page=') || url.includes('&page=')) {
       // Paginated endpoint - return pagination structure
-      // Determine if it's items or orders based on URL
-      const dataKey = url.includes('/orders') ? 'orders' : 'items';
+      // Determine the data key based on URL
+      let dataKey = 'items';
+      if (url.includes('/orders')) dataKey = 'orders';
+      else if (url.includes('/feedbacks')) dataKey = 'feedbacks';
+      
       mockData = { 
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
       };
-    } else if (/\/(items|orders)\/[^/]+$/.test(url)) {
+    } else if (/\/(items|orders|feedbacks)\/[^/]+$/.test(url)) {
       // Single item endpoint (with ID at the end) - return empty object
-      // e.g., /items/123 or /orders/456
+      // e.g., /items/123 or /orders/456 or /feedbacks/789
       mockData = {};
     } else {
       // List endpoint without pagination - return empty array
