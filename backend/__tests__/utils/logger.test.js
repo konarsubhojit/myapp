@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createLogger } from '../../utils/logger.js';
 
 describe('Logger', () => {

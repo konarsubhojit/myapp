@@ -1,12 +1,26 @@
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import itemRoutes from '../../routes/items.js';
-import Item from '../../models/Item.js';
 
 // Mock dependencies
-jest.mock('../../models/Item');
-jest.mock('@vercel/blob');
-jest.mock('../../utils/logger', () => ({
+jest.unstable_mockModule('../../models/Item', () => ({
+  default: {
+    find: jest.fn(),
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    findByIdAndDelete: jest.fn(),
+    create: jest.fn(),
+    findPaginated: jest.fn(),
+    findDeletedPaginated: jest.fn(),
+    restore: jest.fn(),
+    permanentlyRemoveImage: jest.fn(),
+  },
+}));
+jest.unstable_mockModule('@vercel/blob', () => ({
+  put: jest.fn(),
+  del: jest.fn(),
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({
   createLogger: () => ({
     error: jest.fn(),
     warn: jest.fn(),
@@ -15,7 +29,9 @@ jest.mock('../../utils/logger', () => ({
   }),
 }));
 
-import { put, del } from '@vercel/blob';
+const { default: itemRoutes } = await import('../../routes/items.js');
+const { default: Item } = await import('../../models/Item.js');
+const { put, del } = await import('@vercel/blob');
 
 const app = express();
 app.use(express.json());

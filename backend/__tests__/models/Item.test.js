@@ -1,11 +1,12 @@
-import Item from '../../models/Item.js';
+import { jest } from '@jest/globals';
 
 // Mock the database connection
-jest.mock('../../db/connection', () => ({
+jest.unstable_mockModule('../../db/connection', () => ({
   getDatabase: jest.fn(),
 }));
 
-import { getDatabase } from '../../db/connection.js';
+const { getDatabase } = await import('../../db/connection.js');
+const { default: Item } = await import('../../models/Item.js');
 
 describe('Item Model', () => {
   let mockDb;

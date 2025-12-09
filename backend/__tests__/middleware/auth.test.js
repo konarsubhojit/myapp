@@ -1,15 +1,20 @@
-import { authMiddleware, optionalAuthMiddleware, validateToken } from '../../middleware/auth.js';
+import { jest } from '@jest/globals';
 
 // Mock dependencies
-jest.mock('jsonwebtoken');
-jest.mock('jwks-rsa', () => {
-  return jest.fn(() => ({
+jest.unstable_mockModule('jsonwebtoken', () => ({
+  default: {
+    decode: jest.fn(),
+    verify: jest.fn(),
+  },
+}));
+jest.unstable_mockModule('jwks-rsa', () => ({
+  default: jest.fn(() => ({
     getSigningKey: jest.fn((kid, callback) => {
       callback(null, { getPublicKey: () => 'mock-public-key' });
     }),
-  }));
-});
-jest.mock('../../utils/logger', () => ({
+  })),
+}));
+jest.unstable_mockModule('../../utils/logger', () => ({
   createLogger: () => ({
     error: jest.fn(),
     warn: jest.fn(),
@@ -18,7 +23,8 @@ jest.mock('../../utils/logger', () => ({
   }),
 }));
 
-import jwt from 'jsonwebtoken';
+const { authMiddleware, optionalAuthMiddleware, validateToken } = await import('../../middleware/auth.js');
+const jwt = (await import('jsonwebtoken')).default;
 
 describe('Auth Middleware', () => {
   let req;
