@@ -189,4 +189,106 @@ describe('OrderForm', () => {
       });
     });
   });
+
+  describe('Form Validation & Submission', () => {
+    it('should show error when submitting without items', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      // Fill required fields
+      const orderSourceSelect = screen.getByLabelText(/Order Source/i);
+      await user.click(orderSourceSelect);
+      await user.click(screen.getByRole('option', { name: /Instagram/i }));
+      
+      const customerNameInput = screen.getByLabelText(/Customer Name/i);
+      await user.type(customerNameInput, 'John Doe');
+      
+      const customerIdInput = screen.getByLabelText(/Customer ID/i);
+      await user.type(customerIdInput, '@johndoe');
+      
+      const submitButton = screen.getByRole('button', { name: /Create Order/i });
+      await user.click(submitButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Please add at least one item/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show error when submitting with incomplete item selection', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      // Fill required fields
+      const orderSourceSelect = screen.getByLabelText(/Order Source/i);
+      await user.click(orderSourceSelect);
+      await user.click(screen.getByRole('option', { name: /Instagram/i }));
+      
+      const customerNameInput = screen.getByLabelText(/Customer Name/i);
+      await user.type(customerNameInput, 'John Doe');
+      
+      const customerIdInput = screen.getByLabelText(/Customer ID/i);
+      await user.type(customerIdInput, '@johndoe');
+      
+      // Add an item but don't select it
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      const submitButton = screen.getByRole('button', { name: /Create Order/i });
+      await user.click(submitButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Please select an item and quantity for all items/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should successfully create order with valid data', async () => {
+      const user = userEvent.setup();
+      const mockOrder = {
+        _id: 'order1',
+        orderId: 'ORD-001',
+        totalPrice: 100,
+      };
+      
+      api.createOrder = vi.fn().mockResolvedValue(mockOrder);
+      
+      renderWithProviders(<OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />);
+      
+      // Fill required fields
+      const orderSourceSelect = screen.getByLabelText(/Order Source/i);
+      await user.click(orderSourceSelect);
+      await user.click(screen.getByRole('option', { name: /Instagram/i }));
+      
+      const customerNameInput = screen.getByLabelText(/Customer Name/i);
+      await user.type(customerNameInput, 'John Doe');
+      
+      const customerIdInput = screen.getByLabelText(/Customer ID/i);
+      await user.type(customerIdInput, '@johndoe');
+      
+      // Add and select an item
+      const addButton = screen.getByRole('button', { name: /Add Item/i });
+      await user.click(addButton);
+      
+      const itemSelect = screen.getByLabelText(/Select Item/i);
+      await user.click(itemSelect);
+      await user.click(screen.getByRole('option', { name: /Test Item 1/i }));
+      
+      // Submit the form
+      const submitButton = screen.getByRole('button', { name: /Create Order/i });
+      await user.click(submitButton);
+      
+      await waitFor(() => {
+        expect(api.createOrder).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orderFrom: 'instagram',
+            customerName: 'John Doe',
+            customerId: '@johndoe',
+          })
+        );
+      });
+      
+      await waitFor(() => {
+        expect(mockOnOrderCreated).toHaveBeenCalled();
+      });
+    });
+  });
 });
