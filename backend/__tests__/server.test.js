@@ -158,8 +158,7 @@ describe('Server Database Error Handling', () => {
     process.env.PORT = '5002';
     process.env.NEON_DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
 
-    // Import server module which should fail to connect to DB
-    // Using dynamic import with a unique module specifier to avoid cache
+    // Import server module after resetting modules and setting up mocks
     const modulePath = `../server.js`;
     await import(modulePath);
     
