@@ -656,6 +656,7 @@ describe('ItemPanel', () => {
       await user.click(removeImageButton);
       
       await waitFor(() => {
+        expect(globalThis.confirm).toHaveBeenCalled();
         expect(api.permanentlyDeleteItem).toHaveBeenCalledWith('item3');
       });
     });

@@ -347,7 +347,6 @@ describe('PriorityDashboard', () => {
     });
 
     it('should disable refresh button while loading', async () => {
-      const user = userEvent.setup();
       let resolvePromise;
       api.getPriorityOrders = vi.fn().mockImplementation(() => new Promise(resolve => {
         resolvePromise = resolve;

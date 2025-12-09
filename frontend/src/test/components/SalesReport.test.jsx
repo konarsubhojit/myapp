@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SalesReport from '../../components/SalesReport';
@@ -117,7 +117,6 @@ describe('SalesReport', () => {
 
   describe('Time Range Filtering', () => {
     it('should filter orders by selected time range', async () => {
-      const user = userEvent.setup();
       const oldOrder = createMockOrder({
         _id: 'old-order',
         orderDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),

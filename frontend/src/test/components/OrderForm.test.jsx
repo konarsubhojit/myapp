@@ -584,7 +584,6 @@ describe('OrderForm', () => {
     });
 
     it('should allow cancelling duplication', async () => {
-      const user = userEvent.setup();
       renderWithProviders(
         <OrderForm items={mockItems} onOrderCreated={mockOnOrderCreated} />,
         '/orders/duplicate/order1'
