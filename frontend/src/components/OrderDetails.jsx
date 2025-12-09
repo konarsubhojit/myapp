@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
@@ -12,10 +13,12 @@ import { useOrderDetails } from '../hooks/useOrderDetails';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDialogTitle from './common/OrderDialogTitle';
 import OrderDialogContent from './common/OrderDialogContent';
+import { generateFeedbackToken } from '../services/api';
 
 function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
+  const [generatingToken, setGeneratingToken] = useState(false);
   
   const {
     order,
@@ -37,18 +40,28 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     onClose();
   };
 
-  const handleGenerateFeedbackLink = () => {
-    // Generate feedback link for customer
-    const feedbackAppUrl = import.meta.env.VITE_FEEDBACK_APP_URL || 'http://localhost:3001';
-    const feedbackLink = `${feedbackAppUrl}/?orderId=${order._id}`;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(feedbackLink).then(() => {
-      showSuccess('Feedback link copied to clipboard! Share this link with the customer.');
-    }).catch(() => {
-      // Fallback: show the link
-      showSuccess(`Feedback link: ${feedbackLink}`);
-    });
+  const handleGenerateFeedbackLink = async () => {
+    try {
+      setGeneratingToken(true);
+      // Generate secure token via API
+      const tokenData = await generateFeedbackToken(order._id);
+      
+      // Generate feedback link with token
+      const feedbackAppUrl = import.meta.env.VITE_FEEDBACK_APP_URL || 'http://localhost:3001';
+      const feedbackLink = `${feedbackAppUrl}/?token=${tokenData.token}`;
+      
+      // Copy to clipboard
+      navigator.clipboard.writeText(feedbackLink).then(() => {
+        showSuccess('Secure feedback link copied to clipboard! Valid for 30 days.');
+      }).catch(() => {
+        // Fallback: show the link
+        showSuccess(`Feedback link: ${feedbackLink}`);
+      });
+    } catch (err) {
+      showError('Failed to generate feedback link: ' + err.message);
+    } finally {
+      setGeneratingToken(false);
+    }
   };
 
   return (
@@ -87,11 +100,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
             {order && order.status === 'completed' && !isEditing && (
               <Button 
                 onClick={handleGenerateFeedbackLink}
-                startIcon={<LinkIcon />}
+                startIcon={generatingToken ? <CircularProgress size={16} /> : <LinkIcon />}
                 color="primary"
                 variant="outlined"
+                disabled={generatingToken}
               >
-                Get Feedback Link
+                {generatingToken ? 'Generating...' : 'Get Feedback Link'}
               </Button>
             )}
           </Box>

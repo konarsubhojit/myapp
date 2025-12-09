@@ -302,3 +302,14 @@ export const updateFeedback = async (id, feedback) => {
   }
   return response.json();
 };
+
+export const generateFeedbackToken = async (orderId) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/generate-token/${orderId}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to generate feedback token');
+  }
+  return response.json();
+};

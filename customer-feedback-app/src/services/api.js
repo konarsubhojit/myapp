@@ -10,39 +10,20 @@ function getHeaders() {
 }
 
 /**
- * Get order details by ID
+ * Validate token and get order details
  */
-export const getOrder = async (orderId) => {
-  const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-    method: 'GET',
+export const validateToken = async (token) => {
+  const response = await fetch(`${API_BASE_URL}/public/feedbacks/validate-token`, {
+    method: 'POST',
     headers: getHeaders(),
+    body: JSON.stringify({ token }),
   });
   
   if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error('Order not found');
+    if (response.status === 401) {
+      throw new Error('Invalid or expired feedback link');
     }
-    throw new Error('Failed to fetch order details');
-  }
-  
-  return response.json();
-};
-
-/**
- * Check if feedback already exists for an order
- */
-export const getFeedbackByOrderId = async (orderId) => {
-  const response = await fetch(`${API_BASE_URL}/feedbacks/order/${orderId}`, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  
-  if (response.status === 404) {
-    return null;
-  }
-  
-  if (!response.ok) {
-    throw new Error('Failed to check feedback status');
+    throw new Error('Failed to validate feedback link');
   }
   
   return response.json();

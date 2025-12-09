@@ -8,41 +8,38 @@ import {
   Alert
 } from '@mui/material';
 import FeedbackForm from './components/FeedbackForm';
-import { getOrder, getFeedbackByOrderId } from './services/api';
+import { validateToken } from './services/api';
 
 function App() {
-  const [orderId, setOrderId] = useState(null);
+  const [token, setToken] = useState(null);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasExistingFeedback, setHasExistingFeedback] = useState(false);
 
   useEffect(() => {
-    // Get order ID from URL parameter
+    // Get token from URL parameter
     const params = new URLSearchParams(window.location.search);
-    const orderIdParam = params.get('orderId');
+    const tokenParam = params.get('token');
     
-    if (!orderIdParam) {
-      setError('No order ID provided. Please use a valid feedback link.');
+    if (!tokenParam) {
+      setError('Invalid feedback link. Please use the link provided by the order manager.');
       setLoading(false);
       return;
     }
     
-    setOrderId(orderIdParam);
-    loadOrderData(orderIdParam);
+    setToken(tokenParam);
+    validateFeedbackToken(tokenParam);
   }, []);
 
-  const loadOrderData = async (orderIdParam) => {
+  const validateFeedbackToken = async (tokenParam) => {
     try {
       setLoading(true);
       
-      // Fetch order details
-      const orderData = await getOrder(orderIdParam);
-      setOrder(orderData);
-      
-      // Check if feedback already exists
-      const existingFeedback = await getFeedbackByOrderId(orderData._id);
-      setHasExistingFeedback(!!existingFeedback);
+      // Validate token and get order details
+      const data = await validateToken(tokenParam);
+      setOrder(data.order);
+      setHasExistingFeedback(data.hasExistingFeedback);
       
       setLoading(false);
     } catch (err) {
@@ -77,7 +74,7 @@ function App() {
             Feedback Already Submitted
           </Typography>
           <Typography variant="body1" color="text.secondary" align="center">
-            Thank you! You have already submitted feedback for Order #{order.orderId}.
+            Thank you! Feedback has already been submitted for Order #{order.orderId}.
           </Typography>
         </Paper>
       </Container>
@@ -110,6 +107,7 @@ function App() {
         </Typography>
         
         <FeedbackForm 
+          token={token}
           order={order}
           onSuccess={() => {
             setHasExistingFeedback(true);

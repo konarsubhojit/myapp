@@ -66,6 +66,7 @@ jobs:
           cache-dependency-path: |
             backend/package-lock.json
             frontend/package-lock.json
+            customer-feedback-app/package-lock.json
 
       # Backend steps
       - name: Install backend dependencies
@@ -91,6 +92,17 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ steps.version.outputs.full_version }}
+
+      # Customer Feedback App steps
+      - name: Install customer feedback app dependencies
+        working-directory: customer-feedback-app
+        run: npm ci
+
+      - name: Build customer feedback app
+        working-directory: customer-feedback-app
         run: npm run build
         env:
           VITE_APP_VERSION: ${{ steps.version.outputs.full_version }}
@@ -145,6 +157,14 @@ jobs:
         with:
           name: frontend-dist-v${{ steps.version.outputs.full_version }}
           path: frontend/dist
+          retention-days: 7
+
+      - name: Upload customer feedback app build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-feedback-app-dist-v${{ steps.version.outputs.full_version }}
+          path: customer-feedback-app/dist
           retention-days: 7
 
       - name: Build Summary

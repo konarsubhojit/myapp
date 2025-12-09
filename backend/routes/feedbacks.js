@@ -1,6 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import Feedback from '../models/Feedback.js';
+import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -49,6 +50,46 @@ function validateResponse(responseText) {
   }
   return { valid: true };
 }
+
+// POST /api/feedbacks/generate-token/:orderId - Generate secure feedback token for an order
+router.post('/generate-token/:orderId', async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+    
+    // Check if order exists and is completed
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
+    }
+    
+    if (order.status !== 'completed') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+        message: 'Feedback tokens can only be generated for completed orders' 
+      });
+    }
+    
+    // Check if feedback already exists
+    const existingFeedback = await Feedback.findByOrderId(orderId);
+    if (existingFeedback) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+        message: 'Feedback already submitted for this order' 
+      });
+    }
+    
+    // Generate or get existing token
+    const tokenData = await FeedbackToken.getOrCreateForOrder(Number.parseInt(orderId, 10));
+    
+    logger.info('Feedback token generated', { orderId, tokenId: tokenData.id });
+    res.json({
+      token: tokenData.token,
+      orderId: tokenData.orderId,
+      expiresAt: tokenData.expiresAt
+    });
+  } catch (error) {
+    logger.error('Failed to generate feedback token', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to generate feedback token' });
+  }
+});
 
 // GET /api/feedbacks - Get all feedbacks with optional pagination
 router.get('/', async (req, res) => {

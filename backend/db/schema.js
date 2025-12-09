@@ -62,3 +62,12 @@ export const feedbacks = pgTable('feedbacks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
+
+export const feedbackTokens = pgTable('feedback_tokens', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  used: integer('used').default(0),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});

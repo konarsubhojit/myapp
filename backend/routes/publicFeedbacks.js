@@ -1,6 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import Feedback from '../models/Feedback.js';
+import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
 import {
@@ -40,15 +41,65 @@ function validateComment(comment) {
   return { valid: true };
 }
 
+// POST /api/public/feedbacks/validate-token - Validate token and return order info
+router.post('/validate-token', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Token is required' });
+    }
+
+    // Validate token
+    const tokenData = await FeedbackToken.validateToken(token);
+    if (!tokenData) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
+        message: 'Invalid or expired token' 
+      });
+    }
+
+    // Get order details
+    const order = await Order.findById(tokenData.orderId);
+    if (!order) {
+      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
+    }
+
+    // Check if feedback already exists
+    const existingFeedback = await Feedback.findByOrderId(tokenData.orderId);
+
+    res.json({
+      order: {
+        _id: order._id,
+        orderId: order.orderId,
+        status: order.status
+      },
+      hasExistingFeedback: !!existingFeedback
+    });
+  } catch (error) {
+    logger.error('Failed to validate token', error);
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to validate token' });
+  }
+});
+
 // POST /api/public/feedbacks - Public endpoint for customers to submit feedback
 router.post('/', async (req, res) => {
   try {
-    const { orderId, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
+    const { token, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
 
-    // Validate orderId
-    if (!orderId) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Order ID is required' });
+    // Validate token
+    if (!token) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Token is required' });
     }
+
+    // Validate and get order from token
+    const tokenData = await FeedbackToken.validateToken(token);
+    if (!tokenData) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
+        message: 'Invalid or expired token' 
+      });
+    }
+
+    const orderId = tokenData.orderId;
 
     // Check if order exists
     const order = await Order.findById(orderId);
@@ -109,7 +160,10 @@ router.post('/', async (req, res) => {
       isPublic: isPublic !== undefined ? Boolean(isPublic) : true
     });
 
-    logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId });
+    // Mark token as used
+    await FeedbackToken.markAsUsed(token);
+
+    logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
     res.status(201).json(newFeedback);
   } catch (error) {
     logger.error('Failed to create public feedback', error);

@@ -16,7 +16,7 @@ import {
 import SendIcon from '@mui/icons-material/Send';
 import { createFeedback } from '../services/api';
 
-const FeedbackForm = ({ order, onSuccess }) => {
+const FeedbackForm = ({ token, order, onSuccess }) => {
   const [formData, setFormData] = useState({
     rating: 0,
     comment: '',
@@ -47,7 +47,7 @@ const FeedbackForm = ({ order, onSuccess }) => {
       setError(null);
       
       await createFeedback({
-        orderId: order._id,
+        token,
         ...formData
       });
       
@@ -182,6 +182,7 @@ const FeedbackForm = ({ order, onSuccess }) => {
 };
 
 FeedbackForm.propTypes = {
+  token: PropTypes.string.isRequired,
   order: PropTypes.shape({
     _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     orderId: PropTypes.string.isRequired,

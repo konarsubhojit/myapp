@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -30,24 +30,21 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
   });
   const { showNotification } = useNotification();
 
+  const checkExistingFeedback = useCallback(async () => {
+    if (!order) return;
+    try {
+      const feedback = await getFeedbackByOrderId(order._id);
+      setHasExistingFeedback(!!feedback);
+    } catch {
+      setHasExistingFeedback(false);
+    }
+  }, [order]);
+
   useEffect(() => {
     if (open && order) {
       checkExistingFeedback();
     }
-  }, [open, order]);
-
-  const checkExistingFeedback = async () => {
-    try {
-      const feedback = await getFeedbackByOrderId(order._id);
-      if (feedback) {
-        setHasExistingFeedback(true);
-      } else {
-        setHasExistingFeedback(false);
-      }
-    } catch (error) {
-      setHasExistingFeedback(false);
-    }
-  };
+  }, [open, order, checkExistingFeedback]);
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
