@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   testEnvironment: 'node',
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
@@ -13,5 +13,6 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'json', 'html'],
   testMatch: ['**/__tests__/**/*.js', '**/*.test.js', '**/*.spec.js'],
   verbose: true,
-  testTimeout: 5000
+  testTimeout: 5000,
+  transform: {}
 };

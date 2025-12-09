@@ -1,11 +1,11 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { put, del } = require('@vercel/blob');
-const Item = require('../models/Item');
-const { createLogger } = require('../utils/logger');
-const { HTTP_STATUS } = require('../constants/httpConstants');
-const { PAGINATION } = require('../constants/paginationConstants');
-const { IMAGE_CONFIG } = require('../constants/imageConstants');
+import { put, del } from '@vercel/blob';
+import Item from '../models/Item.js';
+import { createLogger } from '../utils/logger.js';
+import { HTTP_STATUS } from '../constants/httpConstants.js';
+import { PAGINATION } from '../constants/paginationConstants.js';
+import { IMAGE_CONFIG } from '../constants/imageConstants.js';
 
 const logger = createLogger('ItemsRoute');
 
@@ -282,4 +282,4 @@ router.delete('/:id/permanent', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

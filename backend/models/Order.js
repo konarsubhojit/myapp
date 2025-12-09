@@ -1,6 +1,6 @@
-const { eq, desc, sql, asc } = require('drizzle-orm');
-const { getDatabase } = require('../db/connection');
-const { orders, orderItems } = require('../db/schema');
+import { eq, desc, sql, asc } from 'drizzle-orm';
+import { getDatabase } from '../db/connection.js';
+import { orders, orderItems } from '../db/schema.js';
 
 function generateOrderId() {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -250,4 +250,4 @@ const Order = {
   }
 };
 
-module.exports = Order;
+export default Order;

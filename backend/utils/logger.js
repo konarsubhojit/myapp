@@ -27,7 +27,7 @@ function shouldLog(level) {
   return levelValue !== undefined && currentLevelValue !== undefined && levelValue <= currentLevelValue;
 }
 
-function createLogger(context) {
+export function createLogger(context) {
   return {
     error(message, errorOrMeta) {
       if (shouldLog('error')) {
@@ -57,5 +57,3 @@ function createLogger(context) {
     }
   };
 }
-
-module.exports = { createLogger };
