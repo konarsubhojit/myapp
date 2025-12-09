@@ -185,17 +185,21 @@ function PriorityNotificationPanel() {
 
         <Divider />
 
-        {loading ? (
+        {loading && (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography color="text.secondary">Loading...</Typography>
           </Box>
-        ) : orders.length === 0 ? (
+        )}
+        
+        {!loading && orders.length === 0 && (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography color="text.secondary">
               No priority orders at the moment! 🎉
             </Typography>
           </Box>
-        ) : (
+        )}
+        
+        {!loading && orders.length > 0 && (
           <>
             {criticalCount > 0 && (
               <Paper 

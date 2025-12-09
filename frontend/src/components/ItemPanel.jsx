@@ -524,15 +524,19 @@ function ItemPanel({ onItemsChange }) {
           )}
         </Box>
         
-        {loadingActive ? (
+        {loadingActive && (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
             <CircularProgress />
           </Box>
-        ) : activeItems.length === 0 ? (
+        )}
+        
+        {!loadingActive && activeItems.length === 0 && (
           <Typography color="text.secondary" textAlign="center" py={4}>
             No items found
           </Typography>
-        ) : (
+        )}
+        
+        {!loadingActive && activeItems.length > 0 && (
           <>
             <Grid container spacing={2}>
               {activeItems.map((item) => (
@@ -595,15 +599,19 @@ function ItemPanel({ onItemsChange }) {
             )}
           </Box>
           
-          {loadingDeleted ? (
+          {loadingDeleted && (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
               <CircularProgress />
             </Box>
-          ) : deletedItems.length === 0 ? (
+          )}
+          
+          {!loadingDeleted && deletedItems.length === 0 && (
             <Typography color="text.secondary" textAlign="center" py={4}>
               No deleted items found
             </Typography>
-          ) : (
+          )}
+          
+          {!loadingDeleted && deletedItems.length > 0 && (
             <>
               <Stack spacing={1}>
                 {deletedItems.map((item) => (
