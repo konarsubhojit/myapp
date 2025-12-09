@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
@@ -98,5 +99,21 @@ function ItemCard({
     </Card>
   );
 }
+
+ItemCard.propTypes = {
+  item: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    price: PropTypes.number.isRequired,
+    imageUrl: PropTypes.string,
+    color: PropTypes.string,
+    fabric: PropTypes.string,
+    specialFeatures: PropTypes.string,
+  }).isRequired,
+  formatPrice: PropTypes.func.isRequired,
+  onCopy: PropTypes.func,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+};
 
 export default ItemCard;

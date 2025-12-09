@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
@@ -626,5 +627,16 @@ function OrderForm({ items, onOrderCreated }) {
     </Paper>
   );
 }
+
+OrderForm.propTypes = {
+  items: PropTypes.arrayOf(PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired,
+    price: PropTypes.number.isRequired,
+    color: PropTypes.string,
+    fabric: PropTypes.string,
+  })).isRequired,
+  onOrderCreated: PropTypes.func.isRequired,
+};
 
 export default OrderForm;

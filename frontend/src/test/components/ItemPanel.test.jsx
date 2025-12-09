@@ -179,7 +179,6 @@ describe('ItemPanel', () => {
       
       // Should show error for negative price
       await waitFor(() => {
-        const errorText = screen.queryByText(/Please enter a valid price/i);
         // Error might be displayed or HTML5 validation might prevent it
         // Just ensure the item wasn't created
         expect(api.createItem).not.toHaveBeenCalled();

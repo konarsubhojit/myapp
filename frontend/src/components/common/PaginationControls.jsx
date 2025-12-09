@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import FormControl from '@mui/material/FormControl';
@@ -60,5 +61,17 @@ function PaginationControls({
     </Box>
   );
 }
+
+PaginationControls.propTypes = {
+  paginationData: PropTypes.shape({
+    page: PropTypes.number.isRequired,
+    limit: PropTypes.number.isRequired,
+    total: PropTypes.number.isRequired,
+    totalPages: PropTypes.number.isRequired,
+  }).isRequired,
+  onPageChange: PropTypes.func.isRequired,
+  onLimitChange: PropTypes.func.isRequired,
+  size: PropTypes.oneOf(['small', 'medium', 'large']),
+};
 
 export default PaginationControls;

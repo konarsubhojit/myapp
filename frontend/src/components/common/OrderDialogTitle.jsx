@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -109,5 +110,16 @@ function OrderDialogTitle({
     </DialogTitle>
   );
 }
+
+OrderDialogTitle.propTypes = {
+  order: PropTypes.object,
+  priority: PropTypes.number,
+  loading: PropTypes.bool.isRequired,
+  error: PropTypes.string,
+  isEditing: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func.isRequired,
+  onDuplicate: PropTypes.func,
+  onClose: PropTypes.func.isRequired,
+};
 
 export default OrderDialogTitle;

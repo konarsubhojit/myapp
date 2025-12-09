@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import Button from '@mui/material/Button';
@@ -82,5 +83,12 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     </Dialog>
   );
 }
+
+OrderDetails.propTypes = {
+  orderId: PropTypes.string.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onOrderUpdated: PropTypes.func.isRequired,
+  onDuplicateOrder: PropTypes.func,
+};
 
 export default OrderDetails;

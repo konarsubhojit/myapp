@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -75,5 +76,14 @@ function ImageUploadField({
     </Box>
   );
 }
+
+ImageUploadField.propTypes = {
+  id: PropTypes.string.isRequired,
+  imagePreview: PropTypes.string,
+  imageProcessing: PropTypes.bool.isRequired,
+  onImageChange: PropTypes.func.isRequired,
+  onClearImage: PropTypes.func.isRequired,
+  label: PropTypes.string,
+};
 
 export default ImageUploadField;

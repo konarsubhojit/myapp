@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -773,5 +774,9 @@ function ItemPanel({ onItemsChange }) {
     </Paper>
   );
 }
+
+ItemPanel.propTypes = {
+  onItemsChange: PropTypes.func.isRequired,
+};
 
 export default ItemPanel;

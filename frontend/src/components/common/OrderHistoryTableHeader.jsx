@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
@@ -36,5 +37,13 @@ function OrderHistoryTableHeader({ sortConfig, onSort }) {
     </TableHead>
   );
 }
+
+OrderHistoryTableHeader.propTypes = {
+  sortConfig: PropTypes.shape({
+    key: PropTypes.string.isRequired,
+    direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
+  }).isRequired,
+  onSort: PropTypes.func.isRequired,
+};
 
 export default OrderHistoryTableHeader;

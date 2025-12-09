@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
@@ -132,5 +133,22 @@ function OrderHistoryTableRow({ order, formatPrice, onClick }) {
     </TableRow>
   );
 }
+
+OrderHistoryTableRow.propTypes = {
+  order: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    orderId: PropTypes.string.isRequired,
+    customerName: PropTypes.string.isRequired,
+    orderFrom: PropTypes.string,
+    confirmationStatus: PropTypes.string,
+    status: PropTypes.string,
+    paymentStatus: PropTypes.string,
+    deliveryStatus: PropTypes.string,
+    totalPrice: PropTypes.number.isRequired,
+    expectedDeliveryDate: PropTypes.string,
+  }).isRequired,
+  formatPrice: PropTypes.func.isRequired,
+  onClick: PropTypes.func.isRequired,
+};
 
 export default OrderHistoryTableRow;

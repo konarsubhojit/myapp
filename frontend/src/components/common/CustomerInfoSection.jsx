@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
@@ -84,5 +85,15 @@ function CustomerInfoSection({
     </Box>
   );
 }
+
+CustomerInfoSection.propTypes = {
+  isEditing: PropTypes.bool.isRequired,
+  data: PropTypes.shape({
+    customerName: PropTypes.string.isRequired,
+    customerId: PropTypes.string.isRequired,
+    address: PropTypes.string,
+  }).isRequired,
+  onDataChange: PropTypes.func,
+};
 
 export default CustomerInfoSection;

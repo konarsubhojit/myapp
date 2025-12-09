@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
@@ -298,5 +299,12 @@ function OrderInfoSection({
     </Box>
   );
 }
+
+OrderInfoSection.propTypes = {
+  isEditing: PropTypes.bool.isRequired,
+  data: PropTypes.object.isRequired,
+  priority: PropTypes.number,
+  onDataChange: PropTypes.func,
+};
 
 export default OrderInfoSection;
