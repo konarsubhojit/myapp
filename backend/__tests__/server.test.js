@@ -17,13 +17,14 @@ jest.mock('../middleware/auth', () => ({
   authMiddleware: (req, res, next) => next(),
 }));
 
+import cors from 'cors';
+
 describe('Server Configuration', () => {
   let app;
 
   beforeEach(() => {
     // Create a simple app for testing
     app = express();
-    import cors from 'cors';
     
     app.set('trust proxy', 1);
     app.use(cors());

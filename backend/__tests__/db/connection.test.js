@@ -63,7 +63,7 @@ describe('Database Connection', () => {
     });
 
     it('should handle database connection errors', () => {
-      import { drizzle } from 'drizzle-orm/neon-http';
+      const { drizzle } = jest.requireActual('drizzle-orm/neon-http');
       drizzle.mockImplementationOnce(() => {
         throw new Error('Connection failed');
       });
