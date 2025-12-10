@@ -20,6 +20,7 @@ import HistoryIcon from '@mui/icons-material/History'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
 import PreviewIcon from '@mui/icons-material/Preview'
+import FeedbackIcon from '@mui/icons-material/Feedback'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import './App.css'
@@ -29,6 +30,7 @@ import OrderHistory from './components/OrderHistory'
 import SalesReport from './components/SalesReport'
 import PriorityDashboard from './components/PriorityDashboard'
 import PriorityNotificationPanel from './components/PriorityNotificationPanel'
+import FeedbackPanel from './components/FeedbackPanel'
 import Login from './components/Login'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { NotificationProvider } from './contexts/NotificationContext'
@@ -42,6 +44,7 @@ const TAB_ROUTES = [
   { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
   { path: '/history', label: 'Order History', icon: <HistoryIcon /> },
   { path: '/sales', label: 'Sales Report', icon: <AssessmentIcon /> },
+  { path: '/feedback', label: 'Feedback', icon: <FeedbackIcon /> },
 ]
 
 // Loading screen component to reduce cognitive complexity
@@ -130,6 +133,7 @@ function AppContent() {
     if (path.startsWith('/items')) return 2
     if (path.startsWith('/history')) return 3
     if (path.startsWith('/sales')) return 4
+    if (path.startsWith('/feedback')) return 5
     return 0
   }
 
@@ -360,6 +364,10 @@ function AppContent() {
           <Route 
             path="/sales" 
             element={<SalesReport orders={orders} />} 
+          />
+          <Route 
+            path="/feedback" 
+            element={<FeedbackPanel />} 
           />
           {/* Catch-all route */}
           <Route 

@@ -71,15 +71,18 @@ async function authFetch(url, options = {}) {
     let mockData;
     if (url.includes('?page=') || url.includes('&page=')) {
       // Paginated endpoint - return pagination structure
-      // Determine if it's items or orders based on URL
-      const dataKey = url.includes('/orders') ? 'orders' : 'items';
+      // Determine the data key based on URL
+      let dataKey = 'items';
+      if (url.includes('/orders')) dataKey = 'orders';
+      else if (url.includes('/feedbacks')) dataKey = 'feedbacks';
+      
       mockData = { 
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
       };
-    } else if (/\/(items|orders)\/[^/]+$/.test(url)) {
+    } else if (/\/(items|orders|feedbacks)\/[^/]+$/.test(url)) {
       // Single item endpoint (with ID at the end) - return empty object
-      // e.g., /items/123 or /orders/456
+      // e.g., /items/123 or /orders/456 or /feedbacks/789
       mockData = {};
     } else {
       // List endpoint without pagination - return empty array
@@ -238,6 +241,75 @@ export const updateOrder = async (id, order) => {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to update order');
+  }
+  return response.json();
+};
+
+// Feedbacks API
+export const getFeedbacks = async () => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks`);
+  if (!response.ok) throw new Error('Failed to fetch feedbacks');
+  return response.json();
+};
+
+export const getFeedbacksPaginated = async ({ page = 1, limit = 10 } = {}) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks?page=${page}&limit=${limit}`);
+  if (!response.ok) throw new Error('Failed to fetch feedbacks');
+  return response.json();
+};
+
+export const getFeedbackStats = async () => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/stats`);
+  if (!response.ok) throw new Error('Failed to fetch feedback statistics');
+  return response.json();
+};
+
+export const getFeedback = async (id) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`);
+  if (!response.ok) throw new Error('Failed to fetch feedback');
+  return response.json();
+};
+
+export const getFeedbackByOrderId = async (orderId) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/order/${orderId}`);
+  if (!response.ok) {
+    if (response.status === 404) return null;
+    throw new Error('Failed to fetch order feedback');
+  }
+  return response.json();
+};
+
+export const createFeedback = async (feedback) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks`, {
+    method: 'POST',
+    body: JSON.stringify(feedback),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create feedback');
+  }
+  return response.json();
+};
+
+export const updateFeedback = async (id, feedback) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(feedback),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update feedback');
+  }
+  return response.json();
+};
+
+export const generateFeedbackToken = async (orderId) => {
+  const response = await authFetch(`${API_BASE_URL}/feedbacks/generate-token/${orderId}`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to generate feedback token');
   }
   return response.json();
 };
