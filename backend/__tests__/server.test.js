@@ -44,7 +44,7 @@ describe('Server Module', () => {
     
     // Import server.js to get the app
     const serverModule = await import('../server.js');
-    app = serverModule.app;
+    app = serverModule.default;
     
     // Wait for database connection to complete
     await new Promise(resolve => setImmediate(resolve));
