@@ -70,6 +70,7 @@ describe('App', () => {
 
   it('should render header with application title', async () => {
     render(<App />);
+>>>>>>> master
     
     // Wait for loading to complete and check for title
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
@@ -78,6 +79,7 @@ describe('App', () => {
   it('should have version tooltip on header title', async () => {
     const user = userEvent.setup();
     render(<App />);
+>>>>>>> master
     
     // Find the title heading
     const title = await screen.findByRole('heading', { level: 1 });
