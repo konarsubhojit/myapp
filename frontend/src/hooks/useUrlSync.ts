@@ -1,9 +1,8 @@
-import { useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
 
 interface UrlSyncResult {
   searchParams: URLSearchParams;
-  updateUrl: (params: Record<string, string>, options?: { replace?: boolean }) => void;
+  updateUrl: (params: URLSearchParams, options?: { replace?: boolean }) => void;
   getParam: (key: string, defaultValue?: string) => string;
   getIntParam: (key: string, defaultValue?: number) => number;
   getBoolParam: (key: string, defaultValue?: boolean) => boolean;
@@ -11,31 +10,45 @@ interface UrlSyncResult {
 
 /**
  * Custom hook for synchronizing component state with URL parameters
+ * Uses native browser History API instead of React Router
  */
 export const useUrlSync = (): UrlSyncResult => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  // Get current URL search params
+  const searchParams = useMemo(() => {
+    return new URLSearchParams(window.location.search);
+  }, []);
 
   const updateUrl = useCallback((
-    params: Record<string, string>, 
+    params: URLSearchParams, 
     options: { replace?: boolean } = { replace: true }
   ): void => {
-    setSearchParams(params, options);
-  }, [setSearchParams]);
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    
+    if (options.replace) {
+      window.history.replaceState({}, '', url.toString());
+    } else {
+      window.history.pushState({}, '', url.toString());
+    }
+  }, []);
 
   const getParam = useCallback((key: string, defaultValue = ''): string => {
-    return searchParams.get(key) ?? defaultValue;
-  }, [searchParams]);
+    const params = new URLSearchParams(window.location.search);
+    return params.get(key) ?? defaultValue;
+  }, []);
 
   const getIntParam = useCallback((key: string, defaultValue = 0): number => {
-    const value = Number.parseInt(searchParams.get(key) ?? '', 10);
+    const params = new URLSearchParams(window.location.search);
+    const value = Number.parseInt(params.get(key) ?? '', 10);
     return Number.isNaN(value) ? defaultValue : value;
-  }, [searchParams]);
+  }, []);
 
   const getBoolParam = useCallback((key: string, defaultValue = false): boolean => {
-    const value = searchParams.get(key);
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get(key);
     if (value === null) return defaultValue;
     return value === 'true';
-  }, [searchParams]);
+  }, []);
 
   return {
     searchParams,
