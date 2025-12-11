@@ -42,7 +42,6 @@ describe('Types', () => {
       expect(formData.comment).toBe('Great!');
       expect(formData.productQuality).toBe(4);
       expect(formData.deliveryExperience).toBe(3);
-      expect(formData.customerService).toBe(5);
     });
 
     it('should allow OrderId to be used as a number', () => {

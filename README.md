@@ -178,6 +178,8 @@ For detailed setup instructions, see [docs/google-oauth-setup.md](./docs/google-
 - [Database Schema](./PROJECT_DOCUMENTATION.md#database-schema) - Database structure
 - [Development Guidelines](./PROJECT_DOCUMENTATION.md#development-guidelines) - Coding standards
 - [Deployment Guide](./PROJECT_DOCUMENTATION.md#deployment) - Deployment instructions
+- [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md) - **NEW** ⭐ Comprehensive architecture review with optimization recommendations
+- [Optimization Summary](./OPTIMIZATION_SUMMARY.md) - **NEW** ⭐ Quick reference guide for improvements
 
 ## Development
 
