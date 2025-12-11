@@ -86,8 +86,12 @@ export interface FeedbackTokenRow {
 }
 
 // Transformed types (after processing from database)
+// Note: Both 'id' and '_id' are provided for backward compatibility.
+// '_id' is maintained for legacy MongoDB-style code that still references it.
+// New code should prefer using 'id'.
 export interface Item {
   id: ItemId;
+  /** @deprecated Use 'id' instead. Kept for backward compatibility. */
   _id: ItemId;
   name: string;
   price: number;
