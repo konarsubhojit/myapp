@@ -64,7 +64,7 @@ const getHistoryDeliveryColor = (status) => {
 };
 
 function OrderHistoryTableRow({ order, formatPrice, onClick }) {
-  const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true });
+  const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true, orderStatus: order.status });
   
   return (
     <TableRow 

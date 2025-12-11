@@ -254,7 +254,7 @@ function PriorityDashboard({ onRefresh }) {
         <Stack spacing={2}>
           {orders.map(order => {
             const urgencyDisplay = getUrgencyDisplay(order.urgency);
-            const priorityStatus = getPriorityStatus(order.expectedDeliveryDate);
+            const priorityStatus = getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status });
             
             return (
               <Card 

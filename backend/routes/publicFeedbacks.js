@@ -84,7 +84,7 @@ router.post('/validate-token', async (req, res) => {
 // POST /api/public/feedbacks - Public endpoint for customers to submit feedback
 router.post('/', async (req, res) => {
   try {
-    const { token, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
+    const { token, rating, comment, productQuality, deliveryExperience, customerService } = req.body;
 
     // Validate token
     if (!token) {
@@ -157,7 +157,7 @@ router.post('/', async (req, res) => {
       productQuality: productQualityValidation.parsedRating,
       deliveryExperience: deliveryValidation.parsedRating,
       customerService: serviceValidation.parsedRating,
-      isPublic: isPublic !== undefined ? Boolean(isPublic) : true
+      isPublic: false  // Customer feedback is not shown publicly
     });
 
     // Mark token as used

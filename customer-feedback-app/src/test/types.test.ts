@@ -36,8 +36,7 @@ describe('Types', () => {
         comment: 'Great!',
         productQuality: 4,
         deliveryExperience: 3,
-        customerService: 5,
-        isPublic: true
+        customerService: 5
       };
       
       expect(formData.rating).toBe(5);
@@ -45,7 +44,6 @@ describe('Types', () => {
       expect(formData.productQuality).toBe(4);
       expect(formData.deliveryExperience).toBe(3);
       expect(formData.customerService).toBe(5);
-      expect(formData.isPublic).toBe(true);
     });
 
     it('should allow OrderId to be used as a number', () => {

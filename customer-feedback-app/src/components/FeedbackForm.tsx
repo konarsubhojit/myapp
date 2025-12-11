@@ -6,8 +6,6 @@ import {
   Typography,
   Rating,
   Grid,
-  FormControlLabel,
-  Checkbox,
   CircularProgress,
   Alert,
   Snackbar
@@ -23,8 +21,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
     comment: '',
     productQuality: 0,
     deliveryExperience: 0,
-    customerService: 0,
-    isPublic: true
+    customerService: 0
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +72,6 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
 
   const handleCommentChange = (e: ChangeEvent<HTMLInputElement>): void => {
     handleChange('comment', e.target.value);
-  };
-
-  const handlePublicChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    handleChange('isPublic', e.target.checked);
   };
 
   const handleCloseSuccess = (): void => {
@@ -160,18 +153,6 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
         placeholder="Tell us about your experience..."
         inputProps={{ maxLength: 1000 }}
         helperText={`${formData.comment.length}/1000 characters`}
-        sx={{ mb: 2 }}
-      />
-
-      {/* Public Checkbox */}
-      <FormControlLabel
-        control={
-          <Checkbox
-            checked={formData.isPublic}
-            onChange={handlePublicChange}
-          />
-        }
-        label="Make this feedback public (visible to other customers)"
         sx={{ mb: 3 }}
       />
 

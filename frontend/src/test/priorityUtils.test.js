@@ -258,5 +258,47 @@ describe('Priority Utils', () => {
 
       expect(result.label).toBe('3d late');
     });
+
+    it('should return null for completed orders', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const result = getPriorityStatus(tomorrow, { orderStatus: 'completed' });
+
+      expect(result).toBeNull();
+    });
+
+    it('should return null for cancelled orders', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const result = getPriorityStatus(tomorrow, { orderStatus: 'cancelled' });
+
+      expect(result).toBeNull();
+    });
+
+    it('should return priority for pending orders', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const result = getPriorityStatus(tomorrow, { orderStatus: 'pending' });
+
+      expect(result).toMatchObject({
+        status: 'critical',
+        label: 'Due in 1 day',
+      });
+    });
+
+    it('should return priority for processing orders', () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const result = getPriorityStatus(tomorrow, { orderStatus: 'processing' });
+
+      expect(result).toMatchObject({
+        status: 'critical',
+        label: 'Due in 1 day',
+      });
+    });
   });
 });

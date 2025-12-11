@@ -41,9 +41,6 @@ describe('FeedbackForm', () => {
     // Check for comment field
     expect(screen.getByLabelText('Your Feedback')).toBeInTheDocument();
     
-    // Check for public checkbox
-    expect(screen.getByLabelText('Make this feedback public (visible to other customers)')).toBeInTheDocument();
-    
     // Check for submit button
     expect(screen.getByRole('button', { name: /submit feedback/i })).toBeInTheDocument();
   });
@@ -66,21 +63,6 @@ describe('FeedbackForm', () => {
     fireEvent.change(commentField, { target: { value: 'Great product!' } });
 
     expect(commentField).toHaveValue('Great product!');
-  });
-
-  it('should toggle public checkbox', async () => {
-    render(
-      <FeedbackForm token="test-token" order={mockOrder} onSuccess={mockOnSuccess} />
-    );
-
-    const checkbox = screen.getByRole('checkbox');
-    expect(checkbox).toBeChecked();
-
-    fireEvent.click(checkbox);
-    expect(checkbox).not.toBeChecked();
-
-    fireEvent.click(checkbox);
-    expect(checkbox).toBeChecked();
   });
 
   it('should enable submit button when rating is selected', async () => {
@@ -115,7 +97,7 @@ describe('FeedbackForm', () => {
       productQuality: 5,
       deliveryExperience: 5,
       customerService: 5,
-      isPublic: true,
+      isPublic: false,
       createdAt: '2024-01-01T00:00:00Z'
     });
 
@@ -206,7 +188,7 @@ describe('FeedbackForm', () => {
       productQuality: null,
       deliveryExperience: null,
       customerService: null,
-      isPublic: true,
+      isPublic: false,
       createdAt: '2024-01-01T00:00:00Z'
     });
   });

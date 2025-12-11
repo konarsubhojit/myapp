@@ -38,7 +38,6 @@ export interface FeedbackFormData {
   productQuality: number;
   deliveryExperience: number;
   customerService: number;
-  isPublic: boolean;
 }
 
 // Feedback submission data
