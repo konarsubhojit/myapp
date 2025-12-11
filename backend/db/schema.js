@@ -1,4 +1,4 @@
-import { pgTable, serial, text, numeric, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, numeric, timestamp, integer, pgEnum, index } from 'drizzle-orm/pg-core';
 
 export const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
@@ -60,7 +60,13 @@ export const feedbacks = pgTable('feedbacks', {
   respondedAt: timestamp('responded_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
-});
+}, (table) => ({
+  // Performance indexes as per ARCHITECTURE_OPTIMIZATION.md
+  orderIdIdx: index('idx_feedbacks_order_id').on(table.orderId),
+  ratingIdx: index('idx_feedbacks_rating').on(table.rating),
+  createdAtIdx: index('idx_feedbacks_created_at').on(table.createdAt),
+  isPublicIdx: index('idx_feedbacks_is_public').on(table.isPublic)
+}));
 
 export const feedbackTokens = pgTable('feedback_tokens', {
   id: serial('id').primaryKey(),
@@ -69,4 +75,8 @@ export const feedbackTokens = pgTable('feedback_tokens', {
   used: integer('used').default(0),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
-});
+}, (table) => ({
+  // Performance indexes as per ARCHITECTURE_OPTIMIZATION.md
+  orderIdIdx: index('idx_feedback_tokens_order_id').on(table.orderId),
+  tokenIdx: index('idx_feedback_tokens_token').on(table.token)
+}));
