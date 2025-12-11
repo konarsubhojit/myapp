@@ -1,7 +1,11 @@
+import type { OrderStatus, PriorityData } from '../types';
+
+type ChipColor = 'warning' | 'info' | 'success' | 'error' | 'default';
+
 /**
  * Gets the color for order status chips
  */
-export const getOrderStatusColor = (status) => {
+export const getOrderStatusColor = (status: OrderStatus | string): ChipColor => {
   switch (status) {
     case 'pending': return 'warning';
     case 'processing': return 'info';
@@ -19,7 +23,7 @@ export const getOrderStatusColor = (status) => {
  * 🔵 MEDIUM: info
  * 🟢 NORMAL: success
  */
-export const getOrderPriorityColor = (priorityData) => {
+export const getOrderPriorityColor = (priorityData: PriorityData | null | undefined): ChipColor => {
   if (!priorityData) return 'default';
   
   // Critical priority (overdue or ≤3 days)
@@ -45,7 +49,7 @@ export const getOrderPriorityColor = (priorityData) => {
 /**
  * Formats date for display in order details
  */
-export const formatOrderDate = (dateString) => {
+export const formatOrderDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'Not set';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -59,7 +63,7 @@ export const formatOrderDate = (dateString) => {
 /**
  * Formats delivery date for display
  */
-export const formatOrderDeliveryDate = (dateString) => {
+export const formatOrderDeliveryDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'Not set';
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',

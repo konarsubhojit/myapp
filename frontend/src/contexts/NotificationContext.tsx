@@ -1,25 +1,51 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode, type ReactElement } from 'react';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
-import Slide from '@mui/material/Slide';
+import Slide, { type SlideProps } from '@mui/material/Slide';
+import type { NotificationSeverity } from '../types';
 
-const NotificationContext = createContext(null);
+interface NotificationContextType {
+  showNotification: (message: string, severity?: NotificationSeverity, title?: string, autoHideDuration?: number) => void;
+  showSuccess: (message: string, title?: string) => void;
+  showError: (message: string, title?: string) => void;
+  showWarning: (message: string, title?: string) => void;
+  showInfo: (message: string, title?: string) => void;
+}
 
-function SlideTransition(props) {
+const NotificationContext = createContext<NotificationContextType | null>(null);
+
+function SlideTransition(props: SlideProps): ReactElement {
   return <Slide {...props} direction="up" />;
 }
 
-export function NotificationProvider({ children }) {
-  const [notification, setNotification] = useState({
+interface NotificationState {
+  open: boolean;
+  message: string;
+  title: string;
+  severity: NotificationSeverity;
+  autoHideDuration: number;
+}
+
+interface NotificationProviderProps {
+  children: ReactNode;
+}
+
+export function NotificationProvider({ children }: NotificationProviderProps): ReactElement {
+  const [notification, setNotification] = useState<NotificationState>({
     open: false,
     message: '',
     title: '',
-    severity: 'info', // 'success' | 'error' | 'warning' | 'info'
+    severity: 'info',
     autoHideDuration: 6000,
   });
 
-  const showNotification = useCallback((message, severity = 'info', title = '', autoHideDuration = 6000) => {
+  const showNotification = useCallback((
+    message: string, 
+    severity: NotificationSeverity = 'info', 
+    title = '', 
+    autoHideDuration = 6000
+  ): void => {
     setNotification({
       open: true,
       message,
@@ -29,30 +55,30 @@ export function NotificationProvider({ children }) {
     });
   }, []);
 
-  const showSuccess = useCallback((message, title = 'Success') => {
+  const showSuccess = useCallback((message: string, title = 'Success'): void => {
     showNotification(message, 'success', title);
   }, [showNotification]);
 
-  const showError = useCallback((message, title = 'Error') => {
+  const showError = useCallback((message: string, title = 'Error'): void => {
     showNotification(message, 'error', title, 8000);
   }, [showNotification]);
 
-  const showWarning = useCallback((message, title = 'Warning') => {
+  const showWarning = useCallback((message: string, title = 'Warning'): void => {
     showNotification(message, 'warning', title);
   }, [showNotification]);
 
-  const showInfo = useCallback((message, title = '') => {
+  const showInfo = useCallback((message: string, title = ''): void => {
     showNotification(message, 'info', title);
   }, [showNotification]);
 
-  const handleClose = useCallback((event, reason) => {
+  const handleClose = useCallback((_event: React.SyntheticEvent | Event, reason?: string): void => {
     if (reason === 'clickaway') {
       return;
     }
     setNotification((prev) => ({ ...prev, open: false }));
   }, []);
 
-  const value = useMemo(() => ({
+  const value = useMemo((): NotificationContextType => ({
     showNotification,
     showSuccess,
     showError,
@@ -93,8 +119,7 @@ export function NotificationProvider({ children }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useNotification() {
+export function useNotification(): NotificationContextType {
   const context = useContext(NotificationContext);
   if (!context) {
     throw new Error('useNotification must be used within a NotificationProvider');

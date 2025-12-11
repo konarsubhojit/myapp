@@ -10,17 +10,38 @@
  * 🟢 NORMAL: >14 days (comfortable)
  */
 
+type PriorityLevel = 'critical' | 'urgent' | 'medium' | 'normal';
+type PriorityStatusType = 'overdue' | 'critical' | 'urgent' | 'medium' | 'normal';
+
+export interface PriorityStatus {
+  status: PriorityStatusType;
+  label: string;
+  className: string;
+  level: PriorityLevel;
+  icon: string;
+}
+
+interface PriorityOptions {
+  shortLabels?: boolean;
+}
+
 /**
  * Creates a priority status object
  */
-function createPriorityStatus(status, label, className, level, icon) {
+function createPriorityStatus(
+  status: PriorityStatusType, 
+  label: string, 
+  className: string, 
+  level: PriorityLevel, 
+  icon: string
+): PriorityStatus {
   return { status, label, className, level, icon };
 }
 
 /**
  * Generates a label for a given number of days
  */
-function generateLabel(diffDays, shortLabels, isDueToday = false) {
+function generateLabel(diffDays: number, shortLabels: boolean, isDueToday = false): string {
   if (shortLabels) {
     return `${diffDays}d`;
   }
@@ -34,9 +55,9 @@ function generateLabel(diffDays, shortLabels, isDueToday = false) {
 /**
  * Handles overdue orders
  */
-function getOverdueStatus(diffDays, shortLabels) {
+function getOverdueStatus(diffDays: number, shortLabels: boolean): PriorityStatus {
   const overdueDays = Math.abs(diffDays);
-  let label;
+  let label: string;
   if (shortLabels) {
     label = `${overdueDays}d late`;
   } else {
@@ -49,7 +70,7 @@ function getOverdueStatus(diffDays, shortLabels) {
 /**
  * Handles critical priority (≤3 days)
  */
-function getCriticalStatus(diffDays, shortLabels) {
+function getCriticalStatus(diffDays: number, shortLabels: boolean): PriorityStatus {
   const label = generateLabel(diffDays, shortLabels, diffDays === 0);
   return createPriorityStatus('critical', label, 'priority-critical', 'critical', '🔴');
 }
@@ -57,7 +78,7 @@ function getCriticalStatus(diffDays, shortLabels) {
 /**
  * Handles urgent priority (4-7 days)
  */
-function getUrgentStatus(diffDays, shortLabels) {
+function getUrgentStatus(diffDays: number, shortLabels: boolean): PriorityStatus {
   const label = generateLabel(diffDays, shortLabels);
   return createPriorityStatus('urgent', label, 'priority-urgent', 'urgent', '🟠');
 }
@@ -65,7 +86,7 @@ function getUrgentStatus(diffDays, shortLabels) {
 /**
  * Handles medium priority (8-14 days)
  */
-function getMediumStatus(diffDays, shortLabels) {
+function getMediumStatus(diffDays: number, shortLabels: boolean): PriorityStatus {
   const label = generateLabel(diffDays, shortLabels);
   return createPriorityStatus('medium', label, 'priority-medium', 'medium', '🔵');
 }
@@ -73,12 +94,15 @@ function getMediumStatus(diffDays, shortLabels) {
 /**
  * Handles normal priority (>14 days)
  */
-function getNormalStatus(diffDays, shortLabels) {
+function getNormalStatus(diffDays: number, shortLabels: boolean): PriorityStatus {
   const label = generateLabel(diffDays, shortLabels);
   return createPriorityStatus('normal', label, 'priority-normal', 'normal', '🟢');
 }
 
-export function getPriorityStatus(expectedDeliveryDate, options = {}) {
+export function getPriorityStatus(
+  expectedDeliveryDate: string | null | undefined, 
+  options: PriorityOptions = {}
+): PriorityStatus | null {
   if (!expectedDeliveryDate) return null;
   
   const { shortLabels = false } = options;
@@ -88,7 +112,7 @@ export function getPriorityStatus(expectedDeliveryDate, options = {}) {
   const deliveryDate = new Date(expectedDeliveryDate);
   deliveryDate.setHours(0, 0, 0, 0);
   
-  const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   
   if (diffDays < 0) return getOverdueStatus(diffDays, shortLabels);
   if (diffDays <= 3) return getCriticalStatus(diffDays, shortLabels);

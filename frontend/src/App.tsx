@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode, type ReactElement } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
@@ -37,8 +37,15 @@ import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
 import { APP_VERSION } from './config/version'
+import type { Item, Order } from './types'
 
-const TAB_ROUTES = [
+interface TabRoute {
+  path: string;
+  label: string;
+  icon: ReactElement;
+}
+
+const TAB_ROUTES: TabRoute[] = [
   { path: '/priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
   { path: '/orders/new', label: 'Create Order', icon: <AddShoppingCartIcon /> },
   { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
@@ -47,8 +54,12 @@ const TAB_ROUTES = [
   { path: '/feedback', label: 'Feedback', icon: <FeedbackIcon /> },
 ]
 
+interface LoadingScreenProps {
+  message: string;
+}
+
 // Loading screen component to reduce cognitive complexity
-function LoadingScreen({ message }) {
+function LoadingScreen({ message }: LoadingScreenProps): ReactElement {
   return (
     <Box 
       display="flex" 
@@ -69,18 +80,18 @@ function LoadingScreen({ message }) {
   )
 }
 
-function AppContent() {
+function AppContent(): ReactElement {
   const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
-  const [items, setItems] = useState([])
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [orderHistoryKey, setOrderHistoryKey] = useState(0)
+  const [items, setItems] = useState<Item[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const location = useLocation()
   const navigate = useNavigate()
   const muiTheme = useTheme()
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
 
-  const fetchItems = useCallback(async () => {
+  const fetchItems = useCallback(async (): Promise<void> => {
     try {
       const data = await getItems()
       setItems(data)
@@ -89,7 +100,7 @@ function AppContent() {
     }
   }, [])
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (): Promise<void> => {
     try {
       const data = await getOrders()
       setOrders(data)
@@ -98,7 +109,7 @@ function AppContent() {
     }
   }, [])
 
-  const handleOrderCreated = useCallback(() => {
+  const handleOrderCreated = useCallback((): void => {
     fetchOrders()
     // Increment key to trigger OrderHistory refresh when switching tabs
     setOrderHistoryKey(prev => prev + 1)
@@ -107,7 +118,7 @@ function AppContent() {
   useEffect(() => {
     let isMounted = true;
     
-    const loadData = async () => {
+    const loadData = async (): Promise<void> => {
       if (!isAuthenticated) {
         if (isMounted) setLoading(false)
         return
@@ -126,7 +137,7 @@ function AppContent() {
   }, [isAuthenticated, fetchItems, fetchOrders])
 
   // Get current tab value based on path
-  const getCurrentTabValue = () => {
+  const getCurrentTabValue = (): number => {
     const path = location.pathname
     if (path.startsWith('/priority')) return 0
     if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 1
@@ -137,8 +148,11 @@ function AppContent() {
     return 0
   }
 
-  const handleTabChange = (event, newValue) => {
-    navigate(TAB_ROUTES[newValue].path)
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
+    const route = TAB_ROUTES[newValue]
+    if (route) {
+      navigate(route.path)
+    }
   }
 
   // Show loading while checking auth
@@ -206,7 +220,7 @@ function AppContent() {
                 }}
               />
             )}
-            {user?.picture ? (
+            {user && 'picture' in user && user.picture ? (
               <Avatar 
                 src={user.picture} 
                 alt={user?.name || 'User'}
@@ -214,7 +228,7 @@ function AppContent() {
               />
             ) : (
               <Avatar sx={{ width: 32, height: 32, bgcolor: '#ffffff', color: '#000000', fontSize: '0.875rem', fontWeight: 600 }}>
-                {(user?.name || user?.email || 'U')[0].toUpperCase()}
+                {(user?.name || user?.email || 'U')[0]?.toUpperCase() ?? 'U'}
               </Avatar>
             )}
             {!isMobile && !guestMode && (
@@ -357,7 +371,7 @@ function AppContent() {
             element={
               <OrderHistory 
                 key={orderHistoryKey}
-                onDuplicateOrder={(orderId) => navigate(`/orders/duplicate/${orderId}`)}
+                onDuplicateOrder={(orderId: string) => navigate(`/orders/duplicate/${orderId}`)}
               />
             } 
           />
@@ -380,7 +394,7 @@ function AppContent() {
   )
 }
 
-function App() {
+function App(): ReactElement {
   return (
     <AuthProvider>
       <NotificationProvider>

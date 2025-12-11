@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getOrder, updateOrder } from '../services/api';
+import type { Order, OrderEditForm, UpdateOrderData, OrderSource, OrderStatus, PaymentStatus, ConfirmationStatus, DeliveryStatus } from '../types';
 
 /**
  * Creates initial edit form state from order data
  */
-const createEditFormFromOrder = (data) => ({
+const createEditFormFromOrder = (data: Order): OrderEditForm => ({
   customerName: data.customerName || '',
   customerId: data.customerId || '',
   address: data.address || '',
@@ -23,15 +24,21 @@ const createEditFormFromOrder = (data) => ({
   actualDeliveryDate: data.actualDeliveryDate ? data.actualDeliveryDate.split('T')[0] : ''
 });
 
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+  parsedPaidAmount?: number;
+}
+
 /**
  * Validates order form data
  */
-const validateFormData = (editForm, totalPrice) => {
+const validateFormData = (editForm: OrderEditForm, totalPrice: number): ValidationResult => {
   if (!editForm.customerName.trim() || !editForm.customerId.trim()) {
     return { valid: false, error: 'Customer name and ID are required' };
   }
 
-  const parsedPaidAmount = Number.parseFloat(editForm.paidAmount);
+  const parsedPaidAmount = Number.parseFloat(String(editForm.paidAmount));
   if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
     return { valid: false, error: 'Paid amount must be a valid non-negative number' };
   }
@@ -50,21 +57,35 @@ const validateFormData = (editForm, totalPrice) => {
   return { valid: true, parsedPaidAmount };
 };
 
+interface UseOrderDetailsResult {
+  order: Order | null;
+  loading: boolean;
+  saving: boolean;
+  error: string;
+  isEditing: boolean;
+  editForm: OrderEditForm;
+  setError: (error: string) => void;
+  handleEditChange: (field: keyof OrderEditForm, value: string | number) => void;
+  handleSave: () => Promise<void>;
+  handleCancelEdit: () => void;
+  startEditing: () => void;
+}
+
 /**
  * Custom hook for managing order details, fetching, and editing
- * @param {string} orderId - The order ID to fetch and manage
- * @param {Function} showSuccess - Success notification callback
- * @param {Function} showError - Error notification callback
- * @param {Function} onOrderUpdated - Callback when order is successfully updated
- * @returns {Object} - Order data, edit state, and handlers
  */
-export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated) => {
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
+export const useOrderDetails = (
+  orderId: string | number,
+  showSuccess: (message: string) => void,
+  showError: (message: string) => void,
+  onOrderUpdated?: () => void
+): UseOrderDetailsResult => {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editForm, setEditForm] = useState<OrderEditForm>({
     customerName: '',
     customerId: '',
     address: '',
@@ -83,7 +104,7 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
     actualDeliveryDate: ''
   });
 
-  const fetchOrder = useCallback(async () => {
+  const fetchOrder = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError('');
     try {
@@ -91,7 +112,7 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
       setOrder(data);
       setEditForm(createEditFormFromOrder(data));
     } catch (err) {
-      setError(err.message || 'Failed to fetch order details');
+      setError(err instanceof Error ? err.message : 'Failed to fetch order details');
     } finally {
       setLoading(false);
     }
@@ -103,37 +124,39 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
     }
   }, [orderId, fetchOrder]);
 
-  const handleEditChange = (field, value) => {
+  const handleEditChange = (field: keyof OrderEditForm, value: string | number): void => {
     setEditForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<void> => {
+    if (!order) return;
+    
     const validation = validateFormData(editForm, order.totalPrice);
     if (!validation.valid) {
-      setError(validation.error);
+      setError(validation.error ?? 'Validation failed');
       return;
     }
 
     setSaving(true);
     setError('');
     try {
-      const updateData = {
+      const updateData: UpdateOrderData = {
         customerName: editForm.customerName.trim(),
         customerId: editForm.customerId.trim(),
         address: editForm.address.trim(),
-        orderFrom: editForm.orderFrom,
-        status: editForm.status,
-        orderDate: editForm.orderDate || null,
-        expectedDeliveryDate: editForm.expectedDeliveryDate || null,
-        paymentStatus: editForm.paymentStatus,
+        orderFrom: editForm.orderFrom as OrderSource,
+        status: editForm.status as OrderStatus,
+        orderDate: editForm.orderDate || undefined,
+        expectedDeliveryDate: editForm.expectedDeliveryDate || undefined,
+        paymentStatus: editForm.paymentStatus as PaymentStatus,
         paidAmount: validation.parsedPaidAmount,
-        confirmationStatus: editForm.confirmationStatus,
+        confirmationStatus: editForm.confirmationStatus as ConfirmationStatus,
         customerNotes: editForm.customerNotes,
-        priority: Number.parseInt(editForm.priority, 10),
-        deliveryStatus: editForm.deliveryStatus,
+        priority: Number.parseInt(String(editForm.priority), 10),
+        deliveryStatus: editForm.deliveryStatus as DeliveryStatus,
         trackingId: editForm.trackingId.trim(),
         deliveryPartner: editForm.deliveryPartner.trim(),
-        actualDeliveryDate: editForm.actualDeliveryDate || null
+        actualDeliveryDate: editForm.actualDeliveryDate || undefined
       };
 
       const updatedOrder = await updateOrder(orderId, updateData);
@@ -142,14 +165,15 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
       if (onOrderUpdated) onOrderUpdated();
       showSuccess(`Order ${updatedOrder.orderId} updated successfully!`);
     } catch (err) {
-      setError(err.message || 'Failed to update order');
-      showError(err.message || 'Failed to update order');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update order';
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = (): void => {
     setIsEditing(false);
     setError('');
     if (order) {
@@ -157,7 +181,7 @@ export const useOrderDetails = (orderId, showSuccess, showError, onOrderUpdated)
     }
   };
 
-  const startEditing = () => {
+  const startEditing = (): void => {
     setIsEditing(true);
   };
 

@@ -1,7 +1,7 @@
-import { createTheme } from '@mui/material/styles';
+import { createTheme, type Theme } from '@mui/material/styles';
 
 // Custom theme that matches the existing app design
-const theme = createTheme({
+const theme: Theme = createTheme({
   palette: {
     primary: {
       main: '#667eea',

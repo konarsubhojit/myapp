@@ -1,33 +1,51 @@
+import type {
+  Item,
+  Order,
+  Feedback,
+  CreateItemData,
+  UpdateItemData,
+  CreateOrderData,
+  UpdateOrderData,
+  CreateFeedbackData,
+  UpdateFeedbackData,
+  PaginatedResult,
+  PaginatedOrdersResult,
+  PaginatedFeedbacksResult,
+  FeedbackStats,
+  TokenGenerationResponse,
+  PaginationParams,
+  SearchPaginationParams
+} from '../types';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Token getter function - will be set by AuthProvider
-let getAccessTokenFn = null;
+type TokenGetter = () => Promise<string | null>;
+type GuestModeChecker = () => boolean;
 
-// Guest mode flag
-let isGuestModeFn = null;
+let getAccessTokenFn: TokenGetter | null = null;
+let isGuestModeFn: GuestModeChecker | null = null;
 
 /**
  * Set the function to get access token
  * This should be called by AuthProvider after initialization
  */
-export const setAccessTokenGetter = (getter) => {
+export const setAccessTokenGetter = (getter: TokenGetter): void => {
   getAccessTokenFn = getter;
 };
 
 /**
  * Set the function to check if guest mode is enabled
- * @param {Function} checker - Function that returns true if guest mode is enabled
  */
-export const setGuestModeChecker = (checker) => {
+export const setGuestModeChecker = (checker: GuestModeChecker): void => {
   isGuestModeFn = checker;
 };
 
 /**
  * Get authorization headers with bearer token
- * @returns {Promise<Object>} Headers object with Authorization
  */
-async function getAuthHeaders() {
-  const headers = {
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
@@ -46,43 +64,49 @@ async function getAuthHeaders() {
 }
 
 // Callback for handling unauthorized responses
-let onUnauthorizedCallback = null;
+type UnauthorizedCallback = () => void;
+let onUnauthorizedCallback: UnauthorizedCallback | null = null;
 
 /**
  * Set callback to be called when an unauthorized (401) response is received
- * @param {Function} callback - Function to call on 401 response
  */
-export const setOnUnauthorizedCallback = (callback) => {
+export const setOnUnauthorizedCallback = (callback: UnauthorizedCallback): void => {
   onUnauthorizedCallback = callback;
 };
 
+interface MockDataResult {
+  items?: Item[];
+  orders?: Order[];
+  feedbacks?: Feedback[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 /**
  * Wrapper for fetch that includes auth headers
- * @param {string} url - URL to fetch
- * @param {Object} options - Fetch options
- * @returns {Promise<Response>} Fetch response
  */
-async function authFetch(url, options = {}) {
+async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   // Check if guest mode is enabled
   if (isGuestModeFn?.()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
     // Return mock empty response for guest mode
-    // Check if this is a paginated endpoint (contains query params like page, limit)
-    let mockData;
+    let mockData: MockDataResult | Item[] | Order[] | Feedback[] | Record<string, never>;
     if (url.includes('?page=') || url.includes('&page=')) {
       // Paginated endpoint - return pagination structure
-      // Determine the data key based on URL
-      let dataKey = 'items';
+      let dataKey: 'items' | 'orders' | 'feedbacks' = 'items';
       if (url.includes('/orders')) dataKey = 'orders';
       else if (url.includes('/feedbacks')) dataKey = 'feedbacks';
       
       mockData = { 
         [dataKey]: [], 
         pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
-      };
+      } as MockDataResult;
     } else if (/\/(items|orders|feedbacks)\/[^/]+$/.test(url)) {
       // Single item endpoint (with ID at the end) - return empty object
-      // e.g., /items/123 or /orders/456 or /feedbacks/789
       mockData = {};
     } else {
       // List endpoint without pagination - return empty array
@@ -115,14 +139,18 @@ async function authFetch(url, options = {}) {
 }
 
 // Items API
-export const getItems = async () => {
+export const getItems = async (): Promise<Item[]> => {
   const response = await authFetch(`${API_BASE_URL}/items`);
   if (!response.ok) throw new Error('Failed to fetch items');
   return response.json();
 };
 
-export const getItemsPaginated = async ({ page = 1, limit = 10, search = '' } = {}) => {
-  const params = new URLSearchParams({ page, limit });
+export const getItemsPaginated = async ({ 
+  page = 1, 
+  limit = 10, 
+  search = '' 
+}: SearchPaginationParams = {}): Promise<PaginatedResult<Item>> => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (search) params.append('search', search);
   
   const response = await authFetch(`${API_BASE_URL}/items?${params}`);
@@ -130,8 +158,12 @@ export const getItemsPaginated = async ({ page = 1, limit = 10, search = '' } = 
   return response.json();
 };
 
-export const getDeletedItems = async ({ page = 1, limit = 10, search = '' } = {}) => {
-  const params = new URLSearchParams({ page, limit });
+export const getDeletedItems = async ({ 
+  page = 1, 
+  limit = 10, 
+  search = '' 
+}: SearchPaginationParams = {}): Promise<PaginatedResult<Item>> => {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (search) params.append('search', search);
   
   const response = await authFetch(`${API_BASE_URL}/items/deleted?${params}`);
@@ -139,7 +171,7 @@ export const getDeletedItems = async ({ page = 1, limit = 10, search = '' } = {}
   return response.json();
 };
 
-export const createItem = async (item) => {
+export const createItem = async (item: CreateItemData): Promise<Item> => {
   const response = await authFetch(`${API_BASE_URL}/items`, {
     method: 'POST',
     body: JSON.stringify(item),
@@ -151,7 +183,7 @@ export const createItem = async (item) => {
   return response.json();
 };
 
-export const updateItem = async (id, item) => {
+export const updateItem = async (id: number | string, item: UpdateItemData): Promise<Item> => {
   const response = await authFetch(`${API_BASE_URL}/items/${id}`, {
     method: 'PUT',
     body: JSON.stringify(item),
@@ -163,7 +195,7 @@ export const updateItem = async (id, item) => {
   return response.json();
 };
 
-export const deleteItem = async (id) => {
+export const deleteItem = async (id: number | string): Promise<{ message: string }> => {
   const response = await authFetch(`${API_BASE_URL}/items/${id}`, {
     method: 'DELETE',
   });
@@ -174,7 +206,7 @@ export const deleteItem = async (id) => {
   return response.json();
 };
 
-export const restoreItem = async (id) => {
+export const restoreItem = async (id: number | string): Promise<Item> => {
   const response = await authFetch(`${API_BASE_URL}/items/${id}/restore`, {
     method: 'POST',
   });
@@ -185,7 +217,7 @@ export const restoreItem = async (id) => {
   return response.json();
 };
 
-export const permanentlyDeleteItem = async (id) => {
+export const permanentlyDeleteItem = async (id: number | string): Promise<{ message: string }> => {
   const response = await authFetch(`${API_BASE_URL}/items/${id}/permanent`, {
     method: 'DELETE',
   });
@@ -197,31 +229,34 @@ export const permanentlyDeleteItem = async (id) => {
 };
 
 // Orders API
-export const getOrders = async () => {
+export const getOrders = async (): Promise<Order[]> => {
   const response = await authFetch(`${API_BASE_URL}/orders`);
   if (!response.ok) throw new Error('Failed to fetch orders');
   return response.json();
 };
 
-export const getOrdersPaginated = async ({ page = 1, limit = 10 } = {}) => {
+export const getOrdersPaginated = async ({ 
+  page = 1, 
+  limit = 10 
+}: PaginationParams = {}): Promise<PaginatedOrdersResult> => {
   const response = await authFetch(`${API_BASE_URL}/orders?page=${page}&limit=${limit}`);
   if (!response.ok) throw new Error('Failed to fetch orders');
   return response.json();
 };
 
-export const getPriorityOrders = async () => {
+export const getPriorityOrders = async (): Promise<Order[]> => {
   const response = await authFetch(`${API_BASE_URL}/orders/priority`);
   if (!response.ok) throw new Error('Failed to fetch priority orders');
   return response.json();
 };
 
-export const getOrder = async (id) => {
+export const getOrder = async (id: number | string): Promise<Order> => {
   const response = await authFetch(`${API_BASE_URL}/orders/${id}`);
   if (!response.ok) throw new Error('Failed to fetch order');
   return response.json();
 };
 
-export const createOrder = async (order) => {
+export const createOrder = async (order: CreateOrderData): Promise<Order> => {
   const response = await authFetch(`${API_BASE_URL}/orders`, {
     method: 'POST',
     body: JSON.stringify(order),
@@ -233,7 +268,7 @@ export const createOrder = async (order) => {
   return response.json();
 };
 
-export const updateOrder = async (id, order) => {
+export const updateOrder = async (id: number | string, order: UpdateOrderData): Promise<Order> => {
   const response = await authFetch(`${API_BASE_URL}/orders/${id}`, {
     method: 'PUT',
     body: JSON.stringify(order),
@@ -246,31 +281,34 @@ export const updateOrder = async (id, order) => {
 };
 
 // Feedbacks API
-export const getFeedbacks = async () => {
+export const getFeedbacks = async (): Promise<Feedback[]> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks`);
   if (!response.ok) throw new Error('Failed to fetch feedbacks');
   return response.json();
 };
 
-export const getFeedbacksPaginated = async ({ page = 1, limit = 10 } = {}) => {
+export const getFeedbacksPaginated = async ({ 
+  page = 1, 
+  limit = 10 
+}: PaginationParams = {}): Promise<PaginatedFeedbacksResult> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks?page=${page}&limit=${limit}`);
   if (!response.ok) throw new Error('Failed to fetch feedbacks');
   return response.json();
 };
 
-export const getFeedbackStats = async () => {
+export const getFeedbackStats = async (): Promise<FeedbackStats> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks/stats`);
   if (!response.ok) throw new Error('Failed to fetch feedback statistics');
   return response.json();
 };
 
-export const getFeedback = async (id) => {
+export const getFeedback = async (id: number | string): Promise<Feedback> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`);
   if (!response.ok) throw new Error('Failed to fetch feedback');
   return response.json();
 };
 
-export const getFeedbackByOrderId = async (orderId) => {
+export const getFeedbackByOrderId = async (orderId: number | string): Promise<Feedback | null> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks/order/${orderId}`);
   if (!response.ok) {
     if (response.status === 404) return null;
@@ -279,7 +317,7 @@ export const getFeedbackByOrderId = async (orderId) => {
   return response.json();
 };
 
-export const createFeedback = async (feedback) => {
+export const createFeedback = async (feedback: CreateFeedbackData): Promise<Feedback> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks`, {
     method: 'POST',
     body: JSON.stringify(feedback),
@@ -291,7 +329,7 @@ export const createFeedback = async (feedback) => {
   return response.json();
 };
 
-export const updateFeedback = async (id, feedback) => {
+export const updateFeedback = async (id: number | string, feedback: UpdateFeedbackData): Promise<Feedback> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks/${id}`, {
     method: 'PUT',
     body: JSON.stringify(feedback),
@@ -303,7 +341,7 @@ export const updateFeedback = async (id, feedback) => {
   return response.json();
 };
 
-export const generateFeedbackToken = async (orderId) => {
+export const generateFeedbackToken = async (orderId: number | string): Promise<TokenGenerationResponse> => {
   const response = await authFetch(`${API_BASE_URL}/feedbacks/generate-token/${orderId}`, {
     method: 'POST',
   });

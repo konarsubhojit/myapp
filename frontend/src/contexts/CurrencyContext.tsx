@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode, type ReactElement } from 'react';
+import type { Currency } from '../types';
 
-const CURRENCIES = [
+const CURRENCIES: Currency[] = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee', locale: 'en-IN' },
   { code: 'USD', symbol: '$', name: 'US Dollar', locale: 'en-US' },
   { code: 'EUR', symbol: '€', name: 'Euro', locale: 'de-DE' },
@@ -8,10 +9,16 @@ const CURRENCIES = [
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen', locale: 'ja-JP' },
 ];
 
-const CurrencyContext = createContext(undefined);
+interface CurrencyContextType {
+  currency: Currency;
+  setCurrency: (currency: Currency) => void;
+  currencies: Currency[];
+  formatPrice: (amount: number) => string;
+}
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useCurrency() {
+const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
+
+export function useCurrency(): CurrencyContextType {
   const context = useContext(CurrencyContext);
   if (context === undefined) {
     throw new Error('useCurrency must be used within a CurrencyProvider');
@@ -19,10 +26,18 @@ export function useCurrency() {
   return context;
 }
 
-export function CurrencyProvider({ children }) {
-  const [currency, setCurrency] = useState(CURRENCIES[0]); // INR as default
+interface CurrencyProviderProps {
+  children: ReactNode;
+}
 
-  const formatPrice = useCallback((amount) => {
+export function CurrencyProvider({ children }: CurrencyProviderProps): ReactElement {
+  const defaultCurrency = CURRENCIES[0];
+  if (!defaultCurrency) {
+    throw new Error('No currencies available');
+  }
+  const [currency, setCurrency] = useState<Currency>(defaultCurrency);
+
+  const formatPrice = useCallback((amount: number): string => {
     return new Intl.NumberFormat(currency.locale, {
       style: 'currency',
       currency: currency.code,
@@ -31,7 +46,7 @@ export function CurrencyProvider({ children }) {
     }).format(amount);
   }, [currency]);
 
-  const contextValue = useMemo(() => ({
+  const contextValue = useMemo((): CurrencyContextType => ({
     currency,
     setCurrency,
     currencies: CURRENCIES,

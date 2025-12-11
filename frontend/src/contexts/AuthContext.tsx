@@ -1,13 +1,31 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode, type ReactElement } from 'react';
 import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } from '../services/api';
+import type { AuthUser, GuestUser } from '../types';
 
 // Guest user constant
-const GUEST_USER = { name: 'Guest User', email: 'guest@localhost', isGuest: true };
+const GUEST_USER: GuestUser = { name: 'Guest User', email: 'guest@localhost', isGuest: true };
 
-const AuthContext = createContext(undefined);
+interface GoogleCredentialResponse {
+  credential: string;
+}
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth() {
+interface AuthContextType {
+  user: AuthUser | GuestUser | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  error: string | null;
+  accessToken: string | null;
+  handleGoogleSuccess: (credentialResponse: GoogleCredentialResponse) => void;
+  handleGoogleError: () => void;
+  logout: () => void;
+  getAccessToken: () => Promise<string | null>;
+  guestMode: boolean;
+  enableGuestMode: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
@@ -15,15 +33,23 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }) {
-  const [accessToken, setAccessToken] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [googleUser, setGoogleUser] = useState(null);
-  const [guestMode, setGuestMode] = useState(false);
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+interface GoogleUserData extends AuthUser {
+  picture?: string;
+}
+
+export function AuthProvider({ children }: AuthProviderProps): ReactElement {
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [googleUser, setGoogleUser] = useState<GoogleUserData | null>(null);
+  const [guestMode, setGuestMode] = useState<boolean>(false);
 
   // Derive user from googleUser or guest mode
-  const user = useMemo(() => {
+  const user = useMemo((): AuthUser | GuestUser | null => {
     if (guestMode) {
       return GUEST_USER;
     }
@@ -37,7 +63,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let isMounted = true;
     
-    const initAuth = async () => {
+    const initAuth = async (): Promise<void> => {
       // Check for guest mode from sessionStorage
       const storedGuestMode = sessionStorage.getItem('guestMode');
       if (storedGuestMode === 'true') {
@@ -54,7 +80,7 @@ export function AuthProvider({ children }) {
       const storedGoogleToken = sessionStorage.getItem('googleToken');
       if (storedGoogleUser && storedGoogleToken) {
         try {
-          const parsedUser = JSON.parse(storedGoogleUser);
+          const parsedUser = JSON.parse(storedGoogleUser) as GoogleUserData;
           setGoogleUser(parsedUser);
           setAccessToken(storedGoogleToken);
           console.log('[Auth] Restored Google session');
@@ -78,7 +104,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Handle Google login success
-  const handleGoogleSuccess = useCallback((credentialResponse) => {
+  const handleGoogleSuccess = useCallback((credentialResponse: GoogleCredentialResponse): void => {
     console.log('[Auth] Google login successful');
     const token = credentialResponse.credential;
     setAccessToken(token);
@@ -92,13 +118,21 @@ export function AuthProvider({ children }) {
       }
       // Decode base64url to base64, then decode to JSON
       const base64Url = parts[1];
+      if (!base64Url) {
+        throw new Error('Invalid token format');
+      }
       const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/');
-      const payload = JSON.parse(atob(base64));
-      const userData = {
-        id: payload.sub,
-        email: payload.email,
-        name: payload.name || payload.email,
-        picture: payload.picture || null,
+      const payload = JSON.parse(atob(base64)) as {
+        sub?: string;
+        email?: string;
+        name?: string;
+        picture?: string;
+      };
+      const userData: GoogleUserData = {
+        id: payload.sub ?? '',
+        email: payload.email ?? '',
+        name: payload.name ?? payload.email ?? '',
+        picture: payload.picture ?? undefined,
         provider: 'google',
       };
       setGoogleUser(userData);
@@ -114,7 +148,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Handle Google login failure
-  const handleGoogleError = useCallback(() => {
+  const handleGoogleError = useCallback((): void => {
     console.error('[Auth] Google login failed');
     if (import.meta.env.DEV) {
       console.error('[Auth] Debug info:', {
@@ -126,14 +160,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Enable guest mode
-  const enableGuestMode = useCallback(() => {
+  const enableGuestMode = useCallback((): void => {
     setGuestMode(true);
     sessionStorage.setItem('guestMode', 'true');
     console.log('[Auth] Guest mode enabled');
   }, []);
 
   // Logout
-  const logout = useCallback(() => {
+  const logout = useCallback((): void => {
     setGoogleUser(null);
     setGuestMode(false);
     sessionStorage.removeItem('googleUser');
@@ -144,7 +178,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Get current access token
-  const getAccessToken = useCallback(async () => {
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
     if (accessToken) {
       // Check if token is still valid (basic check)
       try {
@@ -152,7 +186,11 @@ export function AuthProvider({ children }) {
         if (parts.length !== 3) {
           return null;
         }
-        const payload = JSON.parse(atob(parts[1]));
+        const payloadPart = parts[1];
+        if (!payloadPart) {
+          return null;
+        }
+        const payload = JSON.parse(atob(payloadPart)) as { exp?: number };
         if (typeof payload.exp !== 'number') {
           return null;
         }
@@ -177,7 +215,7 @@ export function AuthProvider({ children }) {
   }, [accessToken]);
 
   // Handle unauthorized responses by clearing token
-  const handleUnauthorized = useCallback(() => {
+  const handleUnauthorized = useCallback((): void => {
     console.warn('Handling unauthorized response - clearing token');
     setAccessToken(null);
     setGoogleUser(null);
@@ -191,7 +229,7 @@ export function AuthProvider({ children }) {
   setOnUnauthorizedCallback(handleUnauthorized);
   setGuestModeChecker(() => guestMode);
 
-  const value = useMemo(() => ({
+  const value = useMemo((): AuthContextType => ({
     user,
     isAuthenticated,
     loading,

@@ -9,21 +9,21 @@ const compressionOptions = {
   maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB
   maxWidthOrHeight: 1920,
   useWebWorker: true,
-  fileType: 'image/jpeg',
+  fileType: 'image/jpeg' as const,
 };
 
 // Helper to convert file to base64
-const fileToBase64 = (file) => {
+const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
+    reader.onloadend = () => resolve(reader.result as string);
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 };
 
 // Compress image if needed
-const compressImage = async (file) => {
+const compressImage = async (file: File): Promise<string> => {
   // If file is already small enough, just convert to base64
   if (file.size <= TARGET_IMAGE_SIZE) {
     return fileToBase64(file);
@@ -34,12 +34,15 @@ const compressImage = async (file) => {
   return fileToBase64(compressedFile);
 };
 
+interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
 /**
  * Validates an image file for size and type
- * @param {File} file - The file to validate
- * @returns {Object} - Returns {valid: true} or {valid: false, error: string}
  */
-const validateImageFile = (file) => {
+const validateImageFile = (file: File): ValidationResult => {
   if (!file.type.startsWith('image/')) {
     return { valid: false, error: 'Please select a valid image file' };
   }
@@ -51,18 +54,30 @@ const validateImageFile = (file) => {
   return { valid: true };
 };
 
+interface UseImageProcessingResult {
+  image: string;
+  imagePreview: string;
+  imageProcessing: boolean;
+  imageError: string;
+  setImage: (image: string) => void;
+  setImagePreview: (preview: string) => void;
+  handleImageChange: (file: File | null) => Promise<void>;
+  clearImage: () => void;
+  resetImage: () => void;
+}
+
 /**
  * Custom hook for handling image processing, validation, and compression
- * @param {Function} showSuccess - Optional callback to show success notification
- * @returns {Object} - Image processing state and handlers
  */
-export const useImageProcessing = (showSuccess) => {
-  const [image, setImage] = useState('');
-  const [imagePreview, setImagePreview] = useState('');
-  const [imageProcessing, setImageProcessing] = useState(false);
-  const [imageError, setImageError] = useState('');
+export const useImageProcessing = (
+  showSuccess?: (message: string) => void
+): UseImageProcessingResult => {
+  const [image, setImage] = useState<string>('');
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageProcessing, setImageProcessing] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<string>('');
 
-  const handleImageChange = async (file) => {
+  const handleImageChange = async (file: File | null): Promise<void> => {
     if (!file) {
       setImage('');
       setImagePreview('');
@@ -88,20 +103,20 @@ export const useImageProcessing = (showSuccess) => {
       setImage(base64Image);
       setImagePreview(base64Image);
     } catch (err) {
-      setImageError(err.message || 'Failed to process image. Please try a different file.');
+      setImageError(err instanceof Error ? err.message : 'Failed to process image. Please try a different file.');
       console.error('Image compression error:', err);
     } finally {
       setImageProcessing(false);
     }
   };
 
-  const clearImage = () => {
+  const clearImage = (): void => {
     setImage('');
     setImagePreview('');
     setImageError('');
   };
 
-  const resetImage = () => {
+  const resetImage = (): void => {
     setImage('');
     setImagePreview('');
     setImageError('');
