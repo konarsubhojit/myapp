@@ -128,6 +128,7 @@ function AppContent(): ReactElement {
     
     const loadInitialData = async (): Promise<void> => {
       // Only fetch items for OrderForm - ItemPanel handles its own data
+      if (!isMounted) return;
       await Promise.all([fetchItems(), fetchOrders()])
     }
     
