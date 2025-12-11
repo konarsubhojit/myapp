@@ -154,7 +154,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/feedbacks - Create a new feedback
 router.post('/', async (req, res) => {
   try {
-    const { orderId, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
+    const { orderId, rating, comment, productQuality, deliveryExperience, isPublic } = req.body;
 
     // Validate orderId
     if (!orderId) {
@@ -199,11 +199,6 @@ router.post('/', async (req, res) => {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: deliveryValidation.error });
     }
 
-    const serviceValidation = validateOptionalRating(customerService, 'Customer service rating');
-    if (!serviceValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: serviceValidation.error });
-    }
-
     // Validate comment
     const commentValidation = validateComment(comment);
     if (!commentValidation.valid) {
@@ -216,7 +211,6 @@ router.post('/', async (req, res) => {
       comment: comment || '',
       productQuality: productQualityValidation.parsedRating,
       deliveryExperience: deliveryValidation.parsedRating,
-      customerService: serviceValidation.parsedRating,
       isPublic: isPublic !== undefined ? Boolean(isPublic) : true
     });
 
@@ -231,7 +225,7 @@ router.post('/', async (req, res) => {
 // PUT /api/feedbacks/:id - Update a feedback
 router.put('/:id', async (req, res) => {
   try {
-    const { rating, comment, productQuality, deliveryExperience, customerService, isPublic, responseText } = req.body;
+    const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = req.body;
 
     // Validate rating if provided
     if (rating !== undefined) {
@@ -256,13 +250,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    if (customerService !== undefined) {
-      const serviceValidation = validateOptionalRating(customerService, 'Customer service rating');
-      if (!serviceValidation.valid) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: serviceValidation.error });
-      }
-    }
-
     // Validate comment if provided
     if (comment !== undefined) {
       const commentValidation = validateComment(comment);
@@ -284,7 +271,6 @@ router.put('/:id', async (req, res) => {
     if (comment !== undefined) updateData.comment = comment;
     if (productQuality !== undefined) updateData.productQuality = productQuality ? Number.parseInt(productQuality, 10) : null;
     if (deliveryExperience !== undefined) updateData.deliveryExperience = deliveryExperience ? Number.parseInt(deliveryExperience, 10) : null;
-    if (customerService !== undefined) updateData.customerService = customerService ? Number.parseInt(customerService, 10) : null;
     if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
     if (responseText !== undefined) updateData.responseText = responseText;
 

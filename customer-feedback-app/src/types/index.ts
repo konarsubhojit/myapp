@@ -37,7 +37,6 @@ export interface FeedbackFormData {
   comment: string;
   productQuality: number;
   deliveryExperience: number;
-  customerService: number;
 }
 
 // Feedback submission data
@@ -53,7 +52,6 @@ export interface FeedbackResponse {
   comment: string;
   productQuality: number | null;
   deliveryExperience: number | null;
-  customerService: number | null;
   isPublic: boolean;
   createdAt: string;
 }

@@ -20,8 +20,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
     rating: 0,
     comment: '',
     productQuality: 0,
-    deliveryExperience: 0,
-    customerService: 0
+    deliveryExperience: 0
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +64,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
     }
   };
 
-  const handleRatingChange = (field: 'rating' | 'productQuality' | 'deliveryExperience' | 'customerService') => 
+  const handleRatingChange = (field: 'rating' | 'productQuality' | 'deliveryExperience') => 
     (_event: SyntheticEvent, newValue: number | null): void => {
       handleChange(field, newValue ?? 0);
     };
@@ -106,7 +105,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
           Rate Specific Aspects
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <Typography component="legend" variant="body2" gutterBottom>
               Product Quality
             </Typography>
@@ -117,7 +116,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
               onChange={handleRatingChange('productQuality')}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6}>
             <Typography component="legend" variant="body2" gutterBottom>
               Delivery Experience
             </Typography>
@@ -126,17 +125,6 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
               aria-label="Delivery experience rating"
               value={formData.deliveryExperience}
               onChange={handleRatingChange('deliveryExperience')}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography component="legend" variant="body2" gutterBottom>
-              Customer Service
-            </Typography>
-            <Rating
-              name="customer-service"
-              aria-label="Customer service rating"
-              value={formData.customerService}
-              onChange={handleRatingChange('customerService')}
             />
           </Grid>
         </Grid>

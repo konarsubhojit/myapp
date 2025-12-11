@@ -55,7 +55,6 @@ export const feedbacks = pgTable('feedbacks', {
   comment: text('comment'),
   productQuality: integer('product_quality'),
   deliveryExperience: integer('delivery_experience'),
-  customerService: integer('customer_service'),
   isPublic: integer('is_public').default(1),
   responseText: text('response_text'),
   respondedAt: timestamp('responded_at'),
