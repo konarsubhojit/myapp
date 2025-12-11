@@ -46,8 +46,14 @@ const VIEW_OPTIONS = [
   { key: 'bySource', label: 'By Source' },
 ];
 
+const STATUS_FILTER_OPTIONS = [
+  { key: 'completed', label: 'Completed Orders Only' },
+  { key: 'all', label: 'All Orders' },
+];
+
 const VALID_RANGES = new Set(TIME_RANGES.map(r => r.key));
 const VALID_VIEWS = new Set(VIEW_OPTIONS.map(v => v.key));
+const VALID_STATUS_FILTERS = new Set(STATUS_FILTER_OPTIONS.map(s => s.key));
 
 /**
  * Aggregates item counts and revenue from filtered orders
@@ -141,24 +147,31 @@ function SalesReport({ orders }) {
   // Get initial values from URL or use defaults
   const rangeParam = searchParams.get('range');
   const viewParam = searchParams.get('view');
+  const statusFilterParam = searchParams.get('status');
   
   const selectedRange = VALID_RANGES.has(rangeParam) ? rangeParam : 'month';
   const selectedView = VALID_VIEWS.has(viewParam) ? viewParam : 'overview';
+  const selectedStatusFilter = VALID_STATUS_FILTERS.has(statusFilterParam) ? statusFilterParam : 'completed';
 
   // Update URL when state changes
-  const updateUrl = useCallback((range, view) => {
+  const updateUrl = useCallback((range, view, statusFilter) => {
     const params = new URLSearchParams();
     if (range !== 'month') params.set('range', range);
     if (view !== 'overview') params.set('view', view);
+    if (statusFilter !== 'completed') params.set('status', statusFilter);
     setSearchParams(params, { replace: true });
   }, [setSearchParams]);
 
   const handleRangeChange = (range) => {
-    updateUrl(range, selectedView);
+    updateUrl(range, selectedView, selectedStatusFilter);
   };
 
   const handleViewChange = (view) => {
-    updateUrl(selectedRange, view);
+    updateUrl(selectedRange, view, selectedStatusFilter);
+  };
+
+  const handleStatusFilterChange = (statusFilter) => {
+    updateUrl(selectedRange, selectedView, statusFilter);
   };
 
   const analytics = useMemo(() => {
@@ -172,7 +185,12 @@ function SalesReport({ orders }) {
         // Use orderDate if available, otherwise fall back to createdAt
         const dateToUse = order.orderDate || order.createdAt;
         const orderDate = new Date(dateToUse);
-        return orderDate >= cutoffDate;
+        const isInTimeRange = orderDate >= cutoffDate;
+        
+        // Apply status filter
+        const matchesStatusFilter = selectedStatusFilter === 'all' || order.status === 'completed';
+        
+        return isInTimeRange && matchesStatusFilter;
       });
 
       const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
@@ -215,7 +233,7 @@ function SalesReport({ orders }) {
     });
 
     return results;
-  }, [orders]);
+  }, [orders, selectedStatusFilter]);
 
   const currentStats = analytics[selectedRange] || {
     totalSales: 0,
@@ -625,7 +643,25 @@ function SalesReport({ orders }) {
             </ButtonGroup>
           )}
 
-          <FormControl size="small" sx={{ minWidth: 150 }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel id="status-filter-label">Order Status</InputLabel>
+              <Select 
+                labelId="status-filter-label"
+                id="statusFilter"
+                value={selectedStatusFilter} 
+                label="Order Status"
+                onChange={(e) => handleStatusFilterChange(e.target.value)}
+              >
+                {STATUS_FILTER_OPTIONS.map(option => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel id="view-select-label">View</InputLabel>
             <Select 
               labelId="view-select-label"
@@ -641,6 +677,7 @@ function SalesReport({ orders }) {
               ))}
             </Select>
           </FormControl>
+          </Box>
         </Box>
       </Box>
 

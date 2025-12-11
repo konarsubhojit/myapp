@@ -84,7 +84,7 @@ router.post('/validate-token', async (req, res) => {
 // POST /api/public/feedbacks - Public endpoint for customers to submit feedback
 router.post('/', async (req, res) => {
   try {
-    const { token, rating, comment, productQuality, deliveryExperience, customerService } = req.body;
+    const { token, rating, comment, productQuality, deliveryExperience } = req.body;
 
     // Validate token
     if (!token) {
@@ -139,11 +139,6 @@ router.post('/', async (req, res) => {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: deliveryValidation.error });
     }
 
-    const serviceValidation = validateOptionalRating(customerService, 'Customer service rating');
-    if (!serviceValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: serviceValidation.error });
-    }
-
     // Validate comment
     const commentValidation = validateComment(comment);
     if (!commentValidation.valid) {
@@ -156,7 +151,6 @@ router.post('/', async (req, res) => {
       comment: comment || '',
       productQuality: productQualityValidation.parsedRating,
       deliveryExperience: deliveryValidation.parsedRating,
-      customerService: serviceValidation.parsedRating,
       isPublic: false  // Customer feedback is not shown publicly
     });
 

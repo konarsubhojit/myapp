@@ -72,7 +72,6 @@ export interface Feedback {
   comment: string;
   productQuality: number | null;
   deliveryExperience: number | null;
-  customerService: number | null;
   isPublic: boolean;
   responseText: string;
   respondedAt: string | null;
@@ -141,7 +140,6 @@ export interface CreateFeedbackData {
   comment?: string;
   productQuality?: number;
   deliveryExperience?: number;
-  customerService?: number;
   isPublic?: boolean;
 }
 
@@ -150,7 +148,6 @@ export interface UpdateFeedbackData {
   comment?: string;
   productQuality?: number | null;
   deliveryExperience?: number | null;
-  customerService?: number | null;
   isPublic?: boolean;
   responseText?: string;
 }
@@ -192,7 +189,6 @@ export interface FeedbackStats {
   avgRating: string | null;
   avgProductQuality: string | null;
   avgDeliveryExperience: string | null;
-  avgCustomerService: string | null;
   totalFeedbacks: number;
 }
 

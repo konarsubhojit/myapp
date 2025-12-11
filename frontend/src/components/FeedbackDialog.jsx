@@ -25,7 +25,6 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
     comment: '',
     productQuality: 0,
     deliveryExperience: 0,
-    customerService: 0,
     isPublic: true
   });
   const { showNotification } = useNotification();
@@ -80,7 +79,6 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
       comment: '',
       productQuality: 0,
       deliveryExperience: 0,
-      customerService: 0,
       isPublic: true
     });
     setHasExistingFeedback(false);
@@ -123,7 +121,7 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
 
             {/* Detailed Ratings */}
             <Grid container spacing={2} mb={3}>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography component="legend" variant="body2" gutterBottom>
                   Product Quality
                 </Typography>
@@ -132,22 +130,13 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
                   onChange={(event, newValue) => handleChange('productQuality', newValue)}
                 />
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid item xs={12} sm={6}>
                 <Typography component="legend" variant="body2" gutterBottom>
                   Delivery Experience
                 </Typography>
                 <Rating
                   value={formData.deliveryExperience}
                   onChange={(event, newValue) => handleChange('deliveryExperience', newValue)}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Typography component="legend" variant="body2" gutterBottom>
-                  Customer Service
-                </Typography>
-                <Rating
-                  value={formData.customerService}
-                  onChange={(event, newValue) => handleChange('customerService', newValue)}
                 />
               </Grid>
             </Grid>

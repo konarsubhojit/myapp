@@ -10,7 +10,6 @@ function transformFeedback(feedback) {
     comment: feedback.comment || '',
     productQuality: feedback.productQuality || null,
     deliveryExperience: feedback.deliveryExperience || null,
-    customerService: feedback.customerService || null,
     isPublic: Boolean(feedback.isPublic),
     responseText: feedback.responseText || '',
     respondedAt: feedback.respondedAt ? feedback.respondedAt.toISOString() : null,
@@ -76,7 +75,6 @@ const Feedback = {
       comment: data.comment?.trim() || null,
       productQuality: data.productQuality || null,
       deliveryExperience: data.deliveryExperience || null,
-      customerService: data.customerService || null,
       isPublic: data.isPublic !== undefined ? (data.isPublic ? 1 : 0) : 1
     }).returning();
     
@@ -99,7 +97,6 @@ const Feedback = {
     if (data.comment !== undefined) updateData.comment = data.comment?.trim() || null;
     if (data.productQuality !== undefined) updateData.productQuality = data.productQuality;
     if (data.deliveryExperience !== undefined) updateData.deliveryExperience = data.deliveryExperience;
-    if (data.customerService !== undefined) updateData.customerService = data.customerService;
     if (data.isPublic !== undefined) updateData.isPublic = data.isPublic ? 1 : 0;
     if (data.responseText !== undefined) {
       updateData.responseText = data.responseText?.trim() || null;
@@ -122,7 +119,6 @@ const Feedback = {
       avgRating: sql`AVG(${feedbacks.rating})`,
       avgProductQuality: sql`AVG(${feedbacks.productQuality})`,
       avgDeliveryExperience: sql`AVG(${feedbacks.deliveryExperience})`,
-      avgCustomerService: sql`AVG(${feedbacks.customerService})`,
       totalFeedbacks: sql`COUNT(*)`
     }).from(feedbacks);
     
@@ -130,7 +126,6 @@ const Feedback = {
       avgRating: result[0].avgRating ? Number.parseFloat(result[0].avgRating).toFixed(2) : null,
       avgProductQuality: result[0].avgProductQuality ? Number.parseFloat(result[0].avgProductQuality).toFixed(2) : null,
       avgDeliveryExperience: result[0].avgDeliveryExperience ? Number.parseFloat(result[0].avgDeliveryExperience).toFixed(2) : null,
-      avgCustomerService: result[0].avgCustomerService ? Number.parseFloat(result[0].avgCustomerService).toFixed(2) : null,
       totalFeedbacks: Number.parseInt(result[0].totalFeedbacks, 10)
     };
   },

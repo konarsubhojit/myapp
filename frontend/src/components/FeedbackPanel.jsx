@@ -200,12 +200,12 @@ const FeedbackPanel = () => {
                   )}
 
                   {/* Detailed Ratings */}
-                  {(feedback.productQuality || feedback.deliveryExperience || feedback.customerService) && (
+                  {(feedback.productQuality || feedback.deliveryExperience) && (
                     <>
                       <Divider sx={{ my: 2 }} />
                       <Grid container spacing={2}>
                         {feedback.productQuality && (
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={12} sm={6}>
                             <Typography variant="caption" color="textSecondary">
                               Product Quality
                             </Typography>
@@ -216,24 +216,13 @@ const FeedbackPanel = () => {
                           </Grid>
                         )}
                         {feedback.deliveryExperience && (
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={12} sm={6}>
                             <Typography variant="caption" color="textSecondary">
                               Delivery Experience
                             </Typography>
                             <Box display="flex" alignItems="center" gap={1}>
                               <Rating value={feedback.deliveryExperience} readOnly size="small" />
                               <Typography variant="body2">{feedback.deliveryExperience}/5</Typography>
-                            </Box>
-                          </Grid>
-                        )}
-                        {feedback.customerService && (
-                          <Grid item xs={12} sm={4}>
-                            <Typography variant="caption" color="textSecondary">
-                              Customer Service
-                            </Typography>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Rating value={feedback.customerService} readOnly size="small" />
-                              <Typography variant="body2">{feedback.customerService}/5</Typography>
                             </Box>
                           </Grid>
                         )}
