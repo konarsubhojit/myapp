@@ -71,3 +71,10 @@ export const feedbackTokens = pgTable('feedback_tokens', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull()
 });
+
+// Infer types from schema
+export type ItemsTable = typeof items;
+export type OrdersTable = typeof orders;
+export type OrderItemsTable = typeof orderItems;
+export type FeedbacksTable = typeof feedbacks;
+export type FeedbackTokensTable = typeof feedbackTokens;

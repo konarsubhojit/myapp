@@ -1,8 +1,12 @@
-const LOG_LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
-const VALID_LEVELS = Object.keys(LOG_LEVELS);
+import type { Logger, LogMeta } from '../types/index.js';
 
-function getCurrentLevel() {
-  const envLevel = process.env.LOG_LEVEL;
+type LogLevel = 'error' | 'warn' | 'info' | 'debug';
+
+const LOG_LEVELS: Record<LogLevel, number> = { error: 0, warn: 1, info: 2, debug: 3 };
+const VALID_LEVELS = Object.keys(LOG_LEVELS) as LogLevel[];
+
+function getCurrentLevel(): LogLevel {
+  const envLevel = process.env.LOG_LEVEL as LogLevel | undefined;
   if (envLevel && VALID_LEVELS.includes(envLevel)) {
     return envLevel;
   }
@@ -11,7 +15,7 @@ function getCurrentLevel() {
 
 const currentLevel = getCurrentLevel();
 
-function formatMessage(level, context, message, meta) {
+function formatMessage(level: LogLevel, context: string, message: string, meta?: LogMeta): string {
   const timestamp = new Date().toISOString();
   const baseMessage = `[${timestamp}] [${level.toUpperCase()}] [${context}] ${message}`;
   
@@ -21,36 +25,36 @@ function formatMessage(level, context, message, meta) {
   return baseMessage;
 }
 
-function shouldLog(level) {
+function shouldLog(level: LogLevel): boolean {
   const levelValue = LOG_LEVELS[level];
   const currentLevelValue = LOG_LEVELS[currentLevel];
   return levelValue !== undefined && currentLevelValue !== undefined && levelValue <= currentLevelValue;
 }
 
-export function createLogger(context) {
+export function createLogger(context: string): Logger {
   return {
-    error(message, errorOrMeta) {
+    error(message: string, errorOrMeta?: Error | LogMeta): void {
       if (shouldLog('error')) {
-        const meta = errorOrMeta instanceof Error 
+        const meta: LogMeta | undefined = errorOrMeta instanceof Error 
           ? { error: errorOrMeta.message, stack: errorOrMeta.stack }
           : errorOrMeta;
         console.error(formatMessage('error', context, message, meta));
       }
     },
 
-    warn(message, meta) {
+    warn(message: string, meta?: LogMeta): void {
       if (shouldLog('warn')) {
         console.warn(formatMessage('warn', context, message, meta));
       }
     },
 
-    info(message, meta) {
+    info(message: string, meta?: LogMeta): void {
       if (shouldLog('info')) {
         console.log(formatMessage('info', context, message, meta));
       }
     },
 
-    debug(message, meta) {
+    debug(message: string, meta?: LogMeta): void {
       if (shouldLog('debug')) {
         console.log(formatMessage('debug', context, message, meta));
       }

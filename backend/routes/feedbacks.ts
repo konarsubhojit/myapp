@@ -1,5 +1,4 @@
-import express from 'express';
-const router = express.Router();
+import express, { Request, Response } from 'express';
 import Feedback from '../models/Feedback.js';
 import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
@@ -11,17 +10,23 @@ import {
   MAX_RESPONSE_LENGTH
 } from '../constants/feedbackConstants.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
-import { PAGINATION } from '../constants/paginationConstants.js';
+import { PAGINATION, isAllowedLimit } from '../constants/paginationConstants.js';
+import type { ValidationResult } from '../types/index.js';
+import { createOrderId } from '../types/index.js';
 
+const router = express.Router();
 const logger = createLogger('FeedbacksRoute');
-const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
-function validateRating(rating, fieldName = 'rating') {
+interface RatingValidationResult extends ValidationResult {
+  parsedRating?: number;
+}
+
+function validateRating(rating: string | number | undefined | null, fieldName = 'rating'): RatingValidationResult {
   if (rating === undefined || rating === null) {
     return { valid: false, error: `${fieldName} is required` };
   }
   
-  const parsedRating = Number.parseInt(rating, 10);
+  const parsedRating = Number.parseInt(String(rating), 10);
   if (Number.isNaN(parsedRating) || parsedRating < MIN_RATING || parsedRating > MAX_RATING) {
     return { valid: false, error: `${fieldName} must be between ${MIN_RATING} and ${MAX_RATING}` };
   }
@@ -29,30 +34,41 @@ function validateRating(rating, fieldName = 'rating') {
   return { valid: true, parsedRating };
 }
 
-function validateOptionalRating(rating, fieldName) {
+function validateOptionalRating(rating: string | number | undefined | null, fieldName: string): RatingValidationResult {
   if (rating === undefined || rating === null) {
-    return { valid: true, parsedRating: null };
+    return { valid: true, parsedRating: undefined };
   }
   
   return validateRating(rating, fieldName);
 }
 
-function validateComment(comment) {
+function validateComment(comment: string | undefined): ValidationResult {
   if (comment && typeof comment === 'string' && comment.length > MAX_COMMENT_LENGTH) {
     return { valid: false, error: `Comment cannot exceed ${MAX_COMMENT_LENGTH} characters` };
   }
   return { valid: true };
 }
 
-function validateResponse(responseText) {
+function validateResponse(responseText: string | undefined): ValidationResult {
   if (responseText && typeof responseText === 'string' && responseText.length > MAX_RESPONSE_LENGTH) {
     return { valid: false, error: `Response cannot exceed ${MAX_RESPONSE_LENGTH} characters` };
   }
   return { valid: true };
 }
 
+interface FeedbackRequestBody {
+  orderId?: string | number;
+  rating?: string | number;
+  comment?: string;
+  productQuality?: string | number;
+  deliveryExperience?: string | number;
+  customerService?: string | number;
+  isPublic?: boolean;
+  responseText?: string;
+}
+
 // POST /api/feedbacks/generate-token/:orderId - Generate secure feedback token for an order
-router.post('/generate-token/:orderId', async (req, res) => {
+router.post('/generate-token/:orderId', async (req: Request<{ orderId: string }>, res: Response) => {
   try {
     const orderId = req.params.orderId;
     
@@ -86,18 +102,18 @@ router.post('/generate-token/:orderId', async (req, res) => {
       expiresAt: tokenData.expiresAt
     });
   } catch (error) {
-    logger.error('Failed to generate feedback token', error);
+    logger.error('Failed to generate feedback token', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to generate feedback token' });
   }
 });
 
 // GET /api/feedbacks - Get all feedbacks with optional pagination
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const parsedPage = Number.parseInt(req.query.page, 10);
-    const parsedLimit = Number.parseInt(req.query.limit, 10);
+    const parsedPage = Number.parseInt(req.query.page as string, 10);
+    const parsedLimit = Number.parseInt(req.query.limit as string, 10);
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT;
+    const limit = isAllowedLimit(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT;
     
     if (req.query.page || req.query.limit) {
       const result = await Feedback.findPaginated({ page, limit });
@@ -107,13 +123,13 @@ router.get('/', async (req, res) => {
       res.json(feedbacksList);
     }
   } catch (error) {
-    logger.error('Failed to fetch feedbacks', error);
+    logger.error('Failed to fetch feedbacks', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch feedbacks' });
   }
 });
 
 // GET /api/feedbacks/order/:orderId - Get feedback for a specific order
-router.get('/order/:orderId', async (req, res) => {
+router.get('/order/:orderId', async (req: Request<{ orderId: string }>, res: Response) => {
   try {
     const feedback = await Feedback.findByOrderId(req.params.orderId);
     if (!feedback) {
@@ -121,24 +137,24 @@ router.get('/order/:orderId', async (req, res) => {
     }
     res.json(feedback);
   } catch (error) {
-    logger.error('Failed to fetch order feedback', error);
+    logger.error('Failed to fetch order feedback', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch order feedback' });
   }
 });
 
 // GET /api/feedbacks/stats - Get feedback statistics
-router.get('/stats', async (req, res) => {
+router.get('/stats', async (_req: Request, res: Response) => {
   try {
     const stats = await Feedback.getAverageRatings();
     res.json(stats);
   } catch (error) {
-    logger.error('Failed to fetch feedback statistics', error);
+    logger.error('Failed to fetch feedback statistics', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch feedback statistics' });
   }
 });
 
 // GET /api/feedbacks/:id - Get a specific feedback
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
   try {
     const feedback = await Feedback.findById(req.params.id);
     if (!feedback) {
@@ -146,13 +162,13 @@ router.get('/:id', async (req, res) => {
     }
     res.json(feedback);
   } catch (error) {
-    logger.error('Failed to fetch feedback', error);
+    logger.error('Failed to fetch feedback', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch feedback' });
   }
 });
 
 // POST /api/feedbacks - Create a new feedback
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request<object, object, FeedbackRequestBody>, res: Response) => {
   try {
     const { orderId, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
 
@@ -211,25 +227,25 @@ router.post('/', async (req, res) => {
     }
 
     const newFeedback = await Feedback.create({
-      orderId: Number.parseInt(orderId, 10),
-      rating: ratingValidation.parsedRating,
+      orderId: createOrderId(Number.parseInt(String(orderId), 10)),
+      rating: ratingValidation.parsedRating!,
       comment: comment || '',
-      productQuality: productQualityValidation.parsedRating,
-      deliveryExperience: deliveryValidation.parsedRating,
-      customerService: serviceValidation.parsedRating,
+      productQuality: productQualityValidation.parsedRating ?? null,
+      deliveryExperience: deliveryValidation.parsedRating ?? null,
+      customerService: serviceValidation.parsedRating ?? null,
       isPublic: isPublic !== undefined ? Boolean(isPublic) : true
     });
 
     logger.info('Feedback created', { feedbackId: newFeedback._id, orderId: orderId });
     res.status(201).json(newFeedback);
   } catch (error) {
-    logger.error('Failed to create feedback', error);
+    logger.error('Failed to create feedback', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create feedback' });
   }
 });
 
 // PUT /api/feedbacks/:id - Update a feedback
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: Request<{ id: string }, object, FeedbackRequestBody>, res: Response) => {
   try {
     const { rating, comment, productQuality, deliveryExperience, customerService, isPublic, responseText } = req.body;
 
@@ -279,12 +295,12 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    const updateData = {};
-    if (rating !== undefined) updateData.rating = Number.parseInt(rating, 10);
+    const updateData: Record<string, number | string | boolean | null> = {};
+    if (rating !== undefined) updateData.rating = Number.parseInt(String(rating), 10);
     if (comment !== undefined) updateData.comment = comment;
-    if (productQuality !== undefined) updateData.productQuality = productQuality ? Number.parseInt(productQuality, 10) : null;
-    if (deliveryExperience !== undefined) updateData.deliveryExperience = deliveryExperience ? Number.parseInt(deliveryExperience, 10) : null;
-    if (customerService !== undefined) updateData.customerService = customerService ? Number.parseInt(customerService, 10) : null;
+    if (productQuality !== undefined) updateData.productQuality = productQuality ? Number.parseInt(String(productQuality), 10) : null;
+    if (deliveryExperience !== undefined) updateData.deliveryExperience = deliveryExperience ? Number.parseInt(String(deliveryExperience), 10) : null;
+    if (customerService !== undefined) updateData.customerService = customerService ? Number.parseInt(String(customerService), 10) : null;
     if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
     if (responseText !== undefined) updateData.responseText = responseText;
 
@@ -296,7 +312,7 @@ router.put('/:id', async (req, res) => {
     logger.info('Feedback updated', { feedbackId: req.params.id });
     res.json(updatedFeedback);
   } catch (error) {
-    logger.error('Failed to update feedback', error);
+    logger.error('Failed to update feedback', error instanceof Error ? error : new Error(String(error)));
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update feedback' });
   }
 });
