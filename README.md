@@ -164,10 +164,12 @@ To configure Google OAuth authentication:
    - Copy the "Client ID" 
    - Add it to both `backend/.env` (as `GOOGLE_CLIENT_ID`) and `frontend/.env` (as `VITE_GOOGLE_CLIENT_ID`)
 
-**Note**: If you encounter "stuck at transform URL" errors during login, verify that:
+**Troubleshooting**: If you encounter "stuck at transform URL" errors during login, verify that:
 - The redirect URI is correctly configured in Google Cloud Console
 - The URL matches exactly (http vs https, www vs non-www)
 - Third-party cookies are not blocked in your browser
+
+For detailed setup instructions, see [docs/google-oauth-setup.md](./docs/google-oauth-setup.md)
 
 ## Documentation
 
