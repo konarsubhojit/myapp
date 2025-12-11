@@ -38,7 +38,7 @@ vi.mock('../../components/PriorityDashboard', () => ({
 }));
 
 vi.mock('../../components/ItemPanel', () => ({
-  default: () => <div>Item Panel</div>,
+  default: () => <div data-testid="item-panel">Item Panel</div>,
 }));
 
 vi.mock('../../components/OrderForm', () => ({
@@ -51,6 +51,10 @@ vi.mock('../../components/OrderHistory', () => ({
 
 vi.mock('../../components/SalesReport', () => ({
   default: () => <div>Sales Report</div>,
+}));
+
+vi.mock('../../components/FeedbackPanel', () => ({
+  default: () => <div>Feedback Panel</div>,
 }));
 
 vi.mock('../../components/Login', () => ({
@@ -94,4 +98,36 @@ describe('App', () => {
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip).toHaveTextContent(`Version ${APP_VERSION}`);
   });
+
+  it('should not show app-level loading screen when authenticated', async () => {
+    render(
+      <MemoryRouter initialEntries={['/items']}>
+        <App />
+      </MemoryRouter>
+    );
+    
+    // Should not show "Loading your data..." message
+    expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
+    
+    // Should show the header and tabs immediately (not blocked by loading)
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+  });
+
+  it('should render content immediately without blocking loading screen', async () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <App />
+      </MemoryRouter>
+    );
+    
+    // Header should be visible immediately
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    
+    // Navigation tabs should be visible
+    expect(screen.getByRole('tablist', { name: 'Main navigation' })).toBeInTheDocument();
+    
+    // Should not show blocking loading screen
+    expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
+  });
 });
+
