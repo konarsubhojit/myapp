@@ -19,10 +19,12 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 
 const { default: orderRoutes } = await import('../../routes/orders.js');
 const { default: Order } = await import('../../models/Order.js');
+const { errorHandler } = await import('../../utils/errorHandler.js');
 
 const app = express();
 app.use(express.json());
 app.use('/api/orders', orderRoutes);
+app.use(errorHandler); // Add global error handler
 
 describe('Priority Orders Routes', () => {
   afterEach(() => {
@@ -90,7 +92,7 @@ describe('Priority Orders Routes', () => {
       const response = await request(app).get('/api/orders/priority');
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to fetch priority orders');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
 
     it('should only return non-completed orders', async () => {

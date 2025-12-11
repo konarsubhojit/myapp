@@ -4,12 +4,12 @@ import Feedback from '../models/Feedback.js';
 import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
+import { asyncHandler, badRequestError, notFoundError, unauthorizedError } from '../utils/errorHandler.js';
 import {
   MIN_RATING,
   MAX_RATING,
   MAX_COMMENT_LENGTH
 } from '../constants/feedbackConstants.js';
-import { HTTP_STATUS } from '../constants/httpConstants.js';
 
 const logger = createLogger('PublicFeedbacksRoute');
 
@@ -42,127 +42,109 @@ function validateComment(comment) {
 }
 
 // POST /api/public/feedbacks/validate-token - Validate token and return order info
-router.post('/validate-token', async (req, res) => {
-  try {
-    const { token } = req.body;
+router.post('/validate-token', asyncHandler(async (req, res) => {
+  const { token } = req.body;
 
-    if (!token) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Token is required' });
-    }
-
-    // Validate token
-    const tokenData = await FeedbackToken.validateToken(token);
-    if (!tokenData) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
-        message: 'Invalid or expired token' 
-      });
-    }
-
-    // Get order details
-    const order = await Order.findById(tokenData.orderId);
-    if (!order) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
-    }
-
-    // Check if feedback already exists
-    const existingFeedback = await Feedback.findByOrderId(tokenData.orderId);
-
-    res.json({
-      order: {
-        _id: order._id,
-        orderId: order.orderId,
-        status: order.status
-      },
-      hasExistingFeedback: !!existingFeedback
-    });
-  } catch (error) {
-    logger.error('Failed to validate token', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to validate token' });
+  if (!token) {
+    throw badRequestError('Token is required');
   }
-});
+
+  // Validate token
+  const tokenData = await FeedbackToken.validateToken(token);
+  if (!tokenData) {
+    throw unauthorizedError('Invalid or expired token');
+  }
+
+  // Get order details
+  const order = await Order.findById(tokenData.orderId);
+  if (!order) {
+    throw notFoundError('Order');
+  }
+
+  // Check if feedback already exists
+  const existingFeedback = await Feedback.findByOrderId(tokenData.orderId);
+
+  res.json({
+    order: {
+      _id: order._id,
+      orderId: order.orderId,
+      status: order.status
+    },
+    hasExistingFeedback: !!existingFeedback
+  });
+}));
 
 // POST /api/public/feedbacks - Public endpoint for customers to submit feedback
-router.post('/', async (req, res) => {
-  try {
-    const { token, rating, comment, productQuality, deliveryExperience } = req.body;
+router.post('/', asyncHandler(async (req, res) => {
+  const { token, rating, comment, productQuality, deliveryExperience } = req.body;
 
-    // Validate token
-    if (!token) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Token is required' });
-    }
-
-    // Validate and get order from token
-    const tokenData = await FeedbackToken.validateToken(token);
-    if (!tokenData) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
-        message: 'Invalid or expired token' 
-      });
-    }
-
-    const orderId = tokenData.orderId;
-
-    // Check if order exists
-    const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Order not found' });
-    }
-
-    // Check if order is completed
-    if (order.status !== 'completed') {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
-        message: 'Feedback can only be submitted for completed orders' 
-      });
-    }
-
-    // Check if feedback already exists for this order
-    const existingFeedback = await Feedback.findByOrderId(orderId);
-    if (existingFeedback) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
-        message: 'Feedback already exists for this order' 
-      });
-    }
-
-    // Validate overall rating
-    const ratingValidation = validateRating(rating, 'Overall rating');
-    if (!ratingValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: ratingValidation.error });
-    }
-
-    // Validate optional ratings
-    const productQualityValidation = validateOptionalRating(productQuality, 'Product quality rating');
-    if (!productQualityValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: productQualityValidation.error });
-    }
-
-    const deliveryValidation = validateOptionalRating(deliveryExperience, 'Delivery experience rating');
-    if (!deliveryValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: deliveryValidation.error });
-    }
-
-    // Validate comment
-    const commentValidation = validateComment(comment);
-    if (!commentValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: commentValidation.error });
-    }
-
-    const newFeedback = await Feedback.create({
-      orderId: Number.parseInt(orderId, 10),
-      rating: ratingValidation.parsedRating,
-      comment: comment || '',
-      productQuality: productQualityValidation.parsedRating,
-      deliveryExperience: deliveryValidation.parsedRating,
-      isPublic: false  // Customer feedback is not shown publicly
-    });
-
-    // Mark token as used
-    await FeedbackToken.markAsUsed(token);
-
-    logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
-    res.status(201).json(newFeedback);
-  } catch (error) {
-    logger.error('Failed to create public feedback', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create feedback' });
+  // Validate token
+  if (!token) {
+    throw badRequestError('Token is required');
   }
-});
+
+  // Validate and get order from token
+  const tokenData = await FeedbackToken.validateToken(token);
+  if (!tokenData) {
+    throw unauthorizedError('Invalid or expired token');
+  }
+
+  const orderId = tokenData.orderId;
+
+  // Check if order exists
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw notFoundError('Order');
+  }
+
+  // Check if order is completed
+  if (order.status !== 'completed') {
+    throw badRequestError('Feedback can only be submitted for completed orders');
+  }
+
+  // Check if feedback already exists for this order
+  const existingFeedback = await Feedback.findByOrderId(orderId);
+  if (existingFeedback) {
+    throw badRequestError('Feedback already exists for this order');
+  }
+
+  // Validate overall rating
+  const ratingValidation = validateRating(rating, 'Overall rating');
+  if (!ratingValidation.valid) {
+    throw badRequestError(ratingValidation.error);
+  }
+
+  // Validate optional ratings
+  const productQualityValidation = validateOptionalRating(productQuality, 'Product quality rating');
+  if (!productQualityValidation.valid) {
+    throw badRequestError(productQualityValidation.error);
+  }
+
+  const deliveryValidation = validateOptionalRating(deliveryExperience, 'Delivery experience rating');
+  if (!deliveryValidation.valid) {
+    throw badRequestError(deliveryValidation.error);
+  }
+
+  // Validate comment
+  const commentValidation = validateComment(comment);
+  if (!commentValidation.valid) {
+    throw badRequestError(commentValidation.error);
+  }
+
+  const newFeedback = await Feedback.create({
+    orderId: Number.parseInt(orderId, 10),
+    rating: ratingValidation.parsedRating,
+    comment: comment || '',
+    productQuality: productQualityValidation.parsedRating,
+    deliveryExperience: deliveryValidation.parsedRating,
+    isPublic: false  // Customer feedback is not shown publicly
+  });
+
+  // Mark token as used
+  await FeedbackToken.markAsUsed(token);
+
+  logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
+  res.status(201).json(newFeedback);
+}));
 
 export default router;

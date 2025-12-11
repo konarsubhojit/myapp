@@ -3,13 +3,12 @@ const router = express.Router();
 import { put, del } from '@vercel/blob';
 import Item from '../models/Item.js';
 import { createLogger } from '../utils/logger.js';
+import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
+import { parsePaginationParams } from '../utils/pagination.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
-import { PAGINATION } from '../constants/paginationConstants.js';
 import { IMAGE_CONFIG } from '../constants/imageConstants.js';
 
 const logger = createLogger('ItemsRoute');
-
-const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
 async function uploadImage(image) {
   const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -81,205 +80,160 @@ function validateItemPrice(price) {
   return { valid: true, parsedPrice };
 }
 
-router.get('/', async (req, res) => {
-  try {
-    const parsedPage = Number.parseInt(req.query.page, 10);
-    const parsedLimit = Number.parseInt(req.query.limit, 10);
-    const search = req.query.search || '';
-    
-    if (req.query.page || req.query.limit) {
-      const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-      const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
-      
-      const result = await Item.findPaginated({ page, limit, search });
-      res.json(result);
-    } else {
-      const items = await Item.find();
-      res.json(items);
-    }
-  } catch (error) {
-    logger.error('Failed to fetch items', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch items' });
-  }
-});
-
-router.get('/deleted', async (req, res) => {
-  try {
-    const parsedPage = Number.parseInt(req.query.page, 10);
-    const parsedLimit = Number.parseInt(req.query.limit, 10);
-    const search = req.query.search || '';
-    
-    const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
-    
-    const result = await Item.findDeletedPaginated({ page, limit, search });
+router.get('/', asyncHandler(async (req, res) => {
+  const { page, limit, search } = parsePaginationParams(req.query);
+  
+  if (req.query.page || req.query.limit) {
+    const result = await Item.findPaginated({ page, limit, search });
     res.json(result);
-  } catch (error) {
-    logger.error('Failed to fetch deleted items', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch deleted items' });
+  } else {
+    const items = await Item.find();
+    res.json(items);
   }
-});
+}));
 
-router.post('/', async (req, res) => {
-  try {
-    const { name, price, color, fabric, specialFeatures, image } = req.body;
+router.get('/deleted', asyncHandler(async (req, res) => {
+  const { page, limit, search } = parsePaginationParams(req.query);
+  
+  const result = await Item.findDeletedPaginated({ page, limit, search });
+  res.json(result);
+}));
 
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Item name is required' });
-    }
+router.post('/', asyncHandler(async (req, res) => {
+  const { name, price, color, fabric, specialFeatures, image } = req.body;
 
-    const parsedPrice = Number.parseFloat(price);
-    if (price === undefined || price === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Valid price is required' });
-    }
-
-    let imageUrl = '';
-    
-    if (image && typeof image === 'string' && image.startsWith('data:image/')) {
-      try {
-        imageUrl = await uploadImage(image);
-        logger.info('Image uploaded to blob storage', { url: imageUrl });
-      } catch (uploadError) {
-        logger.error('Failed to upload image to blob storage', uploadError);
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: uploadError.message });
-      }
-    }
-
-    const newItem = await Item.create({
-      name: name.trim(),
-      price: parsedPrice,
-      color: color || '',
-      fabric: fabric || '',
-      specialFeatures: specialFeatures || '',
-      imageUrl: imageUrl
-    });
-    
-    logger.info('Item created', { itemId: newItem._id, name: newItem.name });
-    res.status(201).json(newItem);
-  } catch (error) {
-    logger.error('Failed to create item', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create item' });
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    throw badRequestError('Item name is required');
   }
-});
 
-router.put('/:id', async (req, res) => {
-  try {
-    const { name, price, color, fabric, specialFeatures, image } = req.body;
+  const parsedPrice = Number.parseFloat(price);
+  if (price === undefined || price === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
+    throw badRequestError('Valid price is required');
+  }
 
-    // Validate name
-    const nameValidation = validateItemName(name);
-    if (!nameValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: nameValidation.error });
-    }
-
-    // Validate price
-    const priceValidation = validateItemPrice(price);
-    if (!priceValidation.valid) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: priceValidation.error });
-    }
-
-    const existingItem = await Item.findById(req.params.id);
-    if (!existingItem) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
-    }
-
-    // Handle image update
-    let imageResult;
+  let imageUrl = '';
+  
+  if (image && typeof image === 'string' && image.startsWith('data:image/')) {
     try {
-      imageResult = await handleImageUpdate(image, existingItem.imageUrl);
+      imageUrl = await uploadImage(image);
+      logger.info('Image uploaded to blob storage', { url: imageUrl });
     } catch (uploadError) {
       logger.error('Failed to upload image to blob storage', uploadError);
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: uploadError.message });
+      throw badRequestError(uploadError.message);
     }
-
-    // Build update data
-    const updateData = {};
-    if (name !== undefined) updateData.name = name.trim();
-    if (priceValidation.parsedPrice !== undefined) updateData.price = priceValidation.parsedPrice;
-    if (color !== undefined) updateData.color = color;
-    if (fabric !== undefined) updateData.fabric = fabric;
-    if (specialFeatures !== undefined) updateData.specialFeatures = specialFeatures;
-    if (imageResult.newImageUrl !== existingItem.imageUrl) updateData.imageUrl = imageResult.newImageUrl;
-
-    const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData);
-    if (!updatedItem) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
-    }
-
-    // Delete old image if needed
-    await deleteOldImage(imageResult.oldImageUrl);
-    
-    logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
-    res.json(updatedItem);
-  } catch (error) {
-    logger.error('Failed to update item', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update item' });
   }
-});
 
-router.delete('/:id', async (req, res) => {
+  const newItem = await Item.create({
+    name: name.trim(),
+    price: parsedPrice,
+    color: color || '',
+    fabric: fabric || '',
+    specialFeatures: specialFeatures || '',
+    imageUrl: imageUrl
+  });
+  
+  logger.info('Item created', { itemId: newItem._id, name: newItem.name });
+  res.status(201).json(newItem);
+}));
+
+router.put('/:id', asyncHandler(async (req, res) => {
+  const { name, price, color, fabric, specialFeatures, image } = req.body;
+
+  // Validate name
+  const nameValidation = validateItemName(name);
+  if (!nameValidation.valid) {
+    throw badRequestError(nameValidation.error);
+  }
+
+  // Validate price
+  const priceValidation = validateItemPrice(price);
+  if (!priceValidation.valid) {
+    throw badRequestError(priceValidation.error);
+  }
+
+  const existingItem = await Item.findById(req.params.id);
+  if (!existingItem) {
+    throw notFoundError('Item');
+  }
+
+  // Handle image update
+  let imageResult;
   try {
-    const item = await Item.findByIdAndDelete(req.params.id);
-    if (!item) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
-    }
-    
-    logger.info('Item soft deleted', { itemId: req.params.id });
-    res.json({ message: 'Item deleted' });
-  } catch (error) {
-    logger.error('Failed to delete item', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to delete item' });
+    imageResult = await handleImageUpdate(image, existingItem.imageUrl);
+  } catch (uploadError) {
+    logger.error('Failed to upload image to blob storage', uploadError);
+    throw badRequestError(uploadError.message);
   }
-});
 
-router.post('/:id/restore', async (req, res) => {
-  try {
-    const item = await Item.restore(req.params.id);
-    if (!item) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
-    }
-    
-    logger.info('Item restored', { itemId: req.params.id });
-    res.json(item);
-  } catch (error) {
-    logger.error('Failed to restore item', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to restore item' });
+  // Build update data
+  const updateData = {};
+  if (name !== undefined) updateData.name = name.trim();
+  if (priceValidation.parsedPrice !== undefined) updateData.price = priceValidation.parsedPrice;
+  if (color !== undefined) updateData.color = color;
+  if (fabric !== undefined) updateData.fabric = fabric;
+  if (specialFeatures !== undefined) updateData.specialFeatures = specialFeatures;
+  if (imageResult.newImageUrl !== existingItem.imageUrl) updateData.imageUrl = imageResult.newImageUrl;
+
+  const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData);
+  if (!updatedItem) {
+    throw notFoundError('Item');
   }
-});
 
-router.delete('/:id/permanent', async (req, res) => {
-  try {
-    const item = await Item.findById(req.params.id);
-    if (!item) {
-      return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'Item not found' });
-    }
+  // Delete old image if needed
+  await deleteOldImage(imageResult.oldImageUrl);
+  
+  logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
+  res.json(updatedItem);
+}));
 
-    // Check if item is soft deleted
-    if (!item.deletedAt) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Item must be soft-deleted before permanent image removal' });
-    }
-
-    const imageUrl = item.imageUrl;
-
-    // Remove image from blob storage if it exists
-    if (imageUrl) {
-      try {
-        await del(imageUrl);
-        logger.info('Image deleted from blob storage', { url: imageUrl });
-      } catch (deleteError) {
-        logger.warn('Failed to delete image from blob storage', { url: imageUrl, error: deleteError.message });
-      }
-    }
-
-    // Clear the imageUrl from the item record (keep the item for historical orders)
-    await Item.permanentlyRemoveImage(req.params.id);
-    
-    logger.info('Item image permanently removed', { itemId: req.params.id });
-    res.json({ message: 'Item image permanently removed' });
-  } catch (error) {
-    logger.error('Failed to permanently remove item image', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to permanently remove item image' });
+router.delete('/:id', asyncHandler(async (req, res) => {
+  const item = await Item.findByIdAndDelete(req.params.id);
+  if (!item) {
+    throw notFoundError('Item');
   }
-});
+  
+  logger.info('Item soft deleted', { itemId: req.params.id });
+  res.json({ message: 'Item deleted' });
+}));
+
+router.post('/:id/restore', asyncHandler(async (req, res) => {
+  const item = await Item.restore(req.params.id);
+  if (!item) {
+    throw notFoundError('Item');
+  }
+  
+  logger.info('Item restored', { itemId: req.params.id });
+  res.json(item);
+}));
+
+router.delete('/:id/permanent', asyncHandler(async (req, res) => {
+  const item = await Item.findById(req.params.id);
+  if (!item) {
+    throw notFoundError('Item');
+  }
+
+  // Check if item is soft deleted
+  if (!item.deletedAt) {
+    throw badRequestError('Item must be soft-deleted before permanent image removal');
+  }
+
+  const imageUrl = item.imageUrl;
+
+  // Remove image from blob storage if it exists
+  if (imageUrl) {
+    try {
+      await del(imageUrl);
+      logger.info('Image deleted from blob storage', { url: imageUrl });
+    } catch (deleteError) {
+      logger.warn('Failed to delete image from blob storage', { url: imageUrl, error: deleteError.message });
+    }
+  }
+
+  // Clear the imageUrl from the item record (keep the item for historical orders)
+  await Item.permanentlyRemoveImage(req.params.id);
+  
+  logger.info('Item image permanently removed', { itemId: req.params.id });
+  res.json({ message: 'Item image permanently removed' });
+}));
 
 export default router;

@@ -5,6 +5,7 @@ import 'dotenv/config';
 import { connectToDatabase } from './db/connection.js';
 import { createLogger } from './utils/logger.js';
 import { authMiddleware } from './middleware/auth.js';
+import { errorHandler } from './utils/errorHandler.js';
 import { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } from './constants/httpConstants.js';
 
 const logger = createLogger('Server');
@@ -58,6 +59,9 @@ app.use('/api/feedbacks', authMiddleware, feedbackRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Only start server if not in test environment
 if (process.env.NODE_ENV !== 'test') {
