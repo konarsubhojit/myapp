@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, type ReactNode, type ReactElement } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -40,18 +39,18 @@ import { APP_VERSION } from './config/version'
 import type { Item, Order } from './types'
 
 interface TabRoute {
-  path: string;
+  id: string;
   label: string;
   icon: ReactElement;
 }
 
 const TAB_ROUTES: TabRoute[] = [
-  { path: '/priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
-  { path: '/orders/new', label: 'Create Order', icon: <AddShoppingCartIcon /> },
-  { path: '/items', label: 'Manage Items', icon: <InventoryIcon /> },
-  { path: '/history', label: 'Order History', icon: <HistoryIcon /> },
-  { path: '/sales', label: 'Sales Report', icon: <AssessmentIcon /> },
-  { path: '/feedback', label: 'Feedback', icon: <FeedbackIcon /> },
+  { id: 'priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
+  { id: 'new-order', label: 'Create Order', icon: <AddShoppingCartIcon /> },
+  { id: 'items', label: 'Manage Items', icon: <InventoryIcon /> },
+  { id: 'history', label: 'Order History', icon: <HistoryIcon /> },
+  { id: 'sales', label: 'Sales Report', icon: <AssessmentIcon /> },
+  { id: 'feedback', label: 'Feedback', icon: <FeedbackIcon /> },
 ]
 
 interface LoadingScreenProps {
@@ -86,8 +85,8 @@ function AppContent(): ReactElement {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
-  const location = useLocation()
-  const navigate = useNavigate()
+  const [currentTab, setCurrentTab] = useState<number>(0)
+  const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null)
   const muiTheme = useTheme()
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
 
@@ -113,7 +112,14 @@ function AppContent(): ReactElement {
     fetchOrders()
     // Increment key to trigger OrderHistory refresh when switching tabs
     setOrderHistoryKey(prev => prev + 1)
+    // Clear duplicate order state
+    setDuplicateOrderId(null)
   }, [fetchOrders])
+
+  const handleDuplicateOrder = useCallback((orderId: string): void => {
+    setDuplicateOrderId(orderId)
+    setCurrentTab(1) // Switch to Create Order tab
+  }, [])
 
   useEffect(() => {
     let isMounted = true;
@@ -136,22 +142,11 @@ function AppContent(): ReactElement {
     }
   }, [isAuthenticated, fetchItems, fetchOrders])
 
-  // Get current tab value based on path
-  const getCurrentTabValue = (): number => {
-    const path = location.pathname
-    if (path.startsWith('/priority')) return 0
-    if (path.startsWith('/orders/new') || path.startsWith('/orders/duplicate')) return 1
-    if (path.startsWith('/items')) return 2
-    if (path.startsWith('/history')) return 3
-    if (path.startsWith('/sales')) return 4
-    if (path.startsWith('/feedback')) return 5
-    return 0
-  }
-
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
-    const route = TAB_ROUTES[newValue]
-    if (route) {
-      navigate(route.path)
+    setCurrentTab(newValue)
+    // Clear duplicate order when switching away from Create Order tab
+    if (newValue !== 1) {
+      setDuplicateOrderId(null)
     }
   }
 
@@ -203,7 +198,7 @@ function AppContent(): ReactElement {
             </Typography>
           </Tooltip>
           <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
-            {!guestMode && <PriorityNotificationPanel />}
+            {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentTab(0)} />}
             {guestMode && (
               <Chip 
                 icon={<PreviewIcon />} 
@@ -274,7 +269,7 @@ function AppContent(): ReactElement {
       >
         <Container maxWidth="lg">
           <Tabs
-            value={getCurrentTabValue()}
+            value={currentTab}
             onChange={handleTabChange}
             variant={isMobile ? 'scrollable' : 'fullWidth'}
             scrollButtons={isMobile ? 'auto' : false}
@@ -300,7 +295,7 @@ function AppContent(): ReactElement {
           >
             {TAB_ROUTES.map((tab) => (
               <Tab
-                key={tab.path}
+                key={tab.id}
                 icon={tab.icon}
                 label={isMobile ? undefined : tab.label}
                 aria-label={tab.label}
@@ -324,71 +319,44 @@ function AppContent(): ReactElement {
           px: { xs: 2, sm: 3 },
         }}
       >
-        <Routes>
-          <Route 
-            path="/" 
-            element={<Navigate to="/priority" replace />} 
+        {currentTab === 0 && (
+          <PriorityDashboard 
+            onRefresh={() => {
+              fetchOrders();
+              setOrderHistoryKey(prev => prev + 1);
+            }}
+            onDuplicateOrder={handleDuplicateOrder}
           />
-          <Route 
-            path="/priority" 
-            element={
-              <PriorityDashboard 
-                onRefresh={() => {
-                  fetchOrders();
-                  setOrderHistoryKey(prev => prev + 1);
-                }}
-              />
-            } 
+        )}
+        
+        {currentTab === 1 && (
+          <OrderForm 
+            items={items} 
+            onOrderCreated={handleOrderCreated}
+            duplicateOrderId={duplicateOrderId}
           />
-          <Route 
-            path="/orders/new" 
-            element={
-              <OrderForm 
-                items={items} 
-                onOrderCreated={handleOrderCreated} 
-              />
-            } 
+        )}
+        
+        {currentTab === 2 && (
+          <ItemPanel 
+            onItemsChange={fetchItems} 
           />
-          <Route 
-            path="/orders/duplicate/:orderId" 
-            element={
-              <OrderForm 
-                items={items} 
-                onOrderCreated={handleOrderCreated} 
-              />
-            } 
+        )}
+        
+        {currentTab === 3 && (
+          <OrderHistory 
+            key={orderHistoryKey}
+            onDuplicateOrder={handleDuplicateOrder}
           />
-          <Route 
-            path="/items" 
-            element={
-              <ItemPanel 
-                onItemsChange={fetchItems} 
-              />
-            } 
-          />
-          <Route 
-            path="/history" 
-            element={
-              <OrderHistory 
-                key={orderHistoryKey}
-                onDuplicateOrder={(orderId: string) => navigate(`/orders/duplicate/${orderId}`)}
-              />
-            } 
-          />
-          <Route 
-            path="/sales" 
-            element={<SalesReport orders={orders} />} 
-          />
-          <Route 
-            path="/feedback" 
-            element={<FeedbackPanel />} 
-          />
-          {/* Catch-all route */}
-          <Route 
-            path="*" 
-            element={<Navigate to="/priority" replace />} 
-          />
-        </Routes>
+        )}
+        
+        {currentTab === 4 && (
+          <SalesReport orders={orders} />
+        )}
+        
+        {currentTab === 5 && (
+          <FeedbackPanel />
+        )}
       </Container>
     </Box>
   )
