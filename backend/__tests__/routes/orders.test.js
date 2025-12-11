@@ -30,10 +30,12 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 const { default: orderRoutes } = await import('../../routes/orders.js');
 const { default: Order } = await import('../../models/Order.js');
 const { default: Item } = await import('../../models/Item.js');
+const { errorHandler } = await import('../../utils/errorHandler.js');
 
 const app = express();
 app.use(express.json());
 app.use('/api/orders', orderRoutes);
+app.use(errorHandler); // Add global error handler
 
 describe('Orders Routes', () => {
   afterEach(() => {
@@ -84,7 +86,7 @@ describe('Orders Routes', () => {
       const response = await request(app).get('/api/orders');
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to fetch orders');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
@@ -284,7 +286,7 @@ describe('Orders Routes', () => {
       const response = await request(app).post('/api/orders').send(orderData);
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to create order');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
@@ -321,7 +323,7 @@ describe('Orders Routes', () => {
       const response = await request(app).get('/api/orders/1');
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to fetch order');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
@@ -438,7 +440,7 @@ describe('Orders Routes', () => {
       const response = await request(app).put('/api/orders/1').send(updateData);
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to update order');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
