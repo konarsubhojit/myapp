@@ -1,5 +1,4 @@
-import { useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -140,42 +139,16 @@ const aggregateSourceBreakdown = (filteredOrders) => {
 
 function SalesReport({ orders }) {
   const { formatPrice } = useCurrency();
-  const [searchParams, setSearchParams] = useSearchParams();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   
-  // Get initial values from URL or use defaults
-  const rangeParam = searchParams.get('range');
-  const viewParam = searchParams.get('view');
-  const statusFilterParam = searchParams.get('status');
-  
-  const selectedRange = VALID_RANGES.has(rangeParam) ? rangeParam : 'month';
-  const selectedView = VALID_VIEWS.has(viewParam) ? viewParam : 'overview';
-  const selectedStatusFilter = VALID_STATUS_FILTERS.has(statusFilterParam) ? statusFilterParam : 'completed';
+  // Use local state instead of URL params
+  const [selectedRange, setSelectedRange] = useState('month');
+  const [selectedView, setSelectedView] = useState('overview');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('completed');
 
   // Create stable reference for useMemo dependency
   const stableStatusFilter = useMemo(() => selectedStatusFilter, [selectedStatusFilter]);
-
-  // Update URL when state changes
-  const updateUrl = useCallback((range, view, statusFilter) => {
-    const params = new URLSearchParams();
-    if (range !== 'month') params.set('range', range);
-    if (view !== 'overview') params.set('view', view);
-    if (statusFilter !== 'completed') params.set('status', statusFilter);
-    setSearchParams(params, { replace: true });
-  }, [setSearchParams]);
-
-  const handleRangeChange = (range) => {
-    updateUrl(range, selectedView, selectedStatusFilter);
-  };
-
-  const handleViewChange = (view) => {
-    updateUrl(selectedRange, view, selectedStatusFilter);
-  };
-
-  const handleStatusFilterChange = (statusFilter) => {
-    updateUrl(selectedRange, selectedView, statusFilter);
-  };
 
   const analytics = useMemo(() => {
     const now = new Date();
@@ -625,7 +598,7 @@ function SalesReport({ orders }) {
               <Select
                 value={selectedRange}
                 label="Time Range"
-                onChange={(e) => handleRangeChange(e.target.value)}
+                onChange={(e) => setSelectedRange(e.target.value)}
               >
                 {TIME_RANGES.map(range => (
                   <MenuItem key={range.key} value={range.key}>{range.label}</MenuItem>
@@ -638,7 +611,7 @@ function SalesReport({ orders }) {
                 <Button
                   key={range.key}
                   variant={selectedRange === range.key ? 'contained' : 'outlined'}
-                  onClick={() => handleRangeChange(range.key)}
+                  onClick={() => setSelectedRange(range.key)}
                 >
                   {range.label}
                 </Button>
@@ -654,7 +627,7 @@ function SalesReport({ orders }) {
                 id="statusFilter"
                 value={selectedStatusFilter} 
                 label="Order Status"
-                onChange={(e) => handleStatusFilterChange(e.target.value)}
+                onChange={(e) => setSelectedStatusFilter(e.target.value)}
               >
                 {STATUS_FILTER_OPTIONS.map(option => (
                   <MenuItem key={option.key} value={option.key}>
@@ -671,7 +644,7 @@ function SalesReport({ orders }) {
               id="viewSelect"
               value={selectedView} 
               label="View"
-              onChange={(e) => handleViewChange(e.target.value)}
+              onChange={(e) => setSelectedView(e.target.value)}
             >
               {VIEW_OPTIONS.map(option => (
                 <MenuItem key={option.key} value={option.key}>
