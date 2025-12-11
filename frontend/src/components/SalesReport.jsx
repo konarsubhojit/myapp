@@ -233,7 +233,7 @@ function SalesReport({ orders }) {
     });
 
     return results;
-  }, [orders, selectedStatusFilter]);
+  }, [orders, selectedStatusFilter, selectedRange]);
 
   const currentStats = analytics[selectedRange] || {
     totalSales: 0,
