@@ -32,10 +32,12 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 const { default: itemRoutes } = await import('../../routes/items.js');
 const { default: Item } = await import('../../models/Item.js');
 const { put, del } = await import('@vercel/blob');
+const { errorHandler } = await import('../../utils/errorHandler.js');
 
 const app = express();
 app.use(express.json());
 app.use('/api/items', itemRoutes);
+app.use(errorHandler); // Add global error handler
 
 describe('Items Routes', () => {
   afterEach(() => {
@@ -94,7 +96,7 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items');
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to fetch items');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
@@ -212,7 +214,7 @@ describe('Items Routes', () => {
       const response = await request(app).post('/api/items').send(itemData);
 
       expect(response.status).toBe(500);
-      expect(response.body).toHaveProperty('message', 'Failed to create item');
+      expect(response.body).toHaveProperty('message', 'Database error');
     });
   });
 
