@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import SalesReport from '../../components/SalesReport';
 import { CurrencyProvider } from '../../contexts/CurrencyContext';
 
@@ -22,11 +21,9 @@ const createMockOrder = (overrides = {}) => ({
   ...overrides,
 });
 
-const renderWithProviders = (component, initialPath = '/') => {
+const renderWithProviders = (component) => {
   return render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <CurrencyProvider>{component}</CurrencyProvider>
-    </MemoryRouter>
+    <CurrencyProvider>{component}</CurrencyProvider>
   );
 };
 
@@ -122,15 +119,8 @@ describe('SalesReport', () => {
 
 
 
-    it('should read time range from URL on load', () => {
-      renderWithProviders(<SalesReport orders={mockOrders} />, '/?range=week');
-      
-      const weekButton = screen.getByRole('button', { name: /Last Week/i });
-      expect(weekButton).toHaveClass('MuiButton-contained');
-    });
-
-    it('should use default time range when URL param is invalid', () => {
-      renderWithProviders(<SalesReport orders={mockOrders} />, '/?range=invalid');
+    it('should use default time range (month) on initial load', () => {
+      renderWithProviders(<SalesReport orders={mockOrders} />);
       
       const monthButton = screen.getByRole('button', { name: /Last Month/i });
       expect(monthButton).toHaveClass('MuiButton-contained');
@@ -183,14 +173,11 @@ describe('SalesReport', () => {
       });
     });
 
-
-
-    it('should read view from URL on load', () => {
-      renderWithProviders(<SalesReport orders={mockOrders} />, '/?view=byItem');
+    it('should default to overview on initial load', () => {
+      renderWithProviders(<SalesReport orders={mockOrders} />);
       
-      expect(screen.getByText('Top Items by Quantity Sold')).toBeInTheDocument();
+      expect(screen.getByText('Overview')).toBeInTheDocument();
     });
-
 
   });
 

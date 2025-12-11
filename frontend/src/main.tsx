@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
@@ -28,11 +27,9 @@ createRoot(rootElement).render(
     <GoogleOAuthProvider clientId={googleConfig.clientId}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter>
-          <NotificationProvider>
-            <App />
-          </NotificationProvider>
-        </BrowserRouter>
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
       </ThemeProvider>
     </GoogleOAuthProvider>
   </StrictMode>,

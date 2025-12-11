@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -114,9 +113,8 @@ function formatDate(dateString) {
   });
 }
 
-function PriorityDashboard({ onRefresh }) {
+function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
   const { formatPrice } = useCurrency();
-  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -380,7 +378,7 @@ function PriorityDashboard({ onRefresh }) {
           orderId={selectedOrderId} 
           onClose={handleCloseDetails}
           onOrderUpdated={handleOrderUpdated}
-          onDuplicateOrder={(orderId) => navigate(`/orders/duplicate/${orderId}`)}
+          onDuplicateOrder={onDuplicateOrder}
         />
       )}
     </Paper>
@@ -388,7 +386,8 @@ function PriorityDashboard({ onRefresh }) {
 }
 
 PriorityDashboard.propTypes = {
-  onRefresh: PropTypes.func
+  onRefresh: PropTypes.func,
+  onDuplicateOrder: PropTypes.func
 };
 
 export default PriorityDashboard;
