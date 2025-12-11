@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+const router = express.Router();
 import Feedback from '../models/Feedback.js';
 import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
@@ -9,22 +10,15 @@ import {
   MAX_COMMENT_LENGTH
 } from '../constants/feedbackConstants.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
-import type { ValidationResult } from '../types/index.js';
-import { createOrderId } from '../types/index.js';
 
-const router = express.Router();
 const logger = createLogger('PublicFeedbacksRoute');
 
-interface RatingValidationResult extends ValidationResult {
-  parsedRating?: number;
-}
-
-function validateRating(rating: string | number | undefined | null, fieldName = 'rating'): RatingValidationResult {
+function validateRating(rating, fieldName = 'rating') {
   if (rating === undefined || rating === null) {
     return { valid: false, error: `${fieldName} is required` };
   }
   
-  const parsedRating = Number.parseInt(String(rating), 10);
+  const parsedRating = Number.parseInt(rating, 10);
   if (Number.isNaN(parsedRating) || parsedRating < MIN_RATING || parsedRating > MAX_RATING) {
     return { valid: false, error: `${fieldName} must be between ${MIN_RATING} and ${MAX_RATING}` };
   }
@@ -32,37 +26,23 @@ function validateRating(rating: string | number | undefined | null, fieldName = 
   return { valid: true, parsedRating };
 }
 
-function validateOptionalRating(rating: string | number | undefined | null, fieldName: string): RatingValidationResult {
+function validateOptionalRating(rating, fieldName) {
   if (rating === undefined || rating === null) {
-    return { valid: true, parsedRating: undefined };
+    return { valid: true, parsedRating: null };
   }
   
   return validateRating(rating, fieldName);
 }
 
-function validateComment(comment: string | undefined): ValidationResult {
+function validateComment(comment) {
   if (comment && typeof comment === 'string' && comment.length > MAX_COMMENT_LENGTH) {
     return { valid: false, error: `Comment cannot exceed ${MAX_COMMENT_LENGTH} characters` };
   }
   return { valid: true };
 }
 
-interface ValidateTokenRequestBody {
-  token?: string;
-}
-
-interface PublicFeedbackRequestBody {
-  token?: string;
-  rating?: string | number;
-  comment?: string;
-  productQuality?: string | number;
-  deliveryExperience?: string | number;
-  customerService?: string | number;
-  isPublic?: boolean;
-}
-
 // POST /api/public/feedbacks/validate-token - Validate token and return order info
-router.post('/validate-token', async (req: Request<object, object, ValidateTokenRequestBody>, res: Response) => {
+router.post('/validate-token', async (req, res) => {
   try {
     const { token } = req.body;
 
@@ -96,13 +76,13 @@ router.post('/validate-token', async (req: Request<object, object, ValidateToken
       hasExistingFeedback: !!existingFeedback
     });
   } catch (error) {
-    logger.error('Failed to validate token', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to validate token', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to validate token' });
   }
 });
 
 // POST /api/public/feedbacks - Public endpoint for customers to submit feedback
-router.post('/', async (req: Request<object, object, PublicFeedbackRequestBody>, res: Response) => {
+router.post('/', async (req, res) => {
   try {
     const { token, rating, comment, productQuality, deliveryExperience, customerService, isPublic } = req.body;
 
@@ -171,12 +151,12 @@ router.post('/', async (req: Request<object, object, PublicFeedbackRequestBody>,
     }
 
     const newFeedback = await Feedback.create({
-      orderId: createOrderId(Number.parseInt(String(orderId), 10)),
-      rating: ratingValidation.parsedRating!,
+      orderId: Number.parseInt(orderId, 10),
+      rating: ratingValidation.parsedRating,
       comment: comment || '',
-      productQuality: productQualityValidation.parsedRating ?? null,
-      deliveryExperience: deliveryValidation.parsedRating ?? null,
-      customerService: serviceValidation.parsedRating ?? null,
+      productQuality: productQualityValidation.parsedRating,
+      deliveryExperience: deliveryValidation.parsedRating,
+      customerService: serviceValidation.parsedRating,
       isPublic: isPublic !== undefined ? Boolean(isPublic) : true
     });
 
@@ -186,7 +166,7 @@ router.post('/', async (req: Request<object, object, PublicFeedbackRequestBody>,
     logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
     res.status(201).json(newFeedback);
   } catch (error) {
-    logger.error('Failed to create public feedback', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to create public feedback', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create feedback' });
   }
 });

@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+const router = express.Router();
 import Order from '../models/Order.js';
 import Item from '../models/Item.js';
 import { createLogger } from '../utils/logger.js';
@@ -10,46 +11,21 @@ import {
   MAX_CUSTOMER_NOTES_LENGTH,
   PRIORITY_MIN,
   PRIORITY_MAX,
-  isValidOrderStatus,
-  isValidPaymentStatus,
-  isValidConfirmationStatus,
-  isValidDeliveryStatus
 } from '../constants/orderConstants.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
-import { isAllowedLimit } from '../constants/paginationConstants.js';
-import type { 
-  ValidationResult, 
-  ItemsValidationResult,
-  CreateOrderItemData,
-  OrderSource,
-  PaymentStatus,
-  ConfirmationStatus,
-  DeliveryStatus,
-  OrderStatus
-} from '../types/index.js';
+import { PAGINATION } from '../constants/paginationConstants.js';
 
-const router = express.Router();
 const logger = createLogger('OrdersRoute');
+const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
-function validateCustomerNotes(customerNotes: string | undefined): ValidationResult {
+function validateCustomerNotes(customerNotes) {
   if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
     return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
   }
   return { valid: true };
 }
 
-interface OrderItemInput {
-  itemId: string | number;
-  quantity: string | number;
-  customizationRequest?: string;
-}
-
-function validateRequiredFields(
-  orderFrom: string | undefined, 
-  customerName: string | undefined, 
-  customerId: string | undefined, 
-  items: unknown
-): ValidationResult {
+function validateRequiredFields(orderFrom, customerName, customerId, items) {
   if (!orderFrom || !customerName || !customerId) {
     return { valid: false, error: 'Order source, customer name, and customer ID are required' };
   }
@@ -59,7 +35,7 @@ function validateRequiredFields(
   return { valid: true };
 }
 
-function validateDeliveryDate(expectedDeliveryDate: string | undefined): ValidationResult & { parsedDate?: Date | null } {
+function validateDeliveryDate(expectedDeliveryDate) {
   if (!expectedDeliveryDate) {
     return { valid: true, parsedDate: null };
   }
@@ -81,18 +57,14 @@ function validateDeliveryDate(expectedDeliveryDate: string | undefined): Validat
   return { valid: true, parsedDate: parsedDeliveryDate };
 }
 
-function validatePaymentData(
-  paymentStatus: string | undefined, 
-  paidAmount: string | number | undefined, 
-  totalPrice: number
-): ValidationResult & { parsedAmount?: number } {
-  if (paymentStatus && !isValidPaymentStatus(paymentStatus)) {
+function validatePaymentData(paymentStatus, paidAmount, totalPrice) {
+  if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
     return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
   }
 
   let parsedPaidAmount = 0;
   if (paidAmount !== undefined && paidAmount !== null) {
-    parsedPaidAmount = Number.parseFloat(String(paidAmount));
+    parsedPaidAmount = Number.parseFloat(paidAmount);
     if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
       return { valid: false, error: 'Paid amount must be a valid non-negative number' };
     }
@@ -112,12 +84,12 @@ function validatePaymentData(
   return { valid: true, parsedAmount: parsedPaidAmount };
 }
 
-function validatePriority(priority: string | number | undefined): ValidationResult & { parsedPriority?: number } {
+function validatePriority(priority) {
   if (priority === undefined || priority === null) {
     return { valid: true, parsedPriority: 0 };
   }
   
-  const parsedPriority = Number.parseInt(String(priority), 10);
+  const parsedPriority = Number.parseInt(priority, 10);
   if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
     return { valid: false, error: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` };
   }
@@ -125,28 +97,28 @@ function validatePriority(priority: string | number | undefined): ValidationResu
   return { valid: true, parsedPriority };
 }
 
-function validateConfirmationStatus(confirmationStatus: string | undefined): ValidationResult {
-  if (confirmationStatus && !isValidConfirmationStatus(confirmationStatus)) {
+function validateConfirmationStatus(confirmationStatus) {
+  if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
     return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function validateDeliveryStatus(deliveryStatus: string | undefined): ValidationResult {
-  if (deliveryStatus && !isValidDeliveryStatus(deliveryStatus)) {
+function validateDeliveryStatus(deliveryStatus) {
+  if (deliveryStatus && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
     return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function validateUpdateDeliveryStatus(deliveryStatus: string | undefined): ValidationResult {
-  if (deliveryStatus !== undefined && !isValidDeliveryStatus(deliveryStatus)) {
+function validateUpdateDeliveryStatus(deliveryStatus) {
+  if (deliveryStatus !== undefined && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
     return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function validateActualDeliveryDate(actualDeliveryDate: string | undefined): ValidationResult & { parsedDate?: Date | null } {
+function validateActualDeliveryDate(actualDeliveryDate) {
   if (!actualDeliveryDate) {
     return { valid: true, parsedDate: null };
   }
@@ -159,7 +131,7 @@ function validateActualDeliveryDate(actualDeliveryDate: string | undefined): Val
   return { valid: true, parsedDate };
 }
 
-function parseUpdateActualDeliveryDate(actualDeliveryDate: string | null | undefined): ValidationResult & { parsedDate?: Date | null } {
+function parseUpdateActualDeliveryDate(actualDeliveryDate) {
   if (actualDeliveryDate === undefined) {
     return { valid: true, parsedDate: undefined };
   }
@@ -176,14 +148,14 @@ function parseUpdateActualDeliveryDate(actualDeliveryDate: string | null | undef
   return { valid: true, parsedDate };
 }
 
-function validateUpdateCustomerNotes(customerNotes: string | undefined): ValidationResult {
+function validateUpdateCustomerNotes(customerNotes) {
   if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
     return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
   }
   return { valid: true };
 }
 
-function validateUpdateFields(customerName: string | undefined, customerId: string | undefined): ValidationResult {
+function validateUpdateFields(customerName, customerId) {
   if (customerName !== undefined && !customerName?.trim()) {
     return { valid: false, error: 'Customer name cannot be empty' };
   }
@@ -193,33 +165,33 @@ function validateUpdateFields(customerName: string | undefined, customerId: stri
   return { valid: true };
 }
 
-function validateOrderStatus(status: string | undefined): ValidationResult {
-  if (status !== undefined && !isValidOrderStatus(status)) {
+function validateOrderStatus(status) {
+  if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
     return { valid: false, error: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function validateUpdatePaymentStatus(paymentStatus: string | undefined): ValidationResult {
-  if (paymentStatus !== undefined && !isValidPaymentStatus(paymentStatus)) {
+function validateUpdatePaymentStatus(paymentStatus) {
+  if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
     return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function validateUpdateConfirmationStatus(confirmationStatus: string | undefined): ValidationResult {
-  if (confirmationStatus !== undefined && !isValidConfirmationStatus(confirmationStatus)) {
+function validateUpdateConfirmationStatus(confirmationStatus) {
+  if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
     return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
   }
   return { valid: true };
 }
 
-function parseUpdatePaidAmount(paidAmount: string | number | undefined): ValidationResult & { parsedAmount?: number } {
+function parseUpdatePaidAmount(paidAmount) {
   if (paidAmount === undefined) {
     return { valid: true, parsedAmount: undefined };
   }
   
-  const parsedPaidAmount = Number.parseFloat(String(paidAmount));
+  const parsedPaidAmount = Number.parseFloat(paidAmount);
   if (Number.isNaN(parsedPaidAmount) || parsedPaidAmount < 0) {
     return { valid: false, error: 'Paid amount must be a valid non-negative number' };
   }
@@ -227,12 +199,12 @@ function parseUpdatePaidAmount(paidAmount: string | number | undefined): Validat
   return { valid: true, parsedAmount: parsedPaidAmount };
 }
 
-function parseUpdatePriority(priority: string | number | undefined): ValidationResult & { parsedPriority?: number } {
+function parseUpdatePriority(priority) {
   if (priority === undefined) {
     return { valid: true, parsedPriority: undefined };
   }
   
-  const parsedPriority = Number.parseInt(String(priority), 10);
+  const parsedPriority = Number.parseInt(priority, 10);
   if (Number.isNaN(parsedPriority) || parsedPriority < PRIORITY_MIN || parsedPriority > PRIORITY_MAX) {
     return { valid: false, error: `Priority must be a number between ${PRIORITY_MIN} and ${PRIORITY_MAX}` };
   }
@@ -240,7 +212,7 @@ function parseUpdatePriority(priority: string | number | undefined): ValidationR
   return { valid: true, parsedPriority };
 }
 
-function parseUpdateDeliveryDate(expectedDeliveryDate: string | null | undefined): ValidationResult & { parsedDate?: Date | null } {
+function parseUpdateDeliveryDate(expectedDeliveryDate) {
   if (expectedDeliveryDate === undefined) {
     return { valid: true, parsedDate: undefined };
   }
@@ -257,12 +229,7 @@ function parseUpdateDeliveryDate(expectedDeliveryDate: string | null | undefined
   return { valid: true, parsedDate: parsedDeliveryDate };
 }
 
-function validateUpdatePaymentAmount(
-  parsedPaidAmount: number | undefined, 
-  totalPrice: number | undefined, 
-  existingTotalPrice: number, 
-  paymentStatus: string | undefined
-): ValidationResult {
+function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotalPrice, paymentStatus) {
   if (parsedPaidAmount === undefined) {
     return { valid: true };
   }
@@ -283,8 +250,8 @@ function validateUpdatePaymentAmount(
   return { valid: true };
 }
 
-async function buildOrderItemsList(items: OrderItemInput[]): Promise<ItemsValidationResult> {
-  const orderItems: CreateOrderItemData[] = [];
+async function buildOrderItemsList(items) {
+  const orderItems = [];
   let totalPrice = 0;
 
   for (const orderItem of items) {
@@ -293,7 +260,7 @@ async function buildOrderItemsList(items: OrderItemInput[]): Promise<ItemsValida
       return { valid: false, error: `Item with id ${orderItem.itemId} not found` };
     }
     
-    const quantity = Number.parseInt(String(orderItem.quantity), 10);
+    const quantity = Number.parseInt(orderItem.quantity, 10);
     if (!Number.isInteger(quantity) || quantity < 1) {
       return { valid: false, error: 'Quantity must be a positive integer' };
     }
@@ -312,11 +279,11 @@ async function buildOrderItemsList(items: OrderItemInput[]): Promise<ItemsValida
   return { valid: true, orderItems, totalPrice };
 }
 
-async function processOrderItems(items: OrderItemInput[]): Promise<ItemsValidationResult> {
+async function processOrderItems(items) {
   return buildOrderItemsList(items);
 }
 
-async function processUpdateOrderItems(items: OrderItemInput[] | undefined): Promise<ItemsValidationResult> {
+async function processUpdateOrderItems(items) {
   if (items === undefined) {
     return { valid: true, orderItems: undefined, totalPrice: undefined };
   }
@@ -328,45 +295,22 @@ async function processUpdateOrderItems(items: OrderItemInput[] | undefined): Pro
   return buildOrderItemsList(items);
 }
 
-interface CreateOrderRequestBody {
-  orderFrom?: string;
-  customerName?: string;
-  customerId?: string;
-  address?: string;
-  orderDate?: string;
-  items?: OrderItemInput[];
-  expectedDeliveryDate?: string;
-  paymentStatus?: string;
-  paidAmount?: string | number;
-  confirmationStatus?: string;
-  customerNotes?: string;
-  priority?: string | number;
-  deliveryStatus?: string;
-  trackingId?: string;
-  deliveryPartner?: string;
-  actualDeliveryDate?: string;
-}
-
-interface UpdateOrderRequestBody extends CreateOrderRequestBody {
-  status?: string;
-}
-
-router.get('/priority', async (_req: Request, res: Response) => {
+router.get('/priority', async (req, res) => {
   try {
     const priorityOrders = await Order.findPriorityOrders();
     res.json(priorityOrders);
   } catch (error) {
-    logger.error('Failed to fetch priority orders', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to fetch priority orders', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch priority orders' });
   }
 });
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req, res) => {
   try {
-    const parsedPage = Number.parseInt(req.query.page as string, 10);
-    const parsedLimit = Number.parseInt(req.query.limit as string, 10);
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
-    const limit = isAllowedLimit(parsedLimit) ? parsedLimit : 10;
+    const limit = ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : 10;
     
     if (req.query.page || req.query.limit) {
       const result = await Order.findPaginated({ page, limit });
@@ -376,19 +320,14 @@ router.get('/', async (req: Request, res: Response) => {
       res.json(orders);
     }
   } catch (error) {
-    logger.error('Failed to fetch orders', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to fetch orders', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch orders' });
   }
 });
 
-router.post('/', async (req: Request<object, object, CreateOrderRequestBody>, res: Response) => {
+router.post('/', async (req, res) => {
   try {
-    const { 
-      orderFrom, customerName, customerId, address, orderDate, items, 
-      expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, 
-      customerNotes, priority, deliveryStatus, trackingId, deliveryPartner, 
-      actualDeliveryDate 
-    } = req.body;
+    const { orderFrom, customerName, customerId, address, orderDate, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, trackingId, deliveryPartner, actualDeliveryDate } = req.body;
 
     // Validate customer notes
     const notesValidation = validateCustomerNotes(customerNotes);
@@ -433,8 +372,8 @@ router.post('/', async (req: Request<object, object, CreateOrderRequestBody>, re
     }
 
     // Process order items
-    const itemsResult = await processOrderItems(items as OrderItemInput[]);
-    if (!itemsResult.valid || !itemsResult.orderItems || itemsResult.totalPrice === undefined) {
+    const itemsResult = await processOrderItems(items);
+    if (!itemsResult.valid) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: itemsResult.error });
     }
 
@@ -445,34 +384,34 @@ router.post('/', async (req: Request<object, object, CreateOrderRequestBody>, re
     }
 
     const newOrder = await Order.create({
-      orderFrom: orderFrom as OrderSource,
-      customerName: customerName!,
-      customerId: customerId!,
+      orderFrom,
+      customerName,
+      customerId,
       address,
       orderDate,
       items: itemsResult.orderItems,
       totalPrice: itemsResult.totalPrice,
-      expectedDeliveryDate: dateValidation.parsedDate ?? undefined,
-      paymentStatus: (paymentStatus || 'unpaid') as PaymentStatus,
+      expectedDeliveryDate: dateValidation.parsedDate,
+      paymentStatus: paymentStatus || 'unpaid',
       paidAmount: paymentValidation.parsedAmount,
-      confirmationStatus: (confirmationStatus || 'unconfirmed') as ConfirmationStatus,
+      confirmationStatus: confirmationStatus || 'unconfirmed',
       customerNotes: customerNotes || '',
       priority: priorityValidation.parsedPriority,
-      deliveryStatus: (deliveryStatus || 'not_shipped') as DeliveryStatus,
+      deliveryStatus: deliveryStatus || 'not_shipped',
       trackingId: trackingId || '',
       deliveryPartner: deliveryPartner || '',
-      actualDeliveryDate: actualDeliveryDateValidation.parsedDate ?? undefined
+      actualDeliveryDate: actualDeliveryDateValidation.parsedDate
     });
 
     logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
     res.status(201).json(newOrder);
   } catch (error) {
-    logger.error('Failed to create order', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to create order', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to create order' });
   }
 });
 
-router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
+router.get('/:id', async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -480,26 +419,18 @@ router.get('/:id', async (req: Request<{ id: string }>, res: Response) => {
     }
     res.json(order);
   } catch (error) {
-    logger.error('Failed to fetch order', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to fetch order', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to fetch order' });
   }
 });
 
-interface ValidationData {
-  paidAmountResult: ValidationResult & { parsedAmount?: number };
-  priorityResult: ValidationResult & { parsedPriority?: number };
-  dateResult: ValidationResult & { parsedDate?: Date | null };
-  actualDeliveryDateResult: ValidationResult & { parsedDate?: Date | null };
-  itemsResult: ItemsValidationResult;
-  paymentStatus: string | undefined;
-}
-
-async function validateUpdateRequest(requestBody: UpdateOrderRequestBody): Promise<{ valid: boolean; error?: string; data?: ValidationData }> {
-  const { 
-    customerName, customerId, items, expectedDeliveryDate, status, 
-    paymentStatus, paidAmount, confirmationStatus, customerNotes, 
-    priority, deliveryStatus, actualDeliveryDate 
-  } = requestBody;
+/**
+ * Validates all fields required for updating an order
+ * @param {Object} requestBody - The request body containing order update fields
+ * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
+ */
+async function validateUpdateRequest(requestBody) {
+  const { customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, actualDeliveryDate } = requestBody;
 
   const notesValidation = validateUpdateCustomerNotes(customerNotes);
   if (!notesValidation.valid) return notesValidation;
@@ -547,56 +478,47 @@ async function validateUpdateRequest(requestBody: UpdateOrderRequestBody): Promi
   };
 }
 
-interface UpdateData {
-  orderFrom?: OrderSource;
-  customerName?: string;
-  customerId?: string;
-  address?: string;
-  orderDate?: string;
-  status?: OrderStatus;
-  paymentStatus?: PaymentStatus;
-  confirmationStatus?: ConfirmationStatus;
-  customerNotes?: string;
-  deliveryStatus?: DeliveryStatus;
-  trackingId?: string;
-  deliveryPartner?: string;
-  expectedDeliveryDate?: Date | null;
-  paidAmount?: number;
-  priority?: number;
-  actualDeliveryDate?: Date | null;
-  items?: CreateOrderItemData[];
-  totalPrice?: number;
-}
-
-function addIfDefined<K extends keyof UpdateData>(target: UpdateData, key: K, value: UpdateData[K] | undefined): void {
+/**
+ * Adds a field to update data if it's defined
+ * @param {Object} target - The target object to update
+ * @param {string} key - The key to set
+ * @param {*} value - The value to set
+ */
+function addIfDefined(target, key, value) {
   if (value !== undefined) {
     target[key] = value;
   }
 }
 
-function buildUpdateData(validationData: ValidationData, requestBody: UpdateOrderRequestBody): UpdateData {
-  const { 
-    orderFrom, customerName, customerId, address, orderDate, status, 
-    paymentStatus, confirmationStatus, customerNotes, deliveryStatus, 
-    trackingId, deliveryPartner 
-  } = requestBody;
+/**
+ * Builds the update data object from validated request data
+ * @param {Object} validationData - The validated data from validateUpdateRequest
+ * @param {Object} requestBody - The original request body
+ * @returns {Object} - The update data object with only defined fields
+ */
+function buildUpdateData(validationData, requestBody) {
+  const { orderFrom, customerName, customerId, address, orderDate, status, paymentStatus, confirmationStatus, customerNotes, deliveryStatus, trackingId, deliveryPartner } = requestBody;
   const { paidAmountResult, priorityResult, dateResult, actualDeliveryDateResult, itemsResult } = validationData;
   
-  const updateData: UpdateData = {};
+  const updateData = {};
   
   // Direct fields from request body
-  addIfDefined(updateData, 'orderFrom', orderFrom as OrderSource | undefined);
-  addIfDefined(updateData, 'customerName', customerName);
-  addIfDefined(updateData, 'customerId', customerId);
-  addIfDefined(updateData, 'address', address);
-  addIfDefined(updateData, 'orderDate', orderDate);
-  addIfDefined(updateData, 'status', status as OrderStatus | undefined);
-  addIfDefined(updateData, 'paymentStatus', paymentStatus as PaymentStatus | undefined);
-  addIfDefined(updateData, 'confirmationStatus', confirmationStatus as ConfirmationStatus | undefined);
-  addIfDefined(updateData, 'customerNotes', customerNotes);
-  addIfDefined(updateData, 'deliveryStatus', deliveryStatus as DeliveryStatus | undefined);
-  addIfDefined(updateData, 'trackingId', trackingId);
-  addIfDefined(updateData, 'deliveryPartner', deliveryPartner);
+  const directFields = [
+    ['orderFrom', orderFrom],
+    ['customerName', customerName],
+    ['customerId', customerId],
+    ['address', address],
+    ['orderDate', orderDate],
+    ['status', status],
+    ['paymentStatus', paymentStatus],
+    ['confirmationStatus', confirmationStatus],
+    ['customerNotes', customerNotes],
+    ['deliveryStatus', deliveryStatus],
+    ['trackingId', trackingId],
+    ['deliveryPartner', deliveryPartner]
+  ];
+  
+  directFields.forEach(([key, value]) => addIfDefined(updateData, key, value));
   
   // Parsed fields from validation results
   addIfDefined(updateData, 'expectedDeliveryDate', dateResult.parsedDate);
@@ -609,10 +531,10 @@ function buildUpdateData(validationData: ValidationData, requestBody: UpdateOrde
   return updateData;
 }
 
-router.put('/:id', async (req: Request<{ id: string }, object, UpdateOrderRequestBody>, res: Response) => {
+router.put('/:id', async (req, res) => {
   try {
     const validation = await validateUpdateRequest(req.body);
-    if (!validation.valid || !validation.data) {
+    if (!validation.valid) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: validation.error });
     }
 
@@ -645,7 +567,7 @@ router.put('/:id', async (req: Request<{ id: string }, object, UpdateOrderReques
     logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
     res.json(updatedOrder);
   } catch (error) {
-    logger.error('Failed to update order', error instanceof Error ? error : new Error(String(error)));
+    logger.error('Failed to update order', error);
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ message: 'Failed to update order' });
   }
 });

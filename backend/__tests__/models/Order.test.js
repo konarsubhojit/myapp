@@ -5,8 +5,8 @@ jest.unstable_mockModule('../../db/connection', () => ({
   getDatabase: jest.fn(),
 }));
 
-const { getDatabase } = await import('../../db/connection.ts');
-const { default: Order } = await import('../../models/Order.ts');
+const { getDatabase } = await import('../../db/connection.js');
+const { default: Order } = await import('../../models/Order.js');
 
 describe('Order Model', () => {
   let mockDb;

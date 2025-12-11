@@ -1,4 +1,4 @@
-import { GOOGLE_ISSUERS, JWKS_CONFIG } from '../../constants/authConstants.ts';
+import { GOOGLE_ISSUERS, JWKS_CONFIG } from '../../constants/authConstants.js';
 
 describe('Auth Constants', () => {
   describe('GOOGLE_ISSUERS', () => {

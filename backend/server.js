@@ -1,11 +1,11 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 import { connectToDatabase } from './db/connection.js';
 import { createLogger } from './utils/logger.js';
 import { authMiddleware } from './middleware/auth.js';
-import { RATE_LIMIT as RATE_LIMIT_CONFIG, BODY_LIMITS, SERVER_CONFIG } from './constants/httpConstants.js';
+import { HTTP_STATUS, RATE_LIMIT, BODY_LIMITS, SERVER_CONFIG } from './constants/httpConstants.js';
 
 const logger = createLogger('Server');
 const app = express();
@@ -21,8 +21,8 @@ logger.info('Starting application', {
 });
 
 const limiter = rateLimit({
-  windowMs: RATE_LIMIT_CONFIG.WINDOW_MS,
-  max: RATE_LIMIT_CONFIG.MAX_REQUESTS,
+  windowMs: RATE_LIMIT.WINDOW_MS,
+  max: RATE_LIMIT.MAX_REQUESTS,
   message: { message: 'Too many requests, please try again later.' }
 });
 
@@ -37,7 +37,7 @@ app.use('/api/', limiter);
     await connectToDatabase();
     logger.info('PostgreSQL connection successful');
   } catch (err) {
-    logger.error('Database initialization failed', err instanceof Error ? err : new Error(String(err)));
+    logger.error('Database initialization failed', err);
     process.exit(1);
   }
 })();
@@ -55,7 +55,7 @@ app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 app.use('/api/feedbacks', authMiddleware, feedbackRoutes);
 
-app.get('/api/health', (_req: Request, res: Response) => {
+app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 

@@ -2,36 +2,34 @@ import { eq, and, gt } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { feedbackTokens } from '../db/schema.js';
 import { generateFeedbackToken } from '../utils/tokenUtils.js';
-import type { FeedbackToken, FeedbackTokenRow, OrderId } from '../types/index.js';
 
 const FeedbackToken = {
   /**
    * Generate a new feedback token for an order
-   * @param orderId - The order ID
-   * @param expiryDays - Days until token expires (default 30)
-   * @returns Token details
+   * @param {number} orderId - The order ID
+   * @param {number} expiryDays - Days until token expires (default 30)
+   * @returns {Promise<object>} - Token details
    */
-  async generateForOrder(orderId: OrderId | number, expiryDays = 30): Promise<FeedbackTokenRow> {
+  async generateForOrder(orderId, expiryDays = 30) {
     const db = getDatabase();
     const { token, expiresAt } = generateFeedbackToken(expiryDays);
-    const numericOrderId = typeof orderId === 'number' ? orderId : Number(orderId);
     
     const result = await db.insert(feedbackTokens).values({
-      orderId: numericOrderId,
+      orderId,
       token,
       expiresAt,
       used: 0
     }).returning();
     
-    return result[0] as FeedbackTokenRow;
+    return result[0];
   },
 
   /**
    * Validate a token and return associated order ID
-   * @param token - The token to validate
-   * @returns Token details if valid, null otherwise
+   * @param {string} token - The token to validate
+   * @returns {Promise<object|null>} - Token details if valid, null otherwise
    */
-  async validateToken(token: string): Promise<FeedbackTokenRow | null> {
+  async validateToken(token) {
     const db = getDatabase();
     const now = new Date();
     
@@ -49,14 +47,15 @@ const FeedbackToken = {
       return null;
     }
     
-    return result[0] as FeedbackTokenRow;
+    return result[0];
   },
 
   /**
    * Mark a token as used
-   * @param token - The token to mark as used
+   * @param {string} token - The token to mark as used
+   * @returns {Promise<void>}
    */
-  async markAsUsed(token: string): Promise<void> {
+  async markAsUsed(token) {
     const db = getDatabase();
     
     await db.update(feedbackTokens)
@@ -66,27 +65,26 @@ const FeedbackToken = {
 
   /**
    * Get or create a token for an order
-   * @param orderId - The order ID
-   * @returns Token details
+   * @param {number} orderId - The order ID
+   * @returns {Promise<object>} - Token details
    */
-  async getOrCreateForOrder(orderId: OrderId | number): Promise<FeedbackTokenRow> {
+  async getOrCreateForOrder(orderId) {
     const db = getDatabase();
     const now = new Date();
-    const numericOrderId = typeof orderId === 'number' ? orderId : Number(orderId);
     
     // Check if valid unused token exists
     const existingTokens = await db.select()
       .from(feedbackTokens)
       .where(
         and(
-          eq(feedbackTokens.orderId, numericOrderId),
+          eq(feedbackTokens.orderId, orderId),
           eq(feedbackTokens.used, 0),
           gt(feedbackTokens.expiresAt, now)
         )
       );
     
     if (existingTokens.length > 0) {
-      return existingTokens[0] as FeedbackTokenRow;
+      return existingTokens[0];
     }
     
     // Generate new token

@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { createLogger } from '../../utils/logger.ts';
+import { createLogger } from '../../utils/logger.js';
 
 describe('Logger', () => {
   let consoleLogSpy;

@@ -29,8 +29,8 @@ jest.unstable_mockModule('../../utils/logger', () => ({
   }),
 }));
 
-const { default: itemRoutes } = await import('../../routes/items.ts');
-const { default: Item } = await import('../../models/Item.ts');
+const { default: itemRoutes } = await import('../../routes/items.js');
+const { default: Item } = await import('../../models/Item.js');
 const { put, del } = await import('@vercel/blob');
 
 const app = express();
