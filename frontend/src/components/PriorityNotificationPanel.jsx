@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -67,8 +67,7 @@ function getNotificationMessage(order) {
  * Notification panel that shows priority orders
  * Shows a badge icon in header and floating panel when clicked
  */
-function PriorityNotificationPanel() {
-  const navigate = useNavigate();
+function PriorityNotificationPanel({ onNavigateToPriority }) {
   const { showWarning } = useNotification();
   const [open, setOpen] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -130,12 +129,12 @@ function PriorityNotificationPanel() {
 
   const handleOrderClick = () => {
     setOpen(false);
-    navigate('/priority');
+    onNavigateToPriority();
   };
 
   const handleViewAll = () => {
     setOpen(false);
-    navigate('/priority');
+    onNavigateToPriority();
   };
 
   const criticalCount = orders.filter(order => {
@@ -294,5 +293,9 @@ function PriorityNotificationPanel() {
     </>
   );
 }
+
+PriorityNotificationPanel.propTypes = {
+  onNavigateToPriority: PropTypes.func.isRequired
+};
 
 export default PriorityNotificationPanel;
