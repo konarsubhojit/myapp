@@ -13,7 +13,11 @@ export const items = pgTable('items', {
   imageUrl: text('image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   deletedAt: timestamp('deleted_at')
-});
+}, (table) => ({
+  // Performance indexes for common queries (as per ARCHITECTURE_ANALYSIS.md)
+  nameIdx: index('items_name_idx').on(table.name),
+  deletedAtIdx: index('items_deleted_at_idx').on(table.deletedAt)
+}));
 
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
@@ -36,7 +40,14 @@ export const orders = pgTable('orders', {
   deliveryPartner: text('delivery_partner'),
   actualDeliveryDate: timestamp('actual_delivery_date'),
   createdAt: timestamp('created_at').defaultNow().notNull()
-});
+}, (table) => ({
+  // Performance indexes for filtered queries (as per ARCHITECTURE_ANALYSIS.md)
+  orderIdIdx: index('orders_order_id_idx').on(table.orderId),
+  customerIdIdx: index('orders_customer_id_idx').on(table.customerId),
+  deliveryDateIdx: index('orders_delivery_date_idx').on(table.expectedDeliveryDate),
+  priorityIdx: index('orders_priority_idx').on(table.priority),
+  statusIdx: index('orders_status_idx').on(table.status)
+}));
 
 export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),

@@ -1,4 +1,4 @@
-import { eq, desc, sql, asc } from 'drizzle-orm';
+import { eq, desc, sql, asc, inArray } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { orders, orderItems } from '../db/schema.js';
 
@@ -91,14 +91,27 @@ const Order = {
     const db = getDatabase();
     const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
     
-    const ordersWithItems = await Promise.all(
-      ordersResult.map(async (order) => {
-        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-        return transformOrder(order, itemsResult);
-      })
-    );
+    // Fix N+1 query problem: Fetch all items in ONE query instead of looping
+    if (ordersResult.length === 0) {
+      return [];
+    }
     
-    return ordersWithItems;
+    const orderIds = ordersResult.map(o => o.id);
+    const allItems = await db.select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+    
+    // Group items by orderId for efficient lookup
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {});
+    
+    // Transform orders with their items
+    return ordersResult.map(order => 
+      transformOrder(order, itemsByOrderId[order.id] || [])
+    );
   },
 
   async findPaginated({ page = 1, limit = 10 }) {
@@ -118,11 +131,29 @@ const Order = {
       .limit(limit)
       .offset(offset);
     
-    const ordersWithItems = await Promise.all(
-      ordersResult.map(async (order) => {
-        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-        return transformOrder(order, itemsResult);
-      })
+    // Fix N+1 query problem: Fetch all items in ONE query instead of looping
+    if (ordersResult.length === 0) {
+      return {
+        orders: [],
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      };
+    }
+    
+    const orderIds = ordersResult.map(o => o.id);
+    const allItems = await db.select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+    
+    // Group items by orderId for efficient lookup
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {});
+    
+    // Transform orders with their items
+    const ordersWithItems = ordersResult.map(order => 
+      transformOrder(order, itemsByOrderId[order.id] || [])
     );
     
     return {
