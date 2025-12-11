@@ -55,7 +55,6 @@ describe('Feedback Model', () => {
           comment: 'Great product!',
           productQuality: 5,
           deliveryExperience: 4,
-          customerService: 5,
           isPublic: 1,
           responseText: null,
           respondedAt: null,
@@ -91,7 +90,6 @@ describe('Feedback Model', () => {
           comment: 'Great product!',
           productQuality: 5,
           deliveryExperience: 4,
-          customerService: 5,
           isPublic: 1,
           responseText: null,
           respondedAt: null,
@@ -137,7 +135,6 @@ describe('Feedback Model', () => {
         comment: 'Great product!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: 1,
         responseText: null,
         respondedAt: null,
@@ -188,7 +185,6 @@ describe('Feedback Model', () => {
         comment: 'Great product!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: 1,
         responseText: null,
         respondedAt: null,
@@ -231,7 +227,6 @@ describe('Feedback Model', () => {
         comment: 'Great product!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: true
       };
 
@@ -242,7 +237,6 @@ describe('Feedback Model', () => {
         comment: 'Great product!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: 1,
         responseText: null,
         respondedAt: null,
@@ -275,7 +269,6 @@ describe('Feedback Model', () => {
         comment: 'Great product!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: 1,
         responseText: null,
         respondedAt: null,
@@ -337,7 +330,6 @@ describe('Feedback Model', () => {
         avgRating: '4.50',
         avgProductQuality: '4.30',
         avgDeliveryExperience: '4.70',
-        avgCustomerService: '4.80',
         totalFeedbacks: 10
       });
     });
@@ -353,7 +345,6 @@ describe('Feedback Model', () => {
           comment: 'Excellent!',
           productQuality: 5,
           deliveryExperience: 5,
-          customerService: 5,
           isPublic: 1,
           responseText: null,
           respondedAt: null,

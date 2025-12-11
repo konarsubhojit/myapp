@@ -81,7 +81,6 @@ describe('API Service', () => {
         comment: 'Great service!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5
       };
 
       const mockResponse: FeedbackResponse = {
@@ -91,7 +90,6 @@ describe('API Service', () => {
         comment: 'Great service!',
         productQuality: 5,
         deliveryExperience: 4,
-        customerService: 5,
         isPublic: false,
         createdAt: '2024-01-01T00:00:00Z'
       };
@@ -126,7 +124,6 @@ describe('API Service', () => {
         comment: '',
         productQuality: 0,
         deliveryExperience: 0,
-        customerService: 0
       })).rejects.toThrow('Token expired');
     });
 
@@ -142,7 +139,6 @@ describe('API Service', () => {
         comment: '',
         productQuality: 0,
         deliveryExperience: 0,
-        customerService: 0
       })).rejects.toThrow('Failed to submit feedback');
     });
 
@@ -155,7 +151,6 @@ describe('API Service', () => {
         comment: '',
         productQuality: 0,
         deliveryExperience: 0,
-        customerService: 0
       })).rejects.toThrow('Network error');
     });
   });

@@ -96,7 +96,6 @@ describe('FeedbackForm', () => {
       comment: 'Great!',
       productQuality: 5,
       deliveryExperience: 5,
-      customerService: 5,
       isPublic: false,
       createdAt: '2024-01-01T00:00:00Z'
     });
@@ -187,7 +186,6 @@ describe('FeedbackForm', () => {
       comment: '',
       productQuality: null,
       deliveryExperience: null,
-      customerService: null,
       isPublic: false,
       createdAt: '2024-01-01T00:00:00Z'
     });

@@ -12,6 +12,7 @@ const createMockOrder = (overrides = {}) => ({
   customerId: '@johndoe',
   orderFrom: 'instagram',
   totalPrice: 300,
+  status: 'completed',
   orderDate: new Date().toISOString(),
   createdAt: new Date().toISOString(),
   items: [

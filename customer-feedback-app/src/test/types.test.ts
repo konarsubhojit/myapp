@@ -36,7 +36,6 @@ describe('Types', () => {
         comment: 'Great!',
         productQuality: 4,
         deliveryExperience: 3,
-        customerService: 5
       };
       
       expect(formData.rating).toBe(5);
