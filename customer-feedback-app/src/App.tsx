@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactElement } from 'react';
 import {
   Container,
   Paper,
@@ -9,13 +9,14 @@ import {
 } from '@mui/material';
 import FeedbackForm from './components/FeedbackForm';
 import { validateToken } from './services/api';
+import type { OrderInfo } from './types';
 
-function App() {
-  const [token, setToken] = useState(null);
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [hasExistingFeedback, setHasExistingFeedback] = useState(false);
+function App(): ReactElement {
+  const [token, setToken] = useState<string | null>(null);
+  const [order, setOrder] = useState<OrderInfo | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasExistingFeedback, setHasExistingFeedback] = useState<boolean>(false);
 
   useEffect(() => {
     // Get token from URL parameter
@@ -32,7 +33,7 @@ function App() {
     validateFeedbackToken(tokenParam);
   }, []);
 
-  const validateFeedbackToken = async (tokenParam) => {
+  const validateFeedbackToken = async (tokenParam: string): Promise<void> => {
     try {
       setLoading(true);
       
@@ -43,7 +44,7 @@ function App() {
       
       setLoading(false);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
     }
   };
@@ -66,7 +67,7 @@ function App() {
     );
   }
 
-  if (hasExistingFeedback) {
+  if (hasExistingFeedback && order) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Paper elevation={3} sx={{ p: 4 }}>
@@ -92,6 +93,14 @@ function App() {
             Feedback can only be submitted for completed orders. Your order (#{order.orderId}) is currently {order.status}.
           </Typography>
         </Paper>
+      </Container>
+    );
+  }
+
+  if (!order || !token) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Alert severity="error">Unable to load order information.</Alert>
       </Container>
     );
   }

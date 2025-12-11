@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState, type ChangeEvent, type FormEvent, type SyntheticEvent, type ReactElement } from 'react';
 import {
   Box,
   Button,
@@ -15,9 +14,11 @@ import {
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { createFeedback } from '../services/api';
+import type { FeedbackFormProps, FeedbackFormData } from '../types';
 
-const FeedbackForm = ({ token, order, onSuccess }) => {
-  const [formData, setFormData] = useState({
+// Using destructuring with underscore prefix to indicate unused variable
+const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): ReactElement => {
+  const [formData, setFormData] = useState<FeedbackFormData>({
     rating: 0,
     comment: '',
     productQuality: 0,
@@ -25,16 +26,19 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
     customerService: 0,
     isPublic: true
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
 
-  const handleChange = (field, value) => {
+  const handleChange = <K extends keyof FeedbackFormData>(
+    field: K, 
+    value: FeedbackFormData[K]
+  ): void => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError(null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (formData.rating === 0) {
@@ -58,10 +62,27 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
         onSuccess();
       }, 2000);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRatingChange = (field: 'rating' | 'productQuality' | 'deliveryExperience' | 'customerService') => 
+    (_event: SyntheticEvent, newValue: number | null): void => {
+      handleChange(field, newValue ?? 0);
+    };
+
+  const handleCommentChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    handleChange('comment', e.target.value);
+  };
+
+  const handlePublicChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    handleChange('isPublic', e.target.checked);
+  };
+
+  const handleCloseSuccess = (): void => {
+    setShowSuccess(false);
   };
 
   return (
@@ -81,7 +102,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
           name="overall-rating"
           aria-label="Overall rating, required"
           value={formData.rating}
-          onChange={(event, newValue) => handleChange('rating', newValue)}
+          onChange={handleRatingChange('rating')}
           size="large"
         />
       </Box>
@@ -100,7 +121,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
               name="product-quality"
               aria-label="Product quality rating"
               value={formData.productQuality}
-              onChange={(event, newValue) => handleChange('productQuality', newValue)}
+              onChange={handleRatingChange('productQuality')}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -111,7 +132,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
               name="delivery-experience"
               aria-label="Delivery experience rating"
               value={formData.deliveryExperience}
-              onChange={(event, newValue) => handleChange('deliveryExperience', newValue)}
+              onChange={handleRatingChange('deliveryExperience')}
             />
           </Grid>
           <Grid item xs={12} sm={4}>
@@ -122,7 +143,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
               name="customer-service"
               aria-label="Customer service rating"
               value={formData.customerService}
-              onChange={(event, newValue) => handleChange('customerService', newValue)}
+              onChange={handleRatingChange('customerService')}
             />
           </Grid>
         </Grid>
@@ -135,7 +156,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
         multiline
         rows={4}
         value={formData.comment}
-        onChange={(e) => handleChange('comment', e.target.value)}
+        onChange={handleCommentChange}
         placeholder="Tell us about your experience..."
         inputProps={{ maxLength: 1000 }}
         helperText={`${formData.comment.length}/1000 characters`}
@@ -147,7 +168,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
         control={
           <Checkbox
             checked={formData.isPublic}
-            onChange={(e) => handleChange('isPublic', e.target.checked)}
+            onChange={handlePublicChange}
           />
         }
         label="Make this feedback public (visible to other customers)"
@@ -170,7 +191,7 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
       <Snackbar
         open={showSuccess}
         autoHideDuration={2000}
-        onClose={() => setShowSuccess(false)}
+        onClose={handleCloseSuccess}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert severity="success" sx={{ width: '100%' }}>
@@ -179,16 +200,6 @@ const FeedbackForm = ({ token, order, onSuccess }) => {
       </Snackbar>
     </Box>
   );
-};
-
-FeedbackForm.propTypes = {
-  token: PropTypes.string.isRequired,
-  order: PropTypes.shape({
-    _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    orderId: PropTypes.string.isRequired,
-    status: PropTypes.string.isRequired
-  }).isRequired,
-  onSuccess: PropTypes.func.isRequired
 };
 
 export default FeedbackForm;

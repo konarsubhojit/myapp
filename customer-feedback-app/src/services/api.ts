@@ -1,9 +1,11 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import type { TokenValidationResponse, FeedbackSubmissionData, FeedbackResponse, ApiError } from '../types';
+
+const API_BASE_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
- * Get authorization headers (none needed for public feedback app)
+ * Get headers for API requests
  */
-function getHeaders() {
+function getHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
   };
@@ -12,7 +14,7 @@ function getHeaders() {
 /**
  * Validate token and get order details
  */
-export const validateToken = async (token) => {
+export const validateToken = async (token: string): Promise<TokenValidationResponse> => {
   const response = await fetch(`${API_BASE_URL}/public/feedbacks/validate-token`, {
     method: 'POST',
     headers: getHeaders(),
@@ -26,13 +28,14 @@ export const validateToken = async (token) => {
     throw new Error('Failed to validate feedback link');
   }
   
-  return response.json();
+  const data: TokenValidationResponse = await response.json();
+  return data;
 };
 
 /**
  * Submit feedback for an order (public endpoint)
  */
-export const createFeedback = async (feedback) => {
+export const createFeedback = async (feedback: FeedbackSubmissionData): Promise<FeedbackResponse> => {
   const response = await fetch(`${API_BASE_URL}/public/feedbacks`, {
     method: 'POST',
     headers: getHeaders(),
@@ -40,9 +43,10 @@ export const createFeedback = async (feedback) => {
   });
   
   if (!response.ok) {
-    const error = await response.json();
+    const error: ApiError = await response.json();
     throw new Error(error.message || 'Failed to submit feedback');
   }
   
-  return response.json();
+  const data: FeedbackResponse = await response.json();
+  return data;
 };
