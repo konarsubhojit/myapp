@@ -27,9 +27,9 @@ jest.unstable_mockModule('../../utils/logger', () => ({
   }),
 }));
 
-const { default: orderRoutes } = await import('../../routes/orders.ts');
-const { default: Order } = await import('../../models/Order.ts');
-const { default: Item } = await import('../../models/Item.ts');
+const { default: orderRoutes } = await import('../../routes/orders.js');
+const { default: Order } = await import('../../models/Order.js');
+const { default: Item } = await import('../../models/Item.js');
 
 const app = express();
 app.use(express.json());

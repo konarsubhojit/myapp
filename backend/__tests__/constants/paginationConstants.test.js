@@ -1,4 +1,4 @@
-import { PAGINATION } from '../../constants/paginationConstants.ts';
+import { PAGINATION } from '../../constants/paginationConstants.js';
 
 describe('Pagination Constants', () => {
   describe('PAGINATION', () => {

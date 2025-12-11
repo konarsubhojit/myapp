@@ -1,28 +1,17 @@
 import { drizzle } from 'drizzle-orm/neon-http';
-import { neon, NeonQueryFunction } from '@neondatabase/serverless';
+import { neon } from '@neondatabase/serverless';
 import { createLogger } from '../utils/logger.js';
 import * as schema from './schema.js';
 
 const logger = createLogger('PostgreSQL');
 
-type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
+let cached = global.neonDb;
 
-interface DbCache {
-  db: DrizzleDb | null;
+if (!cached) {
+  cached = global.neonDb = { db: null };
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var neonDb: DbCache | undefined;
-}
-
-let cached: DbCache = global.neonDb ?? { db: null };
-
-if (!global.neonDb) {
-  global.neonDb = cached;
-}
-
-export function getDatabase(): DrizzleDb {
+export function getDatabase() {
   const uri = process.env.NEON_DATABASE_URL;
 
   if (cached.db) {
@@ -37,19 +26,18 @@ export function getDatabase(): DrizzleDb {
   const startTime = Date.now();
 
   try {
-    const sql: NeonQueryFunction<false, false> = neon(uri);
+    const sql = neon(uri);
     cached.db = drizzle({ client: sql, schema });
     const duration = Date.now() - startTime;
     logger.info('Database connection established', { durationMs: duration });
     return cached.db;
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error('Database connection failed', { durationMs: duration, error: errorMessage });
+    logger.error('Database connection failed', { durationMs: duration, error: error.message });
     throw error;
   }
 }
 
-export async function connectToDatabase(): Promise<DrizzleDb> {
+export async function connectToDatabase() {
   return getDatabase();
 }

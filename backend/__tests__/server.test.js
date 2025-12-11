@@ -39,11 +39,11 @@ describe('Server Module', () => {
     process.env.AUTH_DISABLED = 'true';
     
     // Import mocked modules
-    const connectionModule = await import('../db/connection.ts');
+    const connectionModule = await import('../db/connection.js');
     connectToDatabase = connectionModule.connectToDatabase;
     
     // Import server.js to get the app
-    const serverModule = await import('../server.ts');
+    const serverModule = await import('../server.js');
     app = serverModule.default;
     
     // Wait for database connection to complete

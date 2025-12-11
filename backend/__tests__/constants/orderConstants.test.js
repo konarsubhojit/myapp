@@ -7,7 +7,7 @@ import {
   MAX_CUSTOMER_NOTES_LENGTH,
   PRIORITY_MIN,
   PRIORITY_MAX,
-} from '../../constants/orderConstants.ts';
+} from '../../constants/orderConstants.js';
 
 describe('Order Constants', () => {
   describe('VALID_ORDER_STATUSES', () => {

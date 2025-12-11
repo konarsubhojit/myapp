@@ -2,12 +2,10 @@
   "name": "order-management-backend",
   "version": "1.0.0",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "server.js",
   "scripts": {
-    "build": "tsc",
-    "start": "node --experimental-specifier-resolution=node dist/server.js",
-    "dev": "npx tsx server.ts",
-    "typecheck": "tsc --noEmit",
+    "start": "node server.js",
+    "dev": "node server.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
@@ -31,17 +29,9 @@
     "postgres": "^3.4.7"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^25.0.0",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
-    "supertest": "^7.1.4",
-    "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "supertest": "^7.1.4"
   }
 }
