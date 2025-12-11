@@ -92,6 +92,9 @@ const Order = {
     const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
     
     // Fix N+1 query problem: Fetch all items in ONE query instead of looping
+    // This optimization reduces 101 queries to 2 queries for 100 orders (98% reduction)
+    // Before: 1 query for orders + N queries for items = O(n+1)
+    // After: 1 query for orders + 1 query for all items = O(2)
     if (ordersResult.length === 0) {
       return [];
     }
@@ -132,6 +135,8 @@ const Order = {
       .offset(offset);
     
     // Fix N+1 query problem: Fetch all items in ONE query instead of looping
+    // This optimization reduces queries from O(n+1) to O(2) for better performance
+    // Particularly important for paginated results with many items per order
     if (ordersResult.length === 0) {
       return {
         orders: [],
