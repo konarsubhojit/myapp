@@ -26,6 +26,7 @@ This is an **Order Management System** - a full-stack application for managing o
 - **Image Storage**: Vercel Blob Storage
 - **Testing**: Jest (backend), Vitest (frontend)
 - **Linting**: ESLint
+- **Navigation**: State-based tab navigation (no React Router - Vercel compatible)
 
 ## Project Structure
 
@@ -49,8 +50,8 @@ This is an **Order Management System** - a full-stack application for managing o
 │   │   ├── config/      # Configuration files
 │   │   ├── test/        # Vitest test files
 │   │   ├── utils/       # Utility functions
-│   │   ├── App.jsx      # Main App component
-│   │   └── main.jsx     # Entry point
+│   │   ├── App.tsx      # Main App component (state-based navigation)
+│   │   └── main.tsx     # Entry point
 │   └── package.json
 └── package.json       # Root package.json with workspace scripts
 ```
@@ -188,6 +189,68 @@ When adding new features:
 - Test API endpoints with appropriate HTTP methods
 - Run tests with coverage to ensure adequate test coverage
 - Always use sonarqube MCP to review code changes and fix them
+
+## Pre-Commit Checklist
+
+**ALWAYS run these commands locally before committing to prevent CI/CD pipeline failures:**
+
+### 1. Install Dependencies (if not already installed)
+```bash
+npm run install:all
+```
+
+### 2. Frontend Checks
+```bash
+# Lint the frontend code
+cd frontend && npm run lint
+
+# Build the frontend
+cd frontend && npm run build
+
+# Run frontend tests
+cd frontend && npm test
+
+# Type checking
+cd frontend && npm run typecheck
+```
+
+### 3. Backend Checks
+```bash
+# Run backend tests
+cd backend && npm test
+```
+
+### 4. Customer Feedback App Checks
+```bash
+# Install dependencies (if not already installed)
+cd customer-feedback-app && npm install
+
+# Build the customer feedback app
+cd customer-feedback-app && npm run build
+
+# Run customer feedback app tests
+cd customer-feedback-app && npm test
+```
+
+### Quick Command Summary from Root
+```bash
+# Lint frontend
+cd frontend && npm run lint && cd ..
+
+# Build frontend
+cd frontend && npm run build && cd ..
+
+# Test frontend
+cd frontend && npm test && cd ..
+
+# Test backend
+cd backend && npm test && cd ..
+
+# Build customer feedback app
+cd customer-feedback-app && npm run build && cd ..
+```
+
+**Note**: Running these checks locally saves time and prevents pipeline failures. The CI/CD pipeline runs the same checks automatically.
 
 ## Common Tasks
 
