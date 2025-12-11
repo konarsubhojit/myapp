@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { APP_VERSION } from '../../config/version';
 
 // Mock all context providers and components
@@ -38,7 +37,7 @@ vi.mock('../../components/PriorityDashboard', () => ({
 }));
 
 vi.mock('../../components/ItemPanel', () => ({
-  default: () => <div>Item Panel</div>,
+  default: () => <div data-testid="item-panel">Item Panel</div>,
 }));
 
 vi.mock('../../components/OrderForm', () => ({
@@ -51,6 +50,10 @@ vi.mock('../../components/OrderHistory', () => ({
 
 vi.mock('../../components/SalesReport', () => ({
   default: () => <div>Sales Report</div>,
+}));
+
+vi.mock('../../components/FeedbackPanel', () => ({
+  default: () => <div>Feedback Panel</div>,
 }));
 
 vi.mock('../../components/Login', () => ({
@@ -66,11 +69,7 @@ describe('App', () => {
   });
 
   it('should render header with application title', async () => {
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Wait for loading to complete and check for title
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
@@ -78,11 +77,7 @@ describe('App', () => {
 
   it('should have version tooltip on header title', async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Find the title heading
     const title = await screen.findByRole('heading', { level: 1 });
@@ -94,4 +89,28 @@ describe('App', () => {
     const tooltip = await screen.findByRole('tooltip');
     expect(tooltip).toHaveTextContent(`Version ${APP_VERSION}`);
   });
+
+  it('should not show app-level loading screen when authenticated', async () => {
+    render(<App />);
+    
+    // Should not show "Loading your data..." message
+    expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
+    
+    // Should show the header and tabs immediately (not blocked by loading)
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+  });
+
+  it('should render content immediately without blocking loading screen', async () => {
+    render(<App />);
+    
+    // Header should be visible immediately
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    
+    // Navigation tabs should be visible
+    expect(screen.getByRole('tablist', { name: 'Main navigation' })).toBeInTheDocument();
+    
+    // Should not show blocking loading screen
+    expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
+  });
 });
+
