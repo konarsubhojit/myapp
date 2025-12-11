@@ -153,6 +153,9 @@ function SalesReport({ orders }) {
   const selectedView = VALID_VIEWS.has(viewParam) ? viewParam : 'overview';
   const selectedStatusFilter = VALID_STATUS_FILTERS.has(statusFilterParam) ? statusFilterParam : 'completed';
 
+  // Create stable reference for useMemo dependency
+  const stableStatusFilter = useMemo(() => selectedStatusFilter, [selectedStatusFilter]);
+
   // Update URL when state changes
   const updateUrl = useCallback((range, view, statusFilter) => {
     const params = new URLSearchParams();
@@ -188,7 +191,7 @@ function SalesReport({ orders }) {
         const isInTimeRange = orderDate >= cutoffDate;
         
         // Apply status filter
-        const matchesStatusFilter = selectedStatusFilter === 'all' || order.status === 'completed' || order.status == null;
+        const matchesStatusFilter = stableStatusFilter === 'all' || order.status === 'completed' || order.status == null;
         
         return isInTimeRange && matchesStatusFilter;
       });
@@ -233,7 +236,7 @@ function SalesReport({ orders }) {
     });
 
     return results;
-  }, [orders, selectedStatusFilter]);
+  }, [orders, stableStatusFilter]);
 
   const currentStats = analytics[selectedRange] || {
     totalSales: 0,
