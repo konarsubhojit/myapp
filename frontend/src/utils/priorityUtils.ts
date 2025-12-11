@@ -12,6 +12,7 @@
 
 type PriorityLevel = 'critical' | 'urgent' | 'medium' | 'normal';
 type PriorityStatusType = 'overdue' | 'critical' | 'urgent' | 'medium' | 'normal';
+type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
 
 export interface PriorityStatus {
   status: PriorityStatusType;
@@ -23,6 +24,7 @@ export interface PriorityStatus {
 
 interface PriorityOptions {
   shortLabels?: boolean;
+  orderStatus?: OrderStatus | string;
 }
 
 /**
@@ -103,9 +105,13 @@ export function getPriorityStatus(
   expectedDeliveryDate: string | null | undefined, 
   options: PriorityOptions = {}
 ): PriorityStatus | null {
-  if (!expectedDeliveryDate) return null;
+  // Don't show priority for completed or cancelled orders
+  const { shortLabels = false, orderStatus } = options;
+  if (orderStatus === 'completed' || orderStatus === 'cancelled') {
+    return null;
+  }
   
-  const { shortLabels = false } = options;
+  if (!expectedDeliveryDate) return null;
   
   const today = new Date();
   today.setHours(0, 0, 0, 0);

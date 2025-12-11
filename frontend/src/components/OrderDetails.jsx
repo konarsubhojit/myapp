@@ -33,7 +33,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     startEditing,
   } = useOrderDetails(orderId, showSuccess, showError, onOrderUpdated);
 
-  const priority = order ? getPriorityStatus(order.expectedDeliveryDate) : null;
+  const priority = order ? getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status }) : null;
 
   const handleDuplicate = () => {
     onDuplicateOrder(orderId);
