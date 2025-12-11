@@ -83,7 +83,6 @@ function AppContent(): ReactElement {
   const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
   const [items, setItems] = useState<Item[]>([])
   const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const [currentTab, setCurrentTab] = useState<number>(0)
   const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null)
@@ -121,21 +120,18 @@ function AppContent(): ReactElement {
     setCurrentTab(1) // Switch to Create Order tab
   }, [])
 
+  // Fetch initial data when authenticated (lazy loading for OrderForm)
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     let isMounted = true;
     
-    const loadData = async (): Promise<void> => {
-      if (!isAuthenticated) {
-        if (isMounted) setLoading(false)
-        return
-      }
-      
-      if (isMounted) setLoading(true)
+    const loadInitialData = async (): Promise<void> => {
+      // Only fetch items for OrderForm - ItemPanel handles its own data
       await Promise.all([fetchItems(), fetchOrders()])
-      if (isMounted) setLoading(false)
     }
     
-    loadData()
+    loadInitialData()
     
     return () => {
       isMounted = false
@@ -158,10 +154,6 @@ function AppContent(): ReactElement {
   // Show login if not authenticated
   if (!isAuthenticated) {
     return <Login />
-  }
-
-  if (loading) {
-    return <LoadingScreen message="Loading your data..." />
   }
 
   return (
