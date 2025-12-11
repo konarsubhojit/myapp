@@ -137,7 +137,7 @@ describe('useUrlSync', () => {
       result.current.updateUrl({ second: 'value2' });
     });
 
-    expect(result.current.getParam('first')).toBeNull();
+    expect(result.current.getParam('first')).toBe('');
     expect(result.current.getParam('second')).toBe('value2');
   });
 
@@ -155,11 +155,11 @@ describe('useUrlSync', () => {
     expect(result.current.getParam('sort')).toBe('name');
   });
 
-  it('should return null for getParam when param is not set and no default provided', () => {
+  it('should return empty string for getParam when param is not set and no default provided', () => {
     const { result } = renderHook(() => useUrlSync(), { wrapper });
 
     const value = result.current.getParam('missing');
-    expect(value).toBeNull();
+    expect(value).toBe('');
   });
 
   it('should return 0 for getIntParam when param is not set and no default provided', () => {

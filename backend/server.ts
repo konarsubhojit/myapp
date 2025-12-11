@@ -1,0 +1,69 @@
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import 'dotenv/config';
+import { connectToDatabase } from './db/connection.js';
+import { createLogger } from './utils/logger.js';
+import { authMiddleware } from './middleware/auth.js';
+import { RATE_LIMIT as RATE_LIMIT_CONFIG, BODY_LIMITS, SERVER_CONFIG } from './constants/httpConstants.js';
+
+const logger = createLogger('Server');
+const app = express();
+
+app.set('trust proxy', SERVER_CONFIG.TRUST_PROXY_LEVEL);
+
+const PORT = process.env.PORT || SERVER_CONFIG.DEFAULT_PORT;
+logger.info('Starting application', { 
+  nodeEnv: process.env.NODE_ENV || 'development',
+  port: PORT,
+  databaseConfigured: !!process.env.NEON_DATABASE_URL,
+  authEnabled: process.env.AUTH_DISABLED !== 'true'
+});
+
+const limiter = rateLimit({
+  windowMs: RATE_LIMIT_CONFIG.WINDOW_MS,
+  max: RATE_LIMIT_CONFIG.MAX_REQUESTS,
+  message: { message: 'Too many requests, please try again later.' }
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: BODY_LIMITS.JSON }));
+app.use(express.urlencoded({ limit: BODY_LIMITS.URLENCODED, extended: true }));
+app.use('/api/', limiter);
+
+(async () => {
+  try {
+    await connectToDatabase();
+    logger.info('PostgreSQL connection successful');
+  } catch (err) {
+    logger.error('Database initialization failed', err instanceof Error ? err : new Error(String(err)));
+    process.exit(1);
+  }
+})();
+
+import itemRoutes from './routes/items.js';
+import orderRoutes from './routes/orders.js';
+import feedbackRoutes from './routes/feedbacks.js';
+import publicFeedbackRoutes from './routes/publicFeedbacks.js';
+
+// Public routes (no authentication)
+app.use('/api/public/feedbacks', publicFeedbackRoutes);
+
+// Authenticated routes
+app.use('/api/items', authMiddleware, itemRoutes);
+app.use('/api/orders', authMiddleware, orderRoutes);
+app.use('/api/feedbacks', authMiddleware, feedbackRoutes);
+
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok' });
+});
+
+// Only start server if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    logger.info(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;

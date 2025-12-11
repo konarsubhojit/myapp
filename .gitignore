@@ -23,6 +23,8 @@ npm-debug.log*
 # Build output
 dist/
 build/
+*.d.ts.map
+*.tsbuildinfo
 
 # Testing
 coverage/

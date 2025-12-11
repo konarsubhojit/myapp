@@ -73,6 +73,10 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
       - name: Run backend tests with coverage
         working-directory: backend
         run: npm run test:coverage
@@ -101,14 +105,18 @@ jobs:
         working-directory: customer-feedback-app
         run: npm ci
 
+      - name: Run customer feedback app tests with coverage
+        working-directory: customer-feedback-app
+        run: npm run test:coverage
+
       - name: Build customer feedback app
         working-directory: customer-feedback-app
         run: npm run build
         env:
           VITE_APP_VERSION: ${{ steps.version.outputs.full_version }}
 
-      # SonarQube analysis with coverage from both backend and frontend
-      # Coverage is generated in backend/coverage/lcov.info and frontend/coverage/lcov.info
+      # SonarQube analysis with coverage from backend, frontend, and customer-feedback-app
+      # Coverage is generated in backend/coverage/lcov.info, frontend/coverage/lcov.info, and customer-feedback-app/coverage/lcov.info
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         env:
@@ -119,11 +127,11 @@ jobs:
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.projectVersion=${{ steps.version.outputs.full_version }}
-            -Dsonar.sources=backend,frontend/src
-            -Dsonar.tests=backend/__tests__,frontend/src/test
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,frontend/src/test/**
-            -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
-            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,**/test/**,**/__tests__/**
+            -Dsonar.sources=backend,frontend/src,customer-feedback-app/src
+            -Dsonar.tests=backend/__tests__,frontend/src/test,customer-feedback-app/src/test
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.ts,**/*.spec.ts,**/*.test.jsx,**/*.spec.jsx,**/*.test.tsx,**/*.spec.tsx,frontend/src/test/**,customer-feedback-app/src/test/**
+            -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info,customer-feedback-app/coverage/lcov.info
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.ts,**/*.spec.ts,**/*.test.jsx,**/*.spec.jsx,**/*.test.tsx,**/*.spec.tsx,**/test/**,**/__tests__/**
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
 
       - name: SonarQube Quality Gate Check
@@ -143,6 +151,14 @@ jobs:
           path: backend/coverage
           retention-days: 7
 
+      - name: Upload backend build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist-v${{ steps.version.outputs.full_version }}
+          path: backend/dist
+          retention-days: 7
+
       - name: Upload frontend coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -157,6 +173,14 @@ jobs:
         with:
           name: frontend-dist-v${{ steps.version.outputs.full_version }}
           path: frontend/dist
+          retention-days: 7
+
+      - name: Upload customer feedback app coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-feedback-app-coverage-v${{ steps.version.outputs.full_version }}
+          path: customer-feedback-app/coverage
           retention-days: 7
 
       - name: Upload customer feedback app build
