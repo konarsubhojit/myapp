@@ -82,10 +82,6 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Run frontend tests with coverage
-        working-directory: frontend
-        run: npm run test:coverage
-
       - name: Run ESLint
         working-directory: frontend
         run: npm run lint
@@ -95,6 +91,10 @@ jobs:
         run: npm run build
         env:
           VITE_APP_VERSION: ${{ steps.version.outputs.full_version }}
+      
+      - name: Run frontend tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
 
       # Customer Feedback App steps
       - name: Install customer feedback app dependencies
