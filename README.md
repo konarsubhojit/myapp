@@ -137,6 +137,38 @@ VITE_API_URL=http://localhost:5000/api
 VITE_GOOGLE_CLIENT_ID=...
 ```
 
+### Google OAuth Setup
+
+To configure Google OAuth authentication:
+
+1. **Create Google Cloud Project**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+
+2. **Enable Google OAuth**:
+   - Navigate to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Choose "Web application" as the application type
+
+3. **Configure Authorized Redirect URIs**:
+   - Add the following URIs based on your environment:
+     - **Local Development**: `http://localhost:5173`
+     - **Production**: Your deployed frontend URL (e.g., `https://your-app.vercel.app`)
+   - **Important**: The redirect URI must exactly match your application URL (including protocol and port)
+
+4. **Configure Authorized JavaScript Origins**:
+   - Add the same URLs as above (without any path)
+   - Example: `http://localhost:5173` and `https://your-app.vercel.app`
+
+5. **Copy Credentials**:
+   - Copy the "Client ID" 
+   - Add it to both `backend/.env` (as `GOOGLE_CLIENT_ID`) and `frontend/.env` (as `VITE_GOOGLE_CLIENT_ID`)
+
+**Note**: If you encounter "stuck at transform URL" errors during login, verify that:
+- The redirect URI is correctly configured in Google Cloud Console
+- The URL matches exactly (http vs https, www vs non-www)
+- Third-party cookies are not blocked in your browser
+
 ## Documentation
 
 - [Complete Project Documentation](./PROJECT_DOCUMENTATION.md) - Full technical documentation

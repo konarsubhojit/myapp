@@ -98,6 +98,7 @@ function Login() {
               size="large"
               width="100%"
               text="signin_with"
+              ux_mode="redirect"
             />
             
             <Button
