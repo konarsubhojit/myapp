@@ -6,8 +6,8 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     // Map imports with .js extension to the actual file
-    // Only apply to our source files (starting with ./ or ../)
-    '^(\\.\\.?/.+)\\.js$': '$1'
+    // Matches relative paths like ./file.js or ../folder/file.js
+    '^(\\./.*|\\.\\./.*)\\.js$': '$1'
   },
   collectCoverageFrom: [
     '**/*.ts',
@@ -30,7 +30,7 @@ export default {
       useESM: true,
       tsconfig: {
         module: 'ESNext',
-        moduleResolution: 'node',
+        moduleResolution: 'NodeNext',
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
         isolatedModules: true
