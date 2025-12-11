@@ -124,19 +124,12 @@ function AppContent(): ReactElement {
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    let isMounted = true;
-    
     const loadInitialData = async (): Promise<void> => {
-      // Only fetch items for OrderForm - ItemPanel handles its own data
-      if (!isMounted) return;
+      // Fetch items and orders for OrderForm - ItemPanel handles its own data
       await Promise.all([fetchItems(), fetchOrders()])
     }
     
     loadInitialData()
-    
-    return () => {
-      isMounted = false
-    }
   }, [isAuthenticated, fetchItems, fetchOrders])
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {

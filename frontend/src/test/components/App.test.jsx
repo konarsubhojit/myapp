@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
 import { APP_VERSION } from '../../config/version';
 
 // Mock all context providers and components
@@ -70,11 +69,7 @@ describe('App', () => {
   });
 
   it('should render header with application title', async () => {
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Wait for loading to complete and check for title
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
@@ -82,11 +77,7 @@ describe('App', () => {
 
   it('should have version tooltip on header title', async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Find the title heading
     const title = await screen.findByRole('heading', { level: 1 });
@@ -100,11 +91,7 @@ describe('App', () => {
   });
 
   it('should not show app-level loading screen when authenticated', async () => {
-    render(
-      <MemoryRouter initialEntries={['/items']}>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Should not show "Loading your data..." message
     expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
@@ -114,11 +101,7 @@ describe('App', () => {
   });
 
   it('should render content immediately without blocking loading screen', async () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
     
     // Header should be visible immediately
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
