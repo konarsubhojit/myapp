@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { validateToken, createFeedback } from '../services/api';
-import type { TokenValidationResponse, FeedbackSubmissionData, FeedbackResponse, OrderId } from '../types';
+import type { TokenValidationResponse, FeedbackSubmissionData, FeedbackResponse, OrderId, FeedbackId } from '../types';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -86,8 +86,8 @@ describe('API Service', () => {
       };
 
       const mockResponse: FeedbackResponse = {
-        id: 1,
-        orderId: 123,
+        id: 1 as FeedbackId,
+        orderId: 123 as OrderId,
         rating: 5,
         comment: 'Great service!',
         productQuality: 5,

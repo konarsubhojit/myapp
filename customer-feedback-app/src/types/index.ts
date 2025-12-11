@@ -4,10 +4,15 @@ type Brand<T, TBrand extends string> = T & { readonly [__brand]: TBrand };
 
 // Branded ID types
 export type OrderId = Brand<number, 'OrderId'>;
+export type FeedbackId = Brand<number, 'FeedbackId'>;
 
 // Helper functions to create branded IDs
 export function createOrderId(id: number): OrderId {
   return id as OrderId;
+}
+
+export function createFeedbackId(id: number): FeedbackId {
+  return id as FeedbackId;
 }
 
 // Order status type
@@ -43,8 +48,8 @@ export interface FeedbackSubmissionData extends FeedbackFormData {
 
 // Feedback response from API
 export interface FeedbackResponse {
-  id: number;
-  orderId: number;
+  id: FeedbackId;
+  orderId: OrderId;
   rating: number;
   comment: string;
   productQuality: number | null;

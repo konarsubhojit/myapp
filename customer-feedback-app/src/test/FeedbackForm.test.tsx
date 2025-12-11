@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FeedbackForm from '../components/FeedbackForm';
 import * as api from '../services/api';
-import type { OrderInfo, OrderId } from '../types';
+import type { OrderInfo, OrderId, FeedbackId } from '../types';
 
 // Mock the API
 vi.mock('../services/api');
@@ -108,8 +108,8 @@ describe('FeedbackForm', () => {
 
   it('should submit feedback successfully when rating is selected', async () => {
     vi.mocked(api.createFeedback).mockResolvedValueOnce({
-      id: 1,
-      orderId: 1,
+      id: 1 as FeedbackId,
+      orderId: 1 as OrderId,
       rating: 5,
       comment: 'Great!',
       productQuality: 5,
@@ -199,8 +199,8 @@ describe('FeedbackForm', () => {
 
     // Resolve the promise
     resolvePromise!({
-      id: 1,
-      orderId: 1,
+      id: 1 as FeedbackId,
+      orderId: 1 as OrderId,
       rating: 5,
       comment: '',
       productQuality: null,
