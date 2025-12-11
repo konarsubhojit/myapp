@@ -10,9 +10,10 @@
  * 🟢 NORMAL: >14 days (comfortable)
  */
 
+import type { OrderStatus } from '../types';
+
 type PriorityLevel = 'critical' | 'urgent' | 'medium' | 'normal';
 type PriorityStatusType = 'overdue' | 'critical' | 'urgent' | 'medium' | 'normal';
-type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
 
 export interface PriorityStatus {
   status: PriorityStatusType;
