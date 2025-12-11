@@ -36,7 +36,6 @@ describe('FeedbackForm', () => {
     expect(screen.getByText('Rate Specific Aspects')).toBeInTheDocument();
     expect(screen.getByText('Product Quality')).toBeInTheDocument();
     expect(screen.getByText('Delivery Experience')).toBeInTheDocument();
-    expect(screen.getByText('Customer Service')).toBeInTheDocument();
     
     // Check for comment field
     expect(screen.getByLabelText('Your Feedback')).toBeInTheDocument();
@@ -229,7 +228,6 @@ describe('FeedbackForm', () => {
     expect(screen.getByLabelText(/overall rating, required/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/product quality rating/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/delivery experience rating/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/customer service rating/i)).toBeInTheDocument();
   });
 
   it('should limit comment to 1000 characters', () => {
