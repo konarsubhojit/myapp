@@ -4,7 +4,7 @@ import {
   MAX_COMMENT_LENGTH,
   MAX_RESPONSE_LENGTH,
   RATING_LABELS
-} from '../../constants/feedbackConstants.js';
+} from '../../constants/feedbackConstants.ts';
 
 describe('Feedback Constants', () => {
   describe('Rating boundaries', () => {

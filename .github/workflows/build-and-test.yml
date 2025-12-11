@@ -73,6 +73,10 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Build backend
+        working-directory: backend
+        run: npm run build
+
       - name: Run backend tests with coverage
         working-directory: backend
         run: npm run test:coverage
@@ -121,9 +125,9 @@ jobs:
             -Dsonar.projectVersion=${{ steps.version.outputs.full_version }}
             -Dsonar.sources=backend,frontend/src
             -Dsonar.tests=backend/__tests__,frontend/src/test
-            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,frontend/src/test/**
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/coverage/**,**/*.test.js,**/*.spec.js,**/*.test.ts,**/*.spec.ts,**/*.test.jsx,**/*.spec.jsx,**/*.test.tsx,**/*.spec.tsx,frontend/src/test/**
             -Dsonar.javascript.lcov.reportPaths=backend/coverage/lcov.info,frontend/coverage/lcov.info
-            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.jsx,**/*.spec.jsx,**/test/**,**/__tests__/**
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.ts,**/*.spec.ts,**/*.test.jsx,**/*.spec.jsx,**/*.test.tsx,**/*.spec.tsx,**/test/**,**/__tests__/**
             -Dsonar.branch.name=${{ github.head_ref || github.ref_name }}
 
       - name: SonarQube Quality Gate Check
@@ -141,6 +145,14 @@ jobs:
         with:
           name: backend-coverage-v${{ steps.version.outputs.full_version }}
           path: backend/coverage
+          retention-days: 7
+
+      - name: Upload backend build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist-v${{ steps.version.outputs.full_version }}
+          path: backend/dist
           retention-days: 7
 
       - name: Upload frontend coverage

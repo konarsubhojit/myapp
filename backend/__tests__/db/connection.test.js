@@ -17,8 +17,8 @@ jest.unstable_mockModule('@neondatabase/serverless', () => ({
   neon: jest.fn(() => ({ mockSql: true })),
 }));
 
-const { createLogger } = await import('../../utils/logger.js');
-const { connectToDatabase, getDatabase } = await import('../../db/connection.js');
+const { createLogger } = await import('../../utils/logger.ts');
+const { connectToDatabase, getDatabase } = await import('../../db/connection.ts');
 
 describe('Database Connection', () => {
   const originalEnv = process.env.NEON_DATABASE_URL;

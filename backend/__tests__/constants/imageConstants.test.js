@@ -1,4 +1,4 @@
-import { IMAGE_CONFIG } from '../../constants/imageConstants.js';
+import { IMAGE_CONFIG } from '../../constants/imageConstants.ts';
 
 describe('Image Constants', () => {
   describe('IMAGE_CONFIG', () => {
