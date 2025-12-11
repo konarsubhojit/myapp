@@ -366,7 +366,7 @@ describe('AuthContext', () => {
         expect(result.current.user).toBeDefined();
         expect(result.current.user.email).toBe('test@example.com');
         expect(result.current.user.name).toBe('test@example.com'); // Falls back to email
-        expect(result.current.user.picture).toBeNull();
+        expect(result.current.user.picture).toBeUndefined();
       });
     });
   });
