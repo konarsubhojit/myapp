@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { useState } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
@@ -14,8 +13,16 @@ import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDialogTitle from './common/OrderDialogTitle';
 import OrderDialogContent from './common/OrderDialogContent';
 import { generateFeedbackToken } from '../services/api';
+import type { OrderId } from '../types';
 
-function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
+interface OrderDetailsProps {
+  orderId: OrderId;
+  onClose: () => void;
+  onOrderUpdated: () => void;
+  onDuplicateOrder?: (orderId: string) => void;
+}
+
+function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }: OrderDetailsProps) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
   const [generatingToken, setGeneratingToken] = useState(false);
@@ -36,11 +43,15 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
   const priority = order ? getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status }) : null;
 
   const handleDuplicate = () => {
-    onDuplicateOrder(orderId);
+    if (onDuplicateOrder) {
+      onDuplicateOrder(String(orderId));
+    }
     onClose();
   };
 
   const handleGenerateFeedbackLink = async () => {
+    if (!order) return;
+    
     try {
       setGeneratingToken(true);
       // Generate secure token via API
@@ -58,7 +69,8 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
         showSuccess(`Feedback link: ${feedbackLink}`);
       });
     } catch (err) {
-      showError('Failed to generate feedback link: ' + err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      showError('Failed to generate feedback link: ' + errorMessage);
     } finally {
       setGeneratingToken(false);
     }
@@ -92,7 +104,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
           editForm={editForm}
           formatPrice={formatPrice}
           priority={priority}
-          onEditChange={handleEditChange}
+          onEditChange={(field, value) => handleEditChange(field as keyof typeof editForm, value)}
         />
 
         <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
@@ -131,12 +143,5 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }) {
     </>
   );
 }
-
-OrderDetails.propTypes = {
-  orderId: PropTypes.string.isRequired,
-  onClose: PropTypes.func.isRequired,
-  onOrderUpdated: PropTypes.func.isRequired,
-  onDuplicateOrder: PropTypes.func,
-};
 
 export default OrderDetails;

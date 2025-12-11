@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -19,11 +18,16 @@ import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import { getPriorityOrders } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
 import { MILLISECONDS, POLLING_INTERVALS } from '../constants/timeConstants';
+import type { Order } from '../types';
+
+interface PriorityNotificationPanelProps {
+  onNavigateToPriority: () => void;
+}
 
 /**
  * Calculate how many days until/since delivery date
  */
-function getDaysUntilDelivery(deliveryDate) {
+function getDaysUntilDelivery(deliveryDate: string | null): number | null {
   if (!deliveryDate) return null;
   
   const today = new Date();
@@ -31,14 +35,14 @@ function getDaysUntilDelivery(deliveryDate) {
   const delivery = new Date(deliveryDate);
   delivery.setHours(0, 0, 0, 0);
   
-  const diffDays = Math.ceil((delivery - today) / MILLISECONDS.PER_DAY);
+  const diffDays = Math.ceil((delivery.getTime() - today.getTime()) / MILLISECONDS.PER_DAY);
   return diffDays;
 }
 
 /**
  * Get notification message for an order
  */
-function getNotificationMessage(order) {
+function getNotificationMessage(order: Order): string {
   const days = getDaysUntilDelivery(order.expectedDeliveryDate);
   
   if (days !== null) {
@@ -67,10 +71,10 @@ function getNotificationMessage(order) {
  * Notification panel that shows priority orders
  * Shows a badge icon in header and floating panel when clicked
  */
-function PriorityNotificationPanel({ onNavigateToPriority }) {
+function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificationPanelProps) {
   const { showWarning } = useNotification();
   const [open, setOpen] = useState(false);
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasShownLoginNotification, setHasShownLoginNotification] = useState(false);
 
@@ -293,9 +297,5 @@ function PriorityNotificationPanel({ onNavigateToPriority }) {
     </>
   );
 }
-
-PriorityNotificationPanel.propTypes = {
-  onNavigateToPriority: PropTypes.func.isRequired
-};
 
 export default PriorityNotificationPanel;

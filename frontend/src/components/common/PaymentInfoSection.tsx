@@ -1,19 +1,32 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import { PAYMENT_STATUSES } from '../../constants/orderConstants';
+import type { PaymentStatus } from '../../types';
+
+interface PaymentData {
+  paymentStatus: PaymentStatus | string;
+  paidAmount?: number | string;
+  totalPrice: number;
+}
+
+interface PaymentInfoSectionProps {
+  isEditing: boolean;
+  data: PaymentData;
+  formatPrice: (price: number) => string;
+  onDataChange?: (field: string, value: string | number) => void;
+}
 
 /**
  * Helper function to get chip color for payment status
  */
-const getPaymentStatusColor = (paymentStatus) => {
+const getPaymentStatusColor = (paymentStatus: string): 'success' | 'warning' | 'default' => {
   if (paymentStatus === 'paid') return 'success';
   if (paymentStatus === 'partially_paid') return 'warning';
   return 'default';
@@ -28,8 +41,12 @@ function PaymentInfoSection({
   data, 
   formatPrice,
   onDataChange 
-}) {
-  if (isEditing) {
+}: PaymentInfoSectionProps) {
+  const handleSelectChange = (e: SelectChangeEvent<string>) => {
+    onDataChange?.('paymentStatus', e.target.value);
+  };
+
+  if (isEditing && onDataChange) {
     return (
       <Box>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -42,7 +59,7 @@ function PaymentInfoSection({
               <Select
                 value={data.paymentStatus}
                 label="Payment Status"
-                onChange={(e) => onDataChange('paymentStatus', e.target.value)}
+                onChange={handleSelectChange}
               >
                 {PAYMENT_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
@@ -69,6 +86,10 @@ function PaymentInfoSection({
     );
   }
 
+  const paidAmount = typeof data.paidAmount === 'string' 
+    ? parseFloat(data.paidAmount) || 0 
+    : data.paidAmount || 0;
+
   return (
     <Box>
       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -91,7 +112,7 @@ function PaymentInfoSection({
               <Typography variant="body2" color="text.secondary">Amount Paid:</Typography>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <Typography variant="body2">{formatPrice(data.paidAmount || 0)}</Typography>
+              <Typography variant="body2">{formatPrice(paidAmount)}</Typography>
             </Grid>
           </>
         )}
@@ -102,7 +123,7 @@ function PaymentInfoSection({
             </Grid>
             <Grid size={{ xs: 6 }}>
               <Typography variant="body2" fontWeight={600} color="error.main">
-                {formatPrice(data.totalPrice - (data.paidAmount || 0))}
+                {formatPrice(data.totalPrice - paidAmount)}
               </Typography>
             </Grid>
           </>
@@ -111,16 +132,5 @@ function PaymentInfoSection({
     </Box>
   );
 }
-
-PaymentInfoSection.propTypes = {
-  isEditing: PropTypes.bool.isRequired,
-  data: PropTypes.shape({
-    paymentStatus: PropTypes.string.isRequired,
-    paidAmount: PropTypes.number,
-    totalPrice: PropTypes.number.isRequired,
-  }).isRequired,
-  formatPrice: PropTypes.func.isRequired,
-  onDataChange: PropTypes.func,
-};
 
 export default PaymentInfoSection;

@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Typography from '@mui/material/Typography';
@@ -10,11 +9,18 @@ import {
   getConfirmationStatusLabel,
   getDeliveryStatusLabel,
 } from '../../constants/orderConstants';
+import type { Order, OrderId, OrderStatus, PaymentStatus, DeliveryStatus } from '../../types';
+
+interface OrderHistoryTableRowProps {
+  order: Order;
+  formatPrice: (price: number) => string;
+  onClick: (orderId: OrderId) => void;
+}
 
 /**
  * Formats delivery date for order history display
  */
-const formatHistoryDeliveryDate = (dateString) => {
+const formatHistoryDeliveryDate = (dateString: string | null): string => {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short',
@@ -26,7 +32,7 @@ const formatHistoryDeliveryDate = (dateString) => {
 /**
  * Gets color for order status in history
  */
-const getHistoryStatusColor = (status) => {
+const getHistoryStatusColor = (status: OrderStatus | undefined): 'warning' | 'info' | 'success' | 'error' | 'default' => {
   switch (status) {
     case 'pending': return 'warning';
     case 'processing': return 'info';
@@ -39,7 +45,7 @@ const getHistoryStatusColor = (status) => {
 /**
  * Gets color for payment status
  */
-const getHistoryPaymentColor = (status) => {
+const getHistoryPaymentColor = (status: PaymentStatus | undefined): 'success' | 'warning' | 'default' => {
   switch (status) {
     case 'paid': return 'success';
     case 'partially_paid': return 'warning';
@@ -51,7 +57,7 @@ const getHistoryPaymentColor = (status) => {
 /**
  * Gets color for delivery status
  */
-const getHistoryDeliveryColor = (status) => {
+const getHistoryDeliveryColor = (status: DeliveryStatus | undefined): 'success' | 'info' | 'primary' | 'error' | 'default' => {
   switch (status) {
     case 'delivered': return 'success';
     case 'out_for_delivery': return 'info';
@@ -63,7 +69,7 @@ const getHistoryDeliveryColor = (status) => {
   }
 };
 
-function OrderHistoryTableRow({ order, formatPrice, onClick }) {
+function OrderHistoryTableRow({ order, formatPrice, onClick }: OrderHistoryTableRowProps) {
   const priority = getPriorityStatus(order.expectedDeliveryDate, { shortLabels: true, orderStatus: order.status });
   
   return (
@@ -133,23 +139,5 @@ function OrderHistoryTableRow({ order, formatPrice, onClick }) {
     </TableRow>
   );
 }
-
-OrderHistoryTableRow.propTypes = {
-  order: PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    orderId: PropTypes.string.isRequired,
-    customerName: PropTypes.string.isRequired,
-    customerId: PropTypes.string,
-    orderFrom: PropTypes.string,
-    confirmationStatus: PropTypes.string,
-    status: PropTypes.string,
-    paymentStatus: PropTypes.string,
-    deliveryStatus: PropTypes.string,
-    totalPrice: PropTypes.number.isRequired,
-    expectedDeliveryDate: PropTypes.string,
-  }).isRequired,
-  formatPrice: PropTypes.func.isRequired,
-  onClick: PropTypes.func.isRequired,
-};
 
 export default OrderHistoryTableRow;

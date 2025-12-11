@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Table from '@mui/material/Table';
@@ -8,12 +7,18 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import type { OrderItem } from '../../types';
+
+interface OrderItemsTableProps {
+  items: OrderItem[];
+  formatPrice: (price: number) => string;
+}
 
 /**
  * Reusable order items table component
  * Displays items with quantities and prices
  */
-function OrderItemsTable({ items, formatPrice }) {
+function OrderItemsTable({ items, formatPrice }: OrderItemsTableProps) {
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   return (
@@ -63,15 +68,5 @@ function OrderItemsTable({ items, formatPrice }) {
     </Box>
   );
 }
-
-OrderItemsTable.propTypes = {
-  items: PropTypes.arrayOf(PropTypes.shape({
-    name: PropTypes.string.isRequired,
-    price: PropTypes.number.isRequired,
-    quantity: PropTypes.number.isRequired,
-    customizationRequest: PropTypes.string,
-  })).isRequired,
-  formatPrice: PropTypes.func.isRequired,
-};
 
 export default OrderItemsTable;

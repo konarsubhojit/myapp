@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
@@ -7,7 +6,7 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import Table from '@mui/material/Table';
@@ -21,10 +20,15 @@ import OrderDetails from './OrderDetails';
 import OrderFiltersSection from './common/OrderFiltersSection';
 import OrderHistoryTableHeader from './common/OrderHistoryTableHeader';
 import OrderHistoryTableRow from './common/OrderHistoryTableRow';
+import type { OrderId, Order } from '../types';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function OrderHistory({ onDuplicateOrder }) {
+interface OrderHistoryProps {
+  onDuplicateOrder: (orderId: string) => void;
+}
+
+function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
   const { formatPrice } = useCurrency();
   
   const {
@@ -47,14 +51,18 @@ function OrderHistory({ onDuplicateOrder }) {
     handleSort,
   } = useOrderFilters(orders);
   
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<OrderId | null>(null);
 
-  const handleOrderClick = (orderId) => {
+  const handleOrderClick = (orderId: OrderId) => {
     setSelectedOrderId(orderId);
   };
 
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
+  };
+
+  const handlePageSizeChangeEvent = (e: SelectChangeEvent<number>) => {
+    handlePageSizeChange(parseInt(String(e.target.value), 10) as 10 | 20 | 50);
   };
 
   if (initialLoading) {
@@ -120,7 +128,7 @@ function OrderHistory({ onDuplicateOrder }) {
             id="pageSize"
             value={pagination.limit}
             label="Per page"
-            onChange={(e) => handlePageSizeChange(parseInt(e.target.value, 10))}
+            onChange={handlePageSizeChangeEvent}
           >
             {PAGE_SIZE_OPTIONS.map(size => (
               <MenuItem key={size} value={size}>{size}</MenuItem>
@@ -145,7 +153,7 @@ function OrderHistory({ onDuplicateOrder }) {
       ) : !loading && (
         <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
           <Table size="small" aria-label="Orders table">
-            <OrderHistoryTableHeader sortConfig={sortConfig} onSort={handleSort} />
+            <OrderHistoryTableHeader sortConfig={{ key: sortConfig.key, direction: sortConfig.direction }} onSort={(key) => handleSort(key as keyof Order)} />
             <TableBody>
               {sortedOrders.map(order => (
                 <OrderHistoryTableRow
@@ -164,7 +172,7 @@ function OrderHistory({ onDuplicateOrder }) {
         <Pagination
           count={pagination.totalPages || 1}
           page={pagination.page}
-          onChange={(event, page) => handlePageChange(page)}
+          onChange={(_event, page) => handlePageChange(page)}
           color="primary"
           showFirstButton
           showLastButton
@@ -185,9 +193,5 @@ function OrderHistory({ onDuplicateOrder }) {
     </Paper>
   );
 }
-
-OrderHistory.propTypes = {
-  onDuplicateOrder: PropTypes.func.isRequired,
-};
 
 export default OrderHistory;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -16,11 +16,27 @@ import {
 } from '@mui/material';
 import { createFeedback, getFeedbackByOrderId } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
+import type { Order } from '../types';
 
-const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
+interface FeedbackFormData {
+  rating: number | null;
+  comment: string;
+  productQuality: number | null;
+  deliveryExperience: number | null;
+  isPublic: boolean;
+}
+
+interface FeedbackDialogProps {
+  open: boolean;
+  onClose: () => void;
+  order: Order | null;
+  onFeedbackSubmitted?: () => void;
+}
+
+const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }: FeedbackDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [hasExistingFeedback, setHasExistingFeedback] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FeedbackFormData>({
     rating: 0,
     comment: '',
     productQuality: 0,
@@ -45,14 +61,16 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
     }
   }, [open, order, checkExistingFeedback]);
 
-  const handleChange = (field, value) => {
+  const handleChange = <K extends keyof FeedbackFormData>(field: K, value: FeedbackFormData[K]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.rating === 0) {
+    if (!order) return;
+    
+    if (formData.rating === 0 || formData.rating === null) {
       showNotification('Please provide an overall rating', 'warning');
       return;
     }
@@ -61,13 +79,18 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
       setLoading(true);
       await createFeedback({
         orderId: order._id,
-        ...formData
+        rating: formData.rating,
+        comment: formData.comment || undefined,
+        productQuality: formData.productQuality || undefined,
+        deliveryExperience: formData.deliveryExperience || undefined,
+        isPublic: formData.isPublic
       });
       showNotification('Feedback submitted successfully!', 'success');
       if (onFeedbackSubmitted) onFeedbackSubmitted();
       handleClose();
     } catch (error) {
-      showNotification('Failed to submit feedback: ' + error.message, 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showNotification('Failed to submit feedback: ' + errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -83,6 +106,18 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
     });
     setHasExistingFeedback(false);
     onClose();
+  };
+
+  const handleRatingChange = (_event: SyntheticEvent, newValue: number | null) => {
+    handleChange('rating', newValue);
+  };
+
+  const handleProductQualityChange = (_event: SyntheticEvent, newValue: number | null) => {
+    handleChange('productQuality', newValue);
+  };
+
+  const handleDeliveryExperienceChange = (_event: SyntheticEvent, newValue: number | null) => {
+    handleChange('deliveryExperience', newValue);
   };
 
   if (!order) return null;
@@ -114,7 +149,7 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
               </Typography>
               <Rating
                 value={formData.rating}
-                onChange={(event, newValue) => handleChange('rating', newValue)}
+                onChange={handleRatingChange}
                 size="large"
               />
             </Box>
@@ -127,7 +162,7 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
                 </Typography>
                 <Rating
                   value={formData.productQuality}
-                  onChange={(event, newValue) => handleChange('productQuality', newValue)}
+                  onChange={handleProductQualityChange}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -136,7 +171,7 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
                 </Typography>
                 <Rating
                   value={formData.deliveryExperience}
-                  onChange={(event, newValue) => handleChange('deliveryExperience', newValue)}
+                  onChange={handleDeliveryExperienceChange}
                 />
               </Grid>
             </Grid>
@@ -176,7 +211,7 @@ const FeedbackDialog = ({ open, onClose, order, onFeedbackSubmitted }) => {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={loading || formData.rating === 0}
+            disabled={loading || formData.rating === 0 || formData.rating === null}
             startIcon={loading && <CircularProgress size={20} />}
           >
             Submit Feedback

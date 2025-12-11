@@ -1,11 +1,10 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import {
@@ -21,6 +20,16 @@ import {
   getOrderStatusColor,
   getOrderPriorityColor,
 } from '../../utils/orderUtils';
+import type { Order, OrderEditForm, PriorityData } from '../../types';
+
+type OrderInfoData = Order | OrderEditForm;
+
+interface OrderInfoSectionProps {
+  isEditing: boolean;
+  data: OrderInfoData;
+  priority?: PriorityData | null;
+  onDataChange?: (field: string, value: string | number) => void;
+}
 
 /**
  * Reusable order information section
@@ -31,8 +40,17 @@ function OrderInfoSection({
   data, 
   priority,
   onDataChange 
-}) {
-  if (isEditing) {
+}: OrderInfoSectionProps) {
+  const handleSelectChange = (field: string) => (e: SelectChangeEvent<string | number>) => {
+    if (field === 'priority') {
+      onDataChange?.(field, Number.parseInt(String(e.target.value), 10));
+    } else {
+      onDataChange?.(field, e.target.value);
+    }
+  };
+
+  if (isEditing && onDataChange) {
+    const editData = data as OrderEditForm;
     return (
       <Box>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -43,9 +61,9 @@ function OrderInfoSection({
             <FormControl fullWidth>
               <InputLabel>Order Source</InputLabel>
               <Select
-                value={data.orderFrom}
+                value={editData.orderFrom}
                 label="Order Source"
-                onChange={(e) => onDataChange('orderFrom', e.target.value)}
+                onChange={handleSelectChange('orderFrom')}
               >
                 {ORDER_SOURCES.map(source => (
                   <MenuItem key={source.value} value={source.value}>
@@ -59,9 +77,9 @@ function OrderInfoSection({
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
-                value={data.status}
+                value={editData.status}
                 label="Status"
-                onChange={(e) => onDataChange('status', e.target.value)}
+                onChange={handleSelectChange('status')}
               >
                 {ORDER_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
@@ -75,9 +93,9 @@ function OrderInfoSection({
             <FormControl fullWidth>
               <InputLabel>Confirmation Status</InputLabel>
               <Select
-                value={data.confirmationStatus}
+                value={editData.confirmationStatus}
                 label="Confirmation Status"
-                onChange={(e) => onDataChange('confirmationStatus', e.target.value)}
+                onChange={handleSelectChange('confirmationStatus')}
               >
                 {CONFIRMATION_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
@@ -91,7 +109,7 @@ function OrderInfoSection({
             <TextField
               label="Order Date"
               type="date"
-              value={data.orderDate || ''}
+              value={editData.orderDate || ''}
               onChange={(e) => onDataChange('orderDate', e.target.value)}
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
@@ -102,7 +120,7 @@ function OrderInfoSection({
             <TextField
               label="Expected Delivery Date"
               type="date"
-              value={data.expectedDeliveryDate}
+              value={editData.expectedDeliveryDate}
               onChange={(e) => onDataChange('expectedDeliveryDate', e.target.value)}
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
@@ -112,9 +130,9 @@ function OrderInfoSection({
             <FormControl fullWidth>
               <InputLabel>Priority Level</InputLabel>
               <Select
-                value={data.priority}
+                value={editData.priority}
                 label="Priority Level"
-                onChange={(e) => onDataChange('priority', Number.parseInt(e.target.value, 10))}
+                onChange={handleSelectChange('priority')}
               >
                 {PRIORITY_LEVELS.map(level => (
                   <MenuItem key={level.value} value={level.value}>
@@ -134,9 +152,9 @@ function OrderInfoSection({
             <FormControl fullWidth>
               <InputLabel>Delivery Status</InputLabel>
               <Select
-                value={data.deliveryStatus || 'not_shipped'}
+                value={editData.deliveryStatus || 'not_shipped'}
                 label="Delivery Status"
-                onChange={(e) => onDataChange('deliveryStatus', e.target.value)}
+                onChange={handleSelectChange('deliveryStatus')}
               >
                 {DELIVERY_STATUSES.map(status => (
                   <MenuItem key={status.value} value={status.value}>
@@ -149,7 +167,7 @@ function OrderInfoSection({
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Tracking ID / AWB Number"
-              value={data.trackingId || ''}
+              value={editData.trackingId || ''}
               onChange={(e) => onDataChange('trackingId', e.target.value)}
               fullWidth
               placeholder="Enter tracking/AWB number"
@@ -158,7 +176,7 @@ function OrderInfoSection({
           <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               label="Delivery Partner"
-              value={data.deliveryPartner || ''}
+              value={editData.deliveryPartner || ''}
               onChange={(e) => onDataChange('deliveryPartner', e.target.value)}
               fullWidth
               placeholder="e.g. Delhivery, DTDC, Blue Dart"
@@ -168,7 +186,7 @@ function OrderInfoSection({
             <TextField
               label="Actual Delivery Date"
               type="date"
-              value={data.actualDeliveryDate || ''}
+              value={editData.actualDeliveryDate || ''}
               onChange={(e) => onDataChange('actualDeliveryDate', e.target.value)}
               slotProps={{ inputLabel: { shrink: true } }}
               fullWidth
@@ -178,6 +196,8 @@ function OrderInfoSection({
       </Box>
     );
   }
+
+  const orderData = data as Order;
 
   return (
     <Box>
@@ -189,20 +209,20 @@ function OrderInfoSection({
           <Typography variant="body2" color="text.secondary">Source:</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <Chip label={data.orderFrom} size="small" color="primary" />
+          <Chip label={orderData.orderFrom} size="small" color="primary" />
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2" color="text.secondary">Status:</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <Chip label={data.status || 'Pending'} size="small" color={getOrderStatusColor(data.status)} />
+          <Chip label={orderData.status || 'Pending'} size="small" color={getOrderStatusColor(orderData.status)} />
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2" color="text.secondary">Confirmation:</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Chip 
-            label={CONFIRMATION_STATUSES.find(s => s.value === data.confirmationStatus)?.label || 'Unconfirmed'} 
+            label={CONFIRMATION_STATUSES.find(s => s.value === orderData.confirmationStatus)?.label || 'Unconfirmed'} 
             size="small" 
             variant="outlined"
           />
@@ -212,18 +232,18 @@ function OrderInfoSection({
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Chip 
-            label={PRIORITY_LEVELS.find(l => l.value === (data.priority || 0))?.label || 'Normal'} 
+            label={PRIORITY_LEVELS.find(l => l.value === (orderData.priority || 0))?.label || 'Normal'} 
             size="small" 
             variant="outlined"
           />
         </Grid>
-        {data.orderDate && (
+        {orderData.orderDate && (
           <>
             <Grid size={{ xs: 6 }}>
               <Typography variant="body2" color="text.secondary">Order Date:</Typography>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <Typography variant="body2">{formatOrderDate(data.orderDate)}</Typography>
+              <Typography variant="body2">{formatOrderDate(orderData.orderDate)}</Typography>
             </Grid>
           </>
         )}
@@ -231,14 +251,14 @@ function OrderInfoSection({
           <Typography variant="body2" color="text.secondary">Created:</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <Typography variant="body2">{formatOrderDate(data.createdAt)}</Typography>
+          <Typography variant="body2">{formatOrderDate(orderData.createdAt)}</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2" color="text.secondary">Expected Delivery:</Typography>
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Typography variant="body2">
-            {formatOrderDeliveryDate(data.expectedDeliveryDate)}
+            {formatOrderDeliveryDate(orderData.expectedDeliveryDate)}
             {priority && (
               <Chip 
                 label={priority.label} 
@@ -260,38 +280,38 @@ function OrderInfoSection({
         </Grid>
         <Grid size={{ xs: 6 }}>
           <Chip 
-            label={DELIVERY_STATUSES.find(s => s.value === (data.deliveryStatus || 'not_shipped'))?.label || 'Not Shipped'} 
+            label={DELIVERY_STATUSES.find(s => s.value === (orderData.deliveryStatus || 'not_shipped'))?.label || 'Not Shipped'} 
             size="small" 
-            color={data.deliveryStatus === 'delivered' ? 'success' : 'default'}
+            color={orderData.deliveryStatus === 'delivered' ? 'success' : 'default'}
           />
         </Grid>
-        {data.trackingId && (
+        {orderData.trackingId && (
           <>
             <Grid size={{ xs: 6 }}>
               <Typography variant="body2" color="text.secondary">Tracking ID:</Typography>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <Typography variant="body2" fontFamily="monospace">{data.trackingId}</Typography>
+              <Typography variant="body2" fontFamily="monospace">{orderData.trackingId}</Typography>
             </Grid>
           </>
         )}
-        {data.deliveryPartner && (
+        {orderData.deliveryPartner && (
           <>
             <Grid size={{ xs: 6 }}>
               <Typography variant="body2" color="text.secondary">Delivery Partner:</Typography>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <Typography variant="body2">{data.deliveryPartner}</Typography>
+              <Typography variant="body2">{orderData.deliveryPartner}</Typography>
             </Grid>
           </>
         )}
-        {data.actualDeliveryDate && (
+        {orderData.actualDeliveryDate && (
           <>
             <Grid size={{ xs: 6 }}>
               <Typography variant="body2" color="text.secondary">Actual Delivery:</Typography>
             </Grid>
             <Grid size={{ xs: 6 }}>
-              <Typography variant="body2">{formatOrderDate(data.actualDeliveryDate)}</Typography>
+              <Typography variant="body2">{formatOrderDate(orderData.actualDeliveryDate)}</Typography>
             </Grid>
           </>
         )}
@@ -299,12 +319,5 @@ function OrderInfoSection({
     </Box>
   );
 }
-
-OrderInfoSection.propTypes = {
-  isEditing: PropTypes.bool.isRequired,
-  data: PropTypes.object.isRequired,
-  priority: PropTypes.number,
-  onDataChange: PropTypes.func,
-};
 
 export default OrderInfoSection;

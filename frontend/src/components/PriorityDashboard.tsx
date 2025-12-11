@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import PropTypes from 'prop-types';
+import { useState, useEffect, useCallback, ReactElement } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -21,12 +20,25 @@ import { getPriorityOrders } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
+import type { Order, OrderId, OrderStatus } from '../types';
+
+type UrgencyLevel = 'critical' | 'high' | 'medium' | 'normal';
+
+interface OrderWithPriority extends Order {
+  effectivePriority: number;
+  urgency: UrgencyLevel;
+}
+
+interface PriorityDashboardProps {
+  onRefresh?: () => void;
+  onDuplicateOrder?: (orderId: string) => void;
+}
 
 /**
  * Calculate effective priority score for sorting
  * Higher score = more urgent
  */
-function calculateEffectivePriority(order) {
+function calculateEffectivePriority(order: Order): number {
   let score = order.priority || 0;
   
   if (order.expectedDeliveryDate) {
@@ -34,7 +46,7 @@ function calculateEffectivePriority(order) {
     today.setHours(0, 0, 0, 0);
     const deliveryDate = new Date(order.expectedDeliveryDate);
     deliveryDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     // Overdue orders get highest priority
     if (diffDays < 0) {
@@ -55,14 +67,8 @@ function calculateEffectivePriority(order) {
 
 /**
  * Get urgency level for visual styling in the dashboard
- * Maps delivery dates to dashboard urgency categories (critical/high/medium/normal)
- * Based on priorityUtils.js priority thresholds:
- * - critical: Overdue or ≤3 days (aligns with priorityUtils OVERDUE/CRITICAL)
- * - high: 4-7 days (aligns with priorityUtils URGENT)
- * - medium: 8-14 days (aligns with priorityUtils MEDIUM)
- * - normal: >14 days (aligns with priorityUtils NORMAL)
  */
-function getUrgencyLevel(order) {
+function getUrgencyLevel(order: Order): UrgencyLevel {
   if (!order.expectedDeliveryDate) {
     if (order.priority >= 8) return 'critical';
     if (order.priority >= 5) return 'high';
@@ -73,7 +79,7 @@ function getUrgencyLevel(order) {
   today.setHours(0, 0, 0, 0);
   const deliveryDate = new Date(order.expectedDeliveryDate);
   deliveryDate.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   
   // Overdue or ≤3 days = critical
   if (diffDays < 0 || diffDays <= 3) return 'critical';
@@ -85,10 +91,16 @@ function getUrgencyLevel(order) {
   return 'normal';
 }
 
+interface UrgencyDisplay {
+  color: 'error' | 'warning' | 'info' | 'success';
+  icon: ReactElement;
+  label: string;
+}
+
 /**
  * Get color and icon based on urgency level
  */
-function getUrgencyDisplay(urgency) {
+function getUrgencyDisplay(urgency: UrgencyLevel): UrgencyDisplay {
   switch (urgency) {
     case 'critical':
       return { color: 'error', icon: <WarningIcon />, label: 'Critical' };
@@ -104,7 +116,7 @@ function getUrgencyDisplay(urgency) {
 /**
  * Format date for display
  */
-function formatDate(dateString) {
+function formatDate(dateString: string | null): string {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleDateString('en-US', {
     month: 'short',
@@ -113,12 +125,12 @@ function formatDate(dateString) {
   });
 }
 
-function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
+function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardProps) {
   const { formatPrice } = useCurrency();
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<OrderWithPriority[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<OrderId | null>(null);
 
   const fetchPriorityOrders = useCallback(async () => {
     setLoading(true);
@@ -130,7 +142,7 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
       const ordersArray = Array.isArray(data) ? data : [];
       
       // Calculate effective priority and sort
-      const ordersWithPriority = ordersArray.map(order => ({
+      const ordersWithPriority: OrderWithPriority[] = ordersArray.map(order => ({
         ...order,
         effectivePriority: calculateEffectivePriority(order),
         urgency: getUrgencyLevel(order)
@@ -140,7 +152,8 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
       
       setOrders(ordersWithPriority);
     } catch (err) {
-      setError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -150,7 +163,7 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
     fetchPriorityOrders();
   }, [fetchPriorityOrders]);
 
-  const handleOrderClick = (orderId) => {
+  const handleOrderClick = (orderId: OrderId) => {
     setSelectedOrderId(orderId);
   };
 
@@ -163,6 +176,14 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
     if (onRefresh) {
       onRefresh();
     }
+  };
+
+  const getPriorityChipColor = (status: string): 'error' | 'warning' | 'info' | 'success' => {
+    if (status === 'overdue') return 'error';
+    if (status === 'critical') return 'error';
+    if (status === 'urgent') return 'warning';
+    if (status === 'medium') return 'info';
+    return 'success';
   };
 
   if (loading) {
@@ -306,13 +327,7 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
                           label={priorityStatus.label} 
                           size="small" 
                           sx={{ mt: 0.5 }}
-                          color={(() => {
-                            if (priorityStatus.status === 'overdue') return 'error';
-                            if (priorityStatus.status === 'critical') return 'error';
-                            if (priorityStatus.status === 'urgent') return 'warning';
-                            if (priorityStatus.status === 'medium') return 'info';
-                            return 'success';
-                          })()}
+                          color={getPriorityChipColor(priorityStatus.status)}
                           variant="outlined"
                         />
                       )}
@@ -384,10 +399,5 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }) {
     </Paper>
   );
 }
-
-PriorityDashboard.propTypes = {
-  onRefresh: PropTypes.func,
-  onDuplicateOrder: PropTypes.func
-};
 
 export default PriorityDashboard;

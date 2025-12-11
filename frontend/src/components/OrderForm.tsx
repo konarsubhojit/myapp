@@ -1,5 +1,4 @@
-import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -12,7 +11,7 @@ import AlertTitle from '@mui/material/AlertTitle';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
@@ -33,10 +32,23 @@ import {
   CONFIRMATION_STATUSES,
   PRIORITY_LEVELS,
 } from '../constants/orderConstants';
+import type { Item, Order, OrderId, ItemId, OrderSource, PaymentStatus, ConfirmationStatus } from '../types';
+
+interface OrderFormProps {
+  items: Item[];
+  onOrderCreated: () => void;
+  duplicateOrderId?: string | null;
+}
+
+interface OrderFormItem {
+  itemId: string;
+  quantity: number | '';
+  customizationRequest: string;
+}
 
 // Format item display name with color and fabric info
-const formatItemDisplayName = (item) => {
-  const details = [];
+const formatItemDisplayName = (item: Item): string => {
+  const details: string[] = [];
   if (item.color) details.push(item.color);
   if (item.fabric) details.push(item.fabric);
   
@@ -46,26 +58,26 @@ const formatItemDisplayName = (item) => {
   return item.name;
 };
 
-function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
+function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
-  const [orderFrom, setOrderFrom] = useState('');
+  const [orderFrom, setOrderFrom] = useState<OrderSource | ''>('');
   const [customerName, setCustomerName] = useState('');
   const [customerId, setCustomerId] = useState('');
   const [address, setAddress] = useState('');
   const [orderDate, setOrderDate] = useState('');
   const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState('unpaid');
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('unpaid');
   const [paidAmount, setPaidAmount] = useState('');
-  const [confirmationStatus, setConfirmationStatus] = useState('unconfirmed');
+  const [confirmationStatus, setConfirmationStatus] = useState<ConfirmationStatus>('unconfirmed');
   const [customerNotes, setCustomerNotes] = useState('');
   const [priority, setPriority] = useState(0);
-  const [orderItems, setOrderItems] = useState([]);
+  const [orderItems, setOrderItems] = useState<OrderFormItem[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [duplicateLoading, setDuplicateLoading] = useState(false);
-  const [createdOrder, setCreatedOrder] = useState(null);
-  const [duplicatedFrom, setDuplicatedFrom] = useState(null);
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
+  const [duplicatedFrom, setDuplicatedFrom] = useState<string | null>(null);
 
   // Load order data when duplicating
   useEffect(() => {
@@ -120,7 +132,8 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
           setError(`Note: Some items from the original order could not be found in current inventory.`);
         }
       } catch (err) {
-        setError('Failed to load order for duplication: ' + err.message);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError('Failed to load order for duplication: ' + errorMessage);
       } finally {
         setDuplicateLoading(false);
       }
@@ -133,20 +146,20 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
     setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
   };
 
-  const handleRemoveItem = (index) => {
+  const handleRemoveItem = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index, field, value) => {
+  const handleItemChange = (index: number, field: keyof OrderFormItem, value: string | number | '') => {
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
     setOrderItems(updated);
   };
 
-  const calculateTotal = () => {
+  const calculateTotal = (): number => {
     return orderItems.reduce((total, orderItem) => {
       const item = items.find((i) => String(i._id) === String(orderItem.itemId));
-      const qty = parseInt(orderItem.quantity, 10);
+      const qty = typeof orderItem.quantity === 'number' ? orderItem.quantity : parseInt(String(orderItem.quantity), 10);
       if (item && !Number.isNaN(qty) && qty > 0) {
         return total + item.price * qty;
       }
@@ -154,13 +167,13 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
     }, 0);
   };
 
-  const getMinOrderDate = () => {
+  const getMinOrderDate = (): string => {
     const today = new Date();
     today.setFullYear(today.getFullYear() - 1); // Allow backdating up to 1 year
     return today.toISOString().split('T')[0];
   };
 
-  const getMinDeliveryDate = () => {
+  const getMinDeliveryDate = (): string => {
     return new Date().toISOString().split('T')[0]; // Today or future dates only
   };
 
@@ -180,7 +193,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
     setDuplicatedFrom(null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setCreatedOrder(null);
@@ -195,7 +208,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
       return;
     }
 
-    const hasEmptyItems = orderItems.some((item) => !item.itemId || item.quantity < 1);
+    const hasEmptyItems = orderItems.some((item) => !item.itemId || (typeof item.quantity === 'number' ? item.quantity < 1 : true));
     if (hasEmptyItems) {
       setError('Please select an item and quantity for all items');
       return;
@@ -208,9 +221,13 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
         customerName: customerName.trim(),
         customerId: customerId.trim(),
         address: address.trim(),
-        items: orderItems,
-        orderDate: orderDate || null,
-        expectedDeliveryDate: expectedDeliveryDate || null,
+        items: orderItems.map(item => ({
+          itemId: item.itemId as unknown as ItemId,
+          quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+          customizationRequest: item.customizationRequest
+        })),
+        orderDate: orderDate || undefined,
+        expectedDeliveryDate: expectedDeliveryDate || undefined,
         paymentStatus,
         paidAmount: paidAmount ? Number.parseFloat(paidAmount) : 0,
         confirmationStatus,
@@ -222,8 +239,9 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
       onOrderCreated();
       showSuccess(`Order ${order.orderId} created successfully!`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -232,6 +250,22 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
   const handleCancelDuplicate = () => {
     resetForm();
     onOrderCreated(); // This will clear the duplicateOrderId in parent
+  };
+
+  const handleOrderFromChange = (e: SelectChangeEvent<string>) => {
+    setOrderFrom(e.target.value as OrderSource);
+  };
+
+  const handlePaymentStatusChange = (e: SelectChangeEvent<string>) => {
+    setPaymentStatus(e.target.value as PaymentStatus);
+  };
+
+  const handleConfirmationStatusChange = (e: SelectChangeEvent<string>) => {
+    setConfirmationStatus(e.target.value as ConfirmationStatus);
+  };
+
+  const handlePriorityChange = (e: SelectChangeEvent<string>) => {
+    setPriority(Number.parseInt(e.target.value, 10));
   };
 
   const estimatedTotal = calculateTotal();
@@ -296,7 +330,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                 id="orderFrom"
                 value={orderFrom}
                 label="Order Source"
-                onChange={(e) => setOrderFrom(e.target.value)}
+                onChange={handleOrderFromChange}
               >
                 {ORDER_SOURCES.map((source) => (
                   <MenuItem key={source.value} value={source.value}>
@@ -312,7 +346,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               id="customerName"
               label="Customer Name"
               value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerName(e.target.value)}
               placeholder="Enter customer name"
               fullWidth
               required
@@ -324,7 +358,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               id="customerId"
               label="Customer ID (Insta ID / Phone)"
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerId(e.target.value)}
               placeholder="Enter customer ID"
               fullWidth
               required
@@ -336,7 +370,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               id="address"
               label="Address"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)}
               placeholder="Enter customer address"
               fullWidth
               multiline
@@ -350,7 +384,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               label="Order Date"
               type="date"
               value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setOrderDate(e.target.value)}
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinOrderDate() } }}
               fullWidth
               helperText="Leave blank to use current date"
@@ -363,7 +397,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               label="Expected Delivery Date"
               type="date"
               value={expectedDeliveryDate}
-              onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setExpectedDeliveryDate(e.target.value)}
               slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: getMinDeliveryDate() } }}
               fullWidth
             />
@@ -377,7 +411,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                 id="confirmationStatus"
                 value={confirmationStatus}
                 label="Confirmation Status"
-                onChange={(e) => setConfirmationStatus(e.target.value)}
+                onChange={handleConfirmationStatusChange}
               >
                 {CONFIRMATION_STATUSES.map((status) => (
                   <MenuItem key={status.value} value={status.value}>
@@ -396,7 +430,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                 id="paymentStatus"
                 value={paymentStatus}
                 label="Payment Status"
-                onChange={(e) => setPaymentStatus(e.target.value)}
+                onChange={handlePaymentStatusChange}
               >
                 {PAYMENT_STATUSES.map((status) => (
                   <MenuItem key={status.value} value={status.value}>
@@ -415,7 +449,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                 type="number"
                 inputProps={{ min: '0', step: '0.01' }}
                 value={paidAmount}
-                onChange={(e) => setPaidAmount(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setPaidAmount(e.target.value)}
                 placeholder="Enter amount paid"
                 fullWidth
               />
@@ -428,9 +462,9 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               <Select
                 labelId="priority-label"
                 id="priority"
-                value={priority}
+                value={String(priority)}
                 label="Priority Level"
-                onChange={(e) => setPriority(Number.parseInt(e.target.value, 10))}
+                onChange={handlePriorityChange}
               >
                 {PRIORITY_LEVELS.map((level) => (
                   <MenuItem key={level.value} value={level.value}>
@@ -446,7 +480,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
               id="customerNotes"
               label="Customer Notes / Remarks"
               value={customerNotes}
-              onChange={(e) => setCustomerNotes(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerNotes(e.target.value)}
               placeholder="Enter any notes about this customer or order"
               fullWidth
               multiline
@@ -466,7 +500,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
           <Stack spacing={2}>
             {orderItems.map((orderItem, index) => {
               const selectedItem = items.find(i => String(i._id) === String(orderItem.itemId));
-              const qty = parseInt(orderItem.quantity, 10);
+              const qty = typeof orderItem.quantity === 'number' ? orderItem.quantity : parseInt(String(orderItem.quantity), 10);
               const lineTotal = selectedItem && !Number.isNaN(qty) && qty > 0 ? selectedItem.price * qty : 0;
               
               return (
@@ -480,7 +514,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                             labelId={`item-${index}-label`}
                             value={orderItem.itemId}
                             label="Select Item"
-                            onChange={(e) => handleItemChange(index, 'itemId', e.target.value)}
+                            onChange={(e: SelectChangeEvent<string>) => handleItemChange(index, 'itemId', e.target.value)}
                           >
                             {items.map((item) => (
                               <MenuItem key={item._id} value={item._id}>
@@ -497,7 +531,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                           label="Qty"
                           inputProps={{ min: 1 }}
                           value={orderItem.quantity}
-                          onChange={(e) => {
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => {
                             const val = e.target.value;
                             if (val === '') {
                               handleItemChange(index, 'quantity', '');
@@ -554,7 +588,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
                       size="small"
                       fullWidth
                       value={orderItem.customizationRequest}
-                      onChange={(e) => handleItemChange(index, 'customizationRequest', e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => handleItemChange(index, 'customizationRequest', e.target.value)}
                       placeholder="Customization request (optional)"
                       sx={{ mt: 2 }}
                     />
@@ -619,16 +653,5 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }) {
     </Paper>
   );
 }
-
-OrderForm.propTypes = {
-  items: PropTypes.arrayOf(PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    price: PropTypes.number.isRequired,
-    color: PropTypes.string,
-    fabric: PropTypes.string,
-  })).isRequired,
-  onOrderCreated: PropTypes.func.isRequired,
-};
 
 export default OrderForm;

@@ -1,5 +1,4 @@
-import PropTypes from 'prop-types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -37,8 +36,22 @@ import { useDeletedItems } from '../hooks/useDeletedItems';
 import PaginationControls from './common/PaginationControls';
 import ImageUploadField from './common/ImageUploadField';
 import ItemCard from './common/ItemCard';
+import type { Item, ItemId } from '../types';
 
-function ItemPanel({ onItemsChange }) {
+interface ItemPanelProps {
+  onItemsChange: () => void;
+}
+
+interface EditingItemState extends Item {
+  editName: string;
+  editPrice: string;
+  editColor: string;
+  editFabric: string;
+  editSpecialFeatures: string;
+  removeImage: boolean;
+}
+
+function ItemPanel({ onItemsChange }: ItemPanelProps) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
   
@@ -115,7 +128,7 @@ function ItemPanel({ onItemsChange }) {
   const [loading, setLoading] = useState(false);
   
   // Edit mode state
-  const [editingItem, setEditingItem] = useState(null);
+  const [editingItem, setEditingItem] = useState<EditingItemState | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   
   // Use image processing hook for edit form
@@ -134,7 +147,7 @@ function ItemPanel({ onItemsChange }) {
   const error = formError || imageError || activeError || editImageError;
   
   // Set error across all error sources to ensure consistency
-  const setError = (err) => {
+  const setError = (err: string) => {
     setFormError(err);
     setActiveError(err);
   };
@@ -142,61 +155,62 @@ function ItemPanel({ onItemsChange }) {
   // Update URL when state changes
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activePaginationData.page > 1) params.set('page', activePaginationData.page);
-    if (activePaginationData.limit !== 10) params.set('limit', activePaginationData.limit);
+    if (activePaginationData.page > 1) params.set('page', String(activePaginationData.page));
+    if (activePaginationData.limit !== 10) params.set('limit', String(activePaginationData.limit));
     if (activeSearch) params.set('search', activeSearch);
     if (showDeleted) params.set('deleted', 'true');
     updateUrl(params);
   }, [activeSearch, activePaginationData.page, activePaginationData.limit, showDeleted, updateUrl]);
 
-  const handleImageChange = async (e) => {
-    const file = e.target.files[0];
-    await handleImageChangeRaw(file);
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleImageChangeRaw(file);
+    }
   };
 
-  const handleEditImageChange = async (e) => {
-    const file = e.target.files[0];
+  const handleEditImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     await handleEditImageChangeRaw(file);
-    setEditingItem(prev => ({
+    setEditingItem(prev => prev ? ({
       ...prev,
-      editImage: '',
-      editImagePreview: '',
       removeImage: false
-    }));
+    }) : null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
     const validation = validateForm();
     if (!validation.valid) {
-      setError(validation.error);
+      setError(validation.error || 'Validation failed');
       return;
     }
 
     setLoading(true);
     try {
-      const formData = getFormData(validation.priceNum, image);
+      const formData = getFormData(validation.priceNum!, image);
       await createItem(formData);
       const itemName = name.trim();
       resetForm();
       resetImage();
-      const fileInput = document.getElementById('itemImage');
+      const fileInput = document.getElementById('itemImage') as HTMLInputElement | null;
       if (fileInput) fileInput.value = '';
       onItemsChange();
       fetchActiveItems();
       showSuccess(`Item "${itemName}" has been added successfully.`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create item';
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id, itemName) => {
+  const handleDelete = async (id: ItemId, itemName: string) => {
     if (!globalThis.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
       return;
     }
@@ -209,12 +223,13 @@ function ItemPanel({ onItemsChange }) {
       }
       showSuccess(`Item "${itemName}" has been deleted.`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete item';
+      setError(errorMessage);
+      showError(errorMessage);
     }
   };
 
-  const handleRestore = async (id, itemName) => {
+  const handleRestore = async (id: ItemId, itemName: string) => {
     try {
       await restoreItem(id);
       onItemsChange();
@@ -222,12 +237,13 @@ function ItemPanel({ onItemsChange }) {
       fetchDeletedItems();
       showSuccess(`Item "${itemName}" has been restored.`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to restore item';
+      setError(errorMessage);
+      showError(errorMessage);
     }
   };
 
-  const handlePermanentDelete = async (id, itemName, hasImage) => {
+  const handlePermanentDelete = async (id: ItemId, itemName: string, hasImage: boolean) => {
     const message = hasImage 
       ? `Are you sure you want to permanently remove the image for "${itemName}"? This action cannot be undone. The item record will be kept for historical orders.`
       : `This item "${itemName}" has no image to remove.`;
@@ -246,12 +262,13 @@ function ItemPanel({ onItemsChange }) {
       fetchDeletedItems();
       showSuccess(`Image for item "${itemName}" has been permanently removed.`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to permanently delete item';
+      setError(errorMessage);
+      showError(errorMessage);
     }
   };
 
-  const handleEdit = (item) => {
+  const handleEdit = (item: Item) => {
     setEditingItem({
       ...item,
       editName: item.name,
@@ -267,7 +284,7 @@ function ItemPanel({ onItemsChange }) {
   };
 
   // Copy item - pre-fill the create form with existing item data
-  const handleCopy = (item) => {
+  const handleCopy = (item: Item) => {
     setFormFromItem(item);
     resetImage();
     setError('');
@@ -279,27 +296,25 @@ function ItemPanel({ onItemsChange }) {
   const handleCancelCopy = () => {
     resetForm();
     resetImage();
-    const fileInput = document.getElementById('itemImage');
+    const fileInput = document.getElementById('itemImage') as HTMLInputElement | null;
     if (fileInput) fileInput.value = '';
   };
 
   const clearEditImageWrapper = () => {
     clearEditImage();
-    setEditingItem(prev => ({
+    setEditingItem(prev => prev ? ({
       ...prev,
-      editImage: '',
-      editImagePreview: '',
       removeImage: true
-    }));
-    const fileInput = document.getElementById('editItemImage');
+    }) : null);
+    const fileInput = document.getElementById('editItemImage') as HTMLInputElement | null;
     if (fileInput) fileInput.value = '';
   };
 
-  const handleEditSubmit = async (e) => {
+  const handleEditSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
-    if (!editingItem.editName.trim() || !editingItem.editPrice) {
+    if (!editingItem?.editName.trim() || !editingItem?.editPrice) {
       setError('Please fill in name and price');
       return;
     }
@@ -312,7 +327,14 @@ function ItemPanel({ onItemsChange }) {
 
     setLoading(true);
     try {
-      const updateData = {
+      const updateData: {
+        name: string;
+        price: number;
+        color: string;
+        fabric: string;
+        specialFeatures: string;
+        image?: string | null;
+      } = {
         name: editingItem.editName.trim(),
         price: priceNum,
         color: editingItem.editColor.trim(),
@@ -335,8 +357,9 @@ function ItemPanel({ onItemsChange }) {
       fetchActiveItems();
       showSuccess(`Item "${itemName}" has been updated.`);
     } catch (err) {
-      setError(err.message);
-      showError(err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update item';
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -349,8 +372,8 @@ function ItemPanel({ onItemsChange }) {
   };
 
   // Format item name with color and fabric
-  const formatItemName = (item) => {
-    const details = [];
+  const formatItemName = (item: Item) => {
+    const details: string[] = [];
     if (item.color) details.push(item.color);
     if (item.fabric) details.push(item.fabric);
     
@@ -555,7 +578,7 @@ function ItemPanel({ onItemsChange }) {
             <PaginationControls
               paginationData={activePaginationData}
               onPageChange={handleActivePageChange}
-              onLimitChange={handleActiveLimitChange}
+              onLimitChange={(limit) => handleActiveLimitChange(limit as 10 | 20 | 50)}
             />
           </>
         )}
@@ -631,7 +654,7 @@ function ItemPanel({ onItemsChange }) {
                           {formatItemName(item)} - {formatPrice(item.price)}
                         </Typography>
                         <Typography variant="caption" color="error.main">
-                          Deleted: {new Date(item.deletedAt).toLocaleDateString()}
+                          Deleted: {new Date(item.deletedAt!).toLocaleDateString()}
                         </Typography>
                       </Box>
                       <Stack direction="row" spacing={1}>
@@ -663,7 +686,7 @@ function ItemPanel({ onItemsChange }) {
               <PaginationControls
                 paginationData={deletedPaginationData}
                 onPageChange={handleDeletedPageChange}
-                onLimitChange={handleDeletedLimitChange}
+                onLimitChange={(limit) => handleDeletedLimitChange(limit as 10 | 20 | 50)}
               />
             </>
           )}
@@ -692,7 +715,7 @@ function ItemPanel({ onItemsChange }) {
                   id="editItemName"
                   label="Item Name"
                   value={editingItem.editName}
-                  onChange={(e) => setEditingItem(prev => ({ ...prev, editName: e.target.value }))}
+                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editName: e.target.value }) : null)}
                   placeholder="Enter item name"
                   fullWidth
                   required
@@ -704,7 +727,7 @@ function ItemPanel({ onItemsChange }) {
                   type="number"
                   inputProps={{ step: '0.01', min: '0' }}
                   value={editingItem.editPrice}
-                  onChange={(e) => setEditingItem(prev => ({ ...prev, editPrice: e.target.value }))}
+                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editPrice: e.target.value }) : null)}
                   placeholder="Enter price"
                   fullWidth
                   required
@@ -714,7 +737,7 @@ function ItemPanel({ onItemsChange }) {
                   id="editItemColor"
                   label="Color"
                   value={editingItem.editColor}
-                  onChange={(e) => setEditingItem(prev => ({ ...prev, editColor: e.target.value }))}
+                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editColor: e.target.value }) : null)}
                   placeholder="e.g., Red, Blue, Multi-color"
                   fullWidth
                 />
@@ -723,7 +746,7 @@ function ItemPanel({ onItemsChange }) {
                   id="editItemFabric"
                   label="Fabric"
                   value={editingItem.editFabric}
-                  onChange={(e) => setEditingItem(prev => ({ ...prev, editFabric: e.target.value }))}
+                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editFabric: e.target.value }) : null)}
                   placeholder="e.g., Cotton, Silk, Polyester"
                   fullWidth
                 />
@@ -732,7 +755,7 @@ function ItemPanel({ onItemsChange }) {
                   id="editItemSpecialFeatures"
                   label="Special Features"
                   value={editingItem.editSpecialFeatures}
-                  onChange={(e) => setEditingItem(prev => ({ ...prev, editSpecialFeatures: e.target.value }))}
+                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editSpecialFeatures: e.target.value }) : null)}
                   placeholder="e.g., Handmade, Embroidered, Washable"
                   fullWidth
                 />
@@ -774,9 +797,5 @@ function ItemPanel({ onItemsChange }) {
     </Paper>
   );
 }
-
-ItemPanel.propTypes = {
-  onItemsChange: PropTypes.func.isRequired,
-};
 
 export default ItemPanel;

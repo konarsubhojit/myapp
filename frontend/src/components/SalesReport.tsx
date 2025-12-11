@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -9,7 +9,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -29,8 +29,25 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { DATE_RANGES, MILLISECONDS } from '../constants/timeConstants';
+import type { Order } from '../types';
 
-const TIME_RANGES = [
+interface TimeRange {
+  key: string;
+  label: string;
+  days: number;
+}
+
+interface ViewOption {
+  key: string;
+  label: string;
+}
+
+interface StatusFilterOption {
+  key: string;
+  label: string;
+}
+
+const TIME_RANGES: TimeRange[] = [
   { key: 'week', label: 'Last Week', days: DATE_RANGES.WEEK },
   { key: 'month', label: 'Last Month', days: DATE_RANGES.MONTH },
   { key: 'quarter', label: 'Last Quarter', days: DATE_RANGES.QUARTER },
@@ -38,29 +55,55 @@ const TIME_RANGES = [
   { key: 'year', label: 'Last Year', days: 365 },
 ];
 
-const VIEW_OPTIONS = [
+const VIEW_OPTIONS: ViewOption[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'byItem', label: 'By Item' },
   { key: 'byCustomer', label: 'By Customer' },
   { key: 'bySource', label: 'By Source' },
 ];
 
-const STATUS_FILTER_OPTIONS = [
+const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
   { key: 'completed', label: 'Completed Orders Only' },
   { key: 'all', label: 'All Orders' },
 ];
 
-const VALID_RANGES = new Set(TIME_RANGES.map(r => r.key));
-const VALID_VIEWS = new Set(VIEW_OPTIONS.map(v => v.key));
-const VALID_STATUS_FILTERS = new Set(STATUS_FILTER_OPTIONS.map(s => s.key));
+interface ItemData {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface CustomerData {
+  customerId: string;
+  customerName: string;
+  orderCount: number;
+  totalSpent: number;
+  items: Record<string, number>;
+}
+
+interface SourceData {
+  count: number;
+  revenue: number;
+}
+
+interface RangeAnalytics {
+  totalSales: number;
+  orderCount: number;
+  topItems: ItemData[];
+  topItemsByRevenue: ItemData[];
+  sourceBreakdown: Record<string, SourceData>;
+  topCustomersByOrders: CustomerData[];
+  topCustomersByRevenue: CustomerData[];
+  highestOrderingCustomer: CustomerData | null;
+  averageOrderValue: number;
+  uniqueCustomers: number;
+}
 
 /**
  * Aggregates item counts and revenue from filtered orders
- * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
- * @returns {Object} - Object with item names as keys and {quantity, revenue} as values
  */
-const aggregateItemCounts = (filteredOrders) => {
-  const itemCounts = {};
+const aggregateItemCounts = (filteredOrders: Order[]): Record<string, { quantity: number; revenue: number }> => {
+  const itemCounts: Record<string, { quantity: number; revenue: number }> = {};
   
   filteredOrders.forEach(order => {
     if (order.items?.length) {
@@ -79,11 +122,9 @@ const aggregateItemCounts = (filteredOrders) => {
 
 /**
  * Aggregates customer order data including total spent and items purchased
- * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
- * @returns {Object} - Object with customer keys containing {customerId, customerName, orderCount, totalSpent, items}
  */
-const aggregateCustomerData = (filteredOrders) => {
-  const customerCounts = {};
+const aggregateCustomerData = (filteredOrders: Order[]): Record<string, CustomerData> => {
+  const customerCounts: Record<string, CustomerData> = {};
   
   filteredOrders.forEach(order => {
     const customerId = order.customerId;
@@ -119,11 +160,9 @@ const aggregateCustomerData = (filteredOrders) => {
 
 /**
  * Aggregates order count and revenue by source
- * @param {Array<Object>} filteredOrders - Array of order objects to aggregate
- * @returns {Object} - Object with order sources as keys and {count, revenue} as values
  */
-const aggregateSourceBreakdown = (filteredOrders) => {
-  const sourceBreakdown = {};
+const aggregateSourceBreakdown = (filteredOrders: Order[]): Record<string, SourceData> => {
+  const sourceBreakdown: Record<string, SourceData> = {};
   
   filteredOrders.forEach(order => {
     const orderSource = order.orderFrom || 'unknown';
@@ -137,7 +176,18 @@ const aggregateSourceBreakdown = (filteredOrders) => {
   return sourceBreakdown;
 };
 
-function SalesReport({ orders }) {
+interface SalesReportProps {
+  orders: Order[];
+}
+
+interface StatCardProps {
+  value: string | number;
+  label: string;
+  icon?: ReactNode;
+  color?: string;
+}
+
+function SalesReport({ orders }: SalesReportProps) {
   const { formatPrice } = useCurrency();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
@@ -150,9 +200,9 @@ function SalesReport({ orders }) {
   // Create stable reference for useMemo dependency
   const stableStatusFilter = useMemo(() => selectedStatusFilter, [selectedStatusFilter]);
 
-  const analytics = useMemo(() => {
+  const analytics = useMemo((): Record<string, RangeAnalytics> => {
     const now = new Date();
-    const results = {};
+    const results: Record<string, RangeAnalytics> = {};
 
     TIME_RANGES.forEach(range => {
       const cutoffDate = new Date(now.getTime() - range.days * MILLISECONDS.PER_DAY);
@@ -174,7 +224,7 @@ function SalesReport({ orders }) {
 
       // Use helper functions to aggregate data
       const itemCounts = aggregateItemCounts(filteredOrders);
-      const itemsArray = Object.entries(itemCounts).map(([name, data]) => ({
+      const itemsArray: ItemData[] = Object.entries(itemCounts).map(([name, data]) => ({
         name,
         quantity: data.quantity,
         revenue: data.revenue
@@ -211,7 +261,7 @@ function SalesReport({ orders }) {
     return results;
   }, [orders, stableStatusFilter]);
 
-  const currentStats = analytics[selectedRange] || {
+  const currentStats: RangeAnalytics = analytics[selectedRange] || {
     totalSales: 0,
     orderCount: 0,
     topItems: [],
@@ -224,28 +274,28 @@ function SalesReport({ orders }) {
     uniqueCustomers: 0
   };
 
-  const getMaxQuantity = () => {
+  const getMaxQuantity = (): number => {
     if (currentStats.topItems.length === 0) return 1;
     return Math.max(...currentStats.topItems.map(item => item.quantity));
   };
 
-  const getMaxRevenue = () => {
+  const getMaxRevenue = (): number => {
     if (currentStats.topItemsByRevenue.length === 0) return 1;
     return Math.max(...currentStats.topItemsByRevenue.map(item => item.revenue));
   };
 
-  const getMaxSourceCount = () => {
+  const getMaxSourceCount = (): number => {
     const counts = Object.values(currentStats.sourceBreakdown).map(s => s.count);
     if (counts.length === 0) return 1;
     return Math.max(...counts);
   };
 
-  const getMaxCustomerOrders = () => {
+  const getMaxCustomerOrders = (): number => {
     if (currentStats.topCustomersByOrders.length === 0) return 1;
     return Math.max(...currentStats.topCustomersByOrders.map(c => c.orderCount));
   };
 
-  const getMaxCustomerRevenue = () => {
+  const getMaxCustomerRevenue = (): number => {
     if (currentStats.topCustomersByRevenue.length === 0) return 1;
     return Math.max(...currentStats.topCustomersByRevenue.map(c => c.totalSpent));
   };
@@ -253,7 +303,7 @@ function SalesReport({ orders }) {
   // Get the top selling item for the highlight card
   const topSellingItem = currentStats.topItems.length > 0 ? currentStats.topItems[0] : null;
 
-  const StatCard = ({ value, label, icon, color = 'primary' }) => (
+  const StatCard = ({ value, label, icon, color = 'primary' }: StatCardProps) => (
     <Card sx={{ height: '100%' }}>
       <CardContent sx={{ textAlign: 'center' }}>
         {icon && <Box sx={{ color: `${color}.main`, mb: 1 }}>{icon}</Box>}
@@ -266,6 +316,18 @@ function SalesReport({ orders }) {
       </CardContent>
     </Card>
   );
+
+  const handleRangeChange = (e: SelectChangeEvent<string>) => {
+    setSelectedRange(e.target.value);
+  };
+
+  const handleStatusFilterChange = (e: SelectChangeEvent<string>) => {
+    setSelectedStatusFilter(e.target.value);
+  };
+
+  const handleViewChange = (e: SelectChangeEvent<string>) => {
+    setSelectedView(e.target.value);
+  };
 
   const renderOverviewView = () => (
     <>
@@ -598,7 +660,7 @@ function SalesReport({ orders }) {
               <Select
                 value={selectedRange}
                 label="Time Range"
-                onChange={(e) => setSelectedRange(e.target.value)}
+                onChange={handleRangeChange}
               >
                 {TIME_RANGES.map(range => (
                   <MenuItem key={range.key} value={range.key}>{range.label}</MenuItem>
@@ -627,7 +689,7 @@ function SalesReport({ orders }) {
                 id="statusFilter"
                 value={selectedStatusFilter} 
                 label="Order Status"
-                onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                onChange={handleStatusFilterChange}
               >
                 {STATUS_FILTER_OPTIONS.map(option => (
                   <MenuItem key={option.key} value={option.key}>
@@ -644,7 +706,7 @@ function SalesReport({ orders }) {
               id="viewSelect"
               value={selectedView} 
               label="View"
-              onChange={(e) => setSelectedView(e.target.value)}
+              onChange={handleViewChange}
             >
               {VIEW_OPTIONS.map(option => (
                 <MenuItem key={option.key} value={option.key}>

@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
@@ -12,6 +11,15 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
+import type { Item, ItemId } from '../../types';
+
+interface ItemCardProps {
+  item: Item;
+  formatPrice: (price: number) => string;
+  onCopy?: (item: Item) => void;
+  onEdit?: (item: Item) => void;
+  onDelete?: (id: ItemId, name: string) => void;
+}
 
 /**
  * Reusable item card component
@@ -23,7 +31,7 @@ function ItemCard({
   onCopy, 
   onEdit, 
   onDelete 
-}) {
+}: ItemCardProps) {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {item.imageUrl ? (
@@ -99,21 +107,5 @@ function ItemCard({
     </Card>
   );
 }
-
-ItemCard.propTypes = {
-  item: PropTypes.shape({
-    _id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    price: PropTypes.number.isRequired,
-    imageUrl: PropTypes.string,
-    color: PropTypes.string,
-    fabric: PropTypes.string,
-    specialFeatures: PropTypes.string,
-  }).isRequired,
-  formatPrice: PropTypes.func.isRequired,
-  onCopy: PropTypes.func,
-  onEdit: PropTypes.func,
-  onDelete: PropTypes.func,
-};
 
 export default ItemCard;
