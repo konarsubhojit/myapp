@@ -188,7 +188,7 @@ function SalesReport({ orders }) {
         const isInTimeRange = orderDate >= cutoffDate;
         
         // Apply status filter
-        const matchesStatusFilter = selectedStatusFilter === 'all' || order.status === 'completed';
+        const matchesStatusFilter = selectedStatusFilter === 'all' || order.status === 'completed' || order.status == null;
         
         return isInTimeRange && matchesStatusFilter;
       });
