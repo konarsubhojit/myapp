@@ -300,16 +300,29 @@ router.get('/priority', cacheMiddleware(60), asyncHandler(async (req, res) => {
   res.json(priorityOrders);
 }));
 
+// Get all orders without pagination - this is the source of truth
+router.get('/all', cacheMiddleware(60), asyncHandler(async (req, res) => {
+  const orders = await Order.find();
+  res.json(orders);
+}));
+
+// Get orders with pagination - uses cached all orders internally
 router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
-  if (req.query.page || req.query.limit) {
-    const result = await Order.findPaginated({ page, limit });
-    res.json(result);
-  } else {
-    const orders = await Order.find();
-    res.json(orders);
-  }
+  // Always use pagination - fetch all orders first (will be cached)
+  const allOrders = await Order.find();
+  
+  // Paginate in-memory from the cached all orders
+  const total = allOrders.length;
+  const totalPages = Math.ceil(total / limit);
+  const offset = (page - 1) * limit;
+  const paginatedOrders = allOrders.slice(offset, offset + limit);
+  
+  res.json({
+    orders: paginatedOrders,
+    pagination: { page, limit, total, totalPages }
+  });
 }));
 
 router.post('/', asyncHandler(async (req, res) => {

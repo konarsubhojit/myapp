@@ -26,6 +26,10 @@ jest.unstable_mockModule('../../utils/logger', () => ({
     debug: jest.fn(),
   }),
 }));
+// Mock Redis client to return null (disable caching in tests)
+jest.unstable_mockModule('../../db/redisClient', () => ({
+  getRedisClient: jest.fn().mockResolvedValue(null),
+}));
 
 const { default: orderRoutes } = await import('../../routes/orders.js');
 const { default: Order } = await import('../../models/Order.js');
@@ -42,7 +46,7 @@ describe('Orders Routes', () => {
     jest.clearAllMocks();
   });
 
-  describe('GET /api/orders', () => {
+  describe('GET /api/orders/all', () => {
     it('should return all orders without pagination', async () => {
       const mockOrders = [
         {
@@ -56,34 +60,78 @@ describe('Orders Routes', () => {
 
       Order.find.mockResolvedValue(mockOrders);
 
-      const response = await request(app).get('/api/orders');
+      const response = await request(app).get('/api/orders/all');
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(1);
       expect(response.body[0].orderId).toBe('ORD123456');
     });
 
-    it('should return paginated orders when pagination params provided', async () => {
-      const mockResult = {
-        orders: [
-          { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0 },
-        ],
-        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
-      };
+    it('should handle database errors', async () => {
+      Order.find.mockRejectedValue(new Error('Database error'));
 
-      Order.findPaginated.mockResolvedValue(mockResult);
+      const response = await request(app).get('/api/orders/all');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Database error');
+    });
+  });
+
+  describe('GET /api/orders', () => {
+    it('should return paginated orders using in-memory pagination', async () => {
+      const mockOrders = [
+        { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0, items: [] },
+        { _id: 2, orderId: 'ORD123457', customerName: 'Jane Smith', totalPrice: 200.0, items: [] },
+        { _id: 3, orderId: 'ORD123458', customerName: 'Bob Wilson', totalPrice: 150.0, items: [] },
+      ];
+
+      Order.find.mockResolvedValue(mockOrders);
 
       const response = await request(app).get('/api/orders?page=1&limit=10');
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('orders');
       expect(response.body).toHaveProperty('pagination');
+      expect(response.body.orders).toHaveLength(3);
+      expect(response.body.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 3,
+        totalPages: 1
+      });
+      expect(response.body.orders[0].orderId).toBe('ORD123456');
+      expect(response.body.orders[1].orderId).toBe('ORD123457');
+    });
+
+    it('should return correct second page', async () => {
+      // Create 15 mock orders to test pagination across pages
+      const mockOrders = Array.from({ length: 15 }, (_, i) => ({
+        _id: i + 1,
+        orderId: `ORD${123456 + i}`,
+        customerName: `Customer ${i + 1}`,
+        totalPrice: 100.0 + i * 10,
+        items: []
+      }));
+
+      Order.find.mockResolvedValue(mockOrders);
+
+      const response = await request(app).get('/api/orders?page=2&limit=10');
+
+      expect(response.status).toBe(200);
+      expect(response.body.orders).toHaveLength(5);
+      expect(response.body.orders[0].orderId).toBe('ORD123466');
+      expect(response.body.pagination).toEqual({
+        page: 2,
+        limit: 10,
+        total: 15,
+        totalPages: 2
+      });
     });
 
     it('should handle database errors', async () => {
       Order.find.mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app).get('/api/orders');
+      const response = await request(app).get('/api/orders?page=1&limit=10');
 
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('message', 'Database error');
