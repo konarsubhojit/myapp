@@ -130,9 +130,25 @@ export async function invalidateItemCache() {
 
 /**
  * Invalidate all order-related caches
+ * Clears both paginated orders and priority orders caches
  */
 export async function invalidateOrderCache() {
+  // Invalidate all order-related endpoints
   await invalidateCache('/api/orders*');
+}
+
+/**
+ * Invalidate only paginated order history caches
+ */
+export async function invalidatePaginatedOrderCache() {
+  await invalidateCache('/api/orders?*');
+}
+
+/**
+ * Invalidate only priority orders cache
+ */
+export async function invalidatePriorityOrderCache() {
+  await invalidateCache('/api/orders/priority*');
 }
 
 /**
