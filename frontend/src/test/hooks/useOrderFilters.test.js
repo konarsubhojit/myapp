@@ -208,4 +208,20 @@ describe('useOrderFilters', () => {
     expect(result.current.filteredOrders).toHaveLength(0);
     expect(result.current.sortedOrders).toHaveLength(0);
   });
+
+  it('should handle undefined orders gracefully', () => {
+    // This tests the defensive check added to prevent the filter error
+    const { result } = renderHook(() => useOrderFilters(undefined));
+
+    expect(result.current.filteredOrders).toEqual([]);
+    expect(result.current.sortedOrders).toEqual([]);
+  });
+
+  it('should handle null orders gracefully', () => {
+    // This tests the defensive check added to prevent the filter error
+    const { result } = renderHook(() => useOrderFilters(null));
+
+    expect(result.current.filteredOrders).toEqual([]);
+    expect(result.current.sortedOrders).toEqual([]);
+  });
 });
