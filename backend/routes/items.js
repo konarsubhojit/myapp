@@ -101,15 +101,15 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     const result = await Item.findPaginated({ page, limit, search });
     
     // Defensive check: ensure result has expected format
-    if (!result || !result.items || !Array.isArray(result.items)) {
+    if (!result || !result.items || !Array.isArray(result.items) || !result.pagination) {
       logger.error('Invalid paginated result from Item.findPaginated', { result });
-      throw new Error('Invalid paginated response: expected object with items array and pagination metadata');
+      throw badRequestError('Invalid paginated response: expected object with items array and pagination metadata');
     }
     
     logger.debug('Returning paginated response', { 
       itemCount: result.items.length, 
-      page: result.pagination?.page,
-      totalPages: result.pagination?.totalPages 
+      page: result.pagination.page,
+      totalPages: result.pagination.totalPages 
     });
     res.json(result);
   } else {
@@ -118,7 +118,7 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     // Defensive check: ensure items is an array
     if (!Array.isArray(items)) {
       logger.error('Invalid result from Item.find', { items });
-      throw new Error('Invalid non-paginated response: expected items array');
+      throw badRequestError('Invalid non-paginated response: expected items array');
     }
     
     logger.debug('Returning non-paginated response', { itemCount: items.length });
