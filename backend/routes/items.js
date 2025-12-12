@@ -93,9 +93,9 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     searchValue: req.query.search 
   });
   
-  // Check if pagination was requested
-  // Use explicit property checking to handle edge cases
-  const paginationRequested = 'page' in req.query || 'limit' in req.query;
+  // Check if pagination was requested (using truthy check to match original behavior)
+  // This ensures that empty string values don't accidentally trigger pagination
+  const paginationRequested = req.query.page || req.query.limit;
   
   if (paginationRequested) {
     const result = await Item.findPaginated({ page, limit, search });
@@ -103,7 +103,7 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     // Defensive check: ensure result has expected format
     if (!result || !result.items || !Array.isArray(result.items)) {
       logger.error('Invalid paginated result from Item.findPaginated', { result });
-      throw new Error('Internal server error: invalid data format');
+      throw new Error('Invalid paginated response: expected object with items array and pagination metadata');
     }
     
     logger.debug('Returning paginated response', { 
@@ -118,7 +118,7 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     // Defensive check: ensure items is an array
     if (!Array.isArray(items)) {
       logger.error('Invalid result from Item.find', { items });
-      throw new Error('Internal server error: invalid data format');
+      throw new Error('Invalid non-paginated response: expected items array');
     }
     
     logger.debug('Returning non-paginated response', { itemCount: items.length });
