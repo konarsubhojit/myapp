@@ -187,11 +187,15 @@ function AppContent(): ReactElement {
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
+                color: '#5568d3', // Fallback color for accessibility
                 background: 'linear-gradient(135deg, #5568d3 0%, #667eea 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
                 cursor: 'default',
+                '@supports not (-webkit-background-clip: text)': {
+                  color: '#5568d3', // Fallback for browsers without gradient text support
+                },
               }}
             >
               {isMobile ? 'OMS' : 'Order Management System'}
