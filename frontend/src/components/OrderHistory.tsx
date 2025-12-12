@@ -4,6 +4,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
+import Chip from '@mui/material/Chip';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
@@ -158,7 +159,7 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
         <OrderDetails 
           orderId={selectedOrderId} 
           onClose={handleCloseDetails}
-          onOrderUpdated={() => fetchOrders(pagination.page, pagination.limit)}
+          onOrderUpdated={() => fetchOrders()}
           onDuplicateOrder={onDuplicateOrder}
         />
       )}

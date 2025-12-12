@@ -168,15 +168,13 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     setActiveError(err);
   };
 
-  // Update URL when state changes
+  // Update URL when state changes (removed pagination params for infinite scroll)
   useEffect(() => {
     const params = new URLSearchParams();
-    if (activePaginationData.page > 1) params.set('page', String(activePaginationData.page));
-    if (activePaginationData.limit !== 10) params.set('limit', String(activePaginationData.limit));
     if (activeSearch) params.set('search', activeSearch);
     if (showDeleted) params.set('deleted', 'true');
     updateUrl(params);
-  }, [activeSearch, activePaginationData.page, activePaginationData.limit, showDeleted, updateUrl]);
+  }, [activeSearch, showDeleted, updateUrl]);
 
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
