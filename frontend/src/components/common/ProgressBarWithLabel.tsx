@@ -37,15 +37,12 @@ function ProgressBarWithLabel({
         <Typography variant="body2" fontWeight={isHighlighted ? 600 : 400}>
           {label} {isHighlighted && emoji}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {sublabel}
-        </Typography>
+        {sublabel && (
+          <Typography variant="body2" color="text.secondary">
+            {sublabel}
+          </Typography>
+        )}
       </Box>
-      {sublabel === undefined && (
-        <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
-          {/* Placeholder for sublabel alignment */}
-        </Typography>
-      )}
       <Box display="flex" alignItems="center" gap={1}>
         <Box sx={{ flexGrow: 1 }}>
           <LinearProgress 

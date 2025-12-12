@@ -69,16 +69,24 @@ interface PriorityOrderCardProps {
   onClick: (orderId: OrderId) => void;
 }
 
+type PriorityStatusType = 'overdue' | 'critical' | 'urgent' | 'medium' | 'normal';
+
 function PriorityOrderCard({ order, formatPrice, onClick }: PriorityOrderCardProps) {
   const urgencyDisplay = getUrgencyDisplay(order.urgency);
   const priorityStatus = getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status });
   
-  const getPriorityChipColor = (status: string): 'error' | 'warning' | 'info' | 'success' => {
-    if (status === 'overdue') return 'error';
-    if (status === 'critical') return 'error';
-    if (status === 'urgent') return 'warning';
-    if (status === 'medium') return 'info';
-    return 'success';
+  const getPriorityChipColor = (status: PriorityStatusType | string): 'error' | 'warning' | 'info' | 'success' => {
+    switch (status) {
+      case 'overdue':
+      case 'critical':
+        return 'error';
+      case 'urgent':
+        return 'warning';
+      case 'medium':
+        return 'info';
+      default:
+        return 'success';
+    }
   };
 
   return (

@@ -165,7 +165,7 @@ export const useSalesAnalytics = (
         const isInTimeRange = orderDate >= cutoffDate;
         
         // Apply status filter
-        const matchesStatusFilter = statusFilter === 'all' || order.status === 'completed' || order.status == null;
+        const matchesStatusFilter = statusFilter === 'all' || order.status === 'completed' || order.status === null || order.status === undefined;
         
         return isInTimeRange && matchesStatusFilter;
       });

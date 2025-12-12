@@ -58,10 +58,10 @@ interface SalesReportProps {
   orders: Order[];
 }
 
-// Helper to get max value from array
+// Helper to get max value from array using reduce for better performance with large arrays
 const getMaxValue = <T,>(items: T[], getValue: (item: T) => number): number => {
   if (items.length === 0) return 1;
-  return Math.max(...items.map(getValue));
+  return items.reduce((max, item) => Math.max(max, getValue(item)), getValue(items[0]));
 };
 
 // Sub-component: Overview View
