@@ -159,6 +159,8 @@ async find() {
 - `Order.findById()`
 - `Order.findPriorityOrders()`
 
+> **Note:** Write operations (create, update, delete) are **NOT** currently wrapped with retry logic. Only the above read operations have retry protection at this time.
+
 ### 4. Proactive Cache Invalidation
 
 Updated routes to invalidate cache BEFORE and AFTER database operations:
@@ -209,7 +211,7 @@ await invalidateItemCache();  // After operation for consistency
 - ✅ Should cap delay at maxDelayMs
 - ✅ Should retry on connection errors
 
-**Total Tests**: 340 (all passing)
+**Total Tests**: 341 (all passing)
 
 ### Integration Testing
 
@@ -261,7 +263,7 @@ To test the improvements manually:
 - **Retry Success Rate**: ~95% of transient failures recovered on retry
 - **Cache Hit Rate**: Improved (no invalid data cached)
 - **Response Time**: Slightly higher for retries (~100-400ms), but prevents errors
-- **Test Coverage**: 340 tests (100% passing)
+- **Test Coverage**: 341 tests (100% passing)
 
 ## Configuration
 

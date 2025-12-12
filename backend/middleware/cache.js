@@ -25,6 +25,7 @@ function validateResponseForCaching(body) {
       return false;
     }
     // If response only has 'message' key (common for simple errors), don't cache
+    // Note: Valid responses with 'message' + other properties will still be cached
     const keys = Object.keys(body);
     if (keys.length === 1 && keys[0] === 'message') {
       return false;

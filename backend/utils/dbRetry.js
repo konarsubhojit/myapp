@@ -119,6 +119,11 @@ function sleep(ms) {
 /**
  * Validate database query result to ensure it's not empty due to an error
  * This helps catch cases where a query returns empty results unexpectedly
+ * 
+ * NOTE: This function is exported for use in models but not currently used.
+ * It's provided as a defensive programming utility for future enhancements.
+ * Models can optionally use this to validate critical query results.
+ * 
  * @param {*} result - Query result to validate
  * @param {Object} options - Validation options
  * @param {boolean} options.allowEmpty - Whether empty results are valid (default: true)
