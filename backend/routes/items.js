@@ -102,7 +102,13 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     
     // Defensive check: ensure result has expected format
     if (!result || !result.items || !Array.isArray(result.items) || !result.pagination) {
-      logger.error('Invalid paginated result from Item.findPaginated', { result });
+      logger.error('Invalid paginated result from Item.findPaginated', { 
+        resultType: typeof result,
+        hasItems: !!result?.items,
+        itemsIsArray: Array.isArray(result?.items),
+        itemsLength: result?.items?.length,
+        hasPagination: !!result?.pagination
+      });
       throw badRequestError('Invalid paginated response: expected object with items array and pagination metadata');
     }
     
@@ -117,7 +123,11 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
     
     // Defensive check: ensure items is an array
     if (!Array.isArray(items)) {
-      logger.error('Invalid result from Item.find', { items });
+      logger.error('Invalid result from Item.find', { 
+        resultType: typeof items,
+        isArray: Array.isArray(items),
+        length: items?.length
+      });
       throw badRequestError('Invalid non-paginated response: expected items array');
     }
     
@@ -130,6 +140,19 @@ router.get('/deleted', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   const result = await Item.findDeletedPaginated({ page, limit, search });
+  
+  // Defensive check: ensure result has expected format
+  if (!result || !result.items || !Array.isArray(result.items) || !result.pagination) {
+    logger.error('Invalid paginated result from Item.findDeletedPaginated', { 
+      resultType: typeof result,
+      hasItems: !!result?.items,
+      itemsIsArray: Array.isArray(result?.items),
+      itemsLength: result?.items?.length,
+      hasPagination: !!result?.pagination
+    });
+    throw badRequestError('Invalid paginated response: expected object with items array and pagination metadata');
+  }
+  
   res.json(result);
 }));
 
