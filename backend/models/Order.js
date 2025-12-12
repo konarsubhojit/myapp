@@ -212,11 +212,29 @@ const Order = {
         desc(orders.priority)
       );
     
-    const ordersWithItems = await Promise.all(
-      ordersResult.map(async (order) => {
-        const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-        return transformOrder(order, itemsResult);
-      })
+    // Fix N+1 query problem: Fetch all items in ONE query instead of looping with Promise.all
+    // This optimization reduces queries from O(n+1) to O(2) for better performance
+    // Before: 1 query for orders + N queries for items (one per order)
+    // After: 1 query for orders + 1 query for all items
+    if (ordersResult.length === 0) {
+      return [];
+    }
+    
+    const orderIds = ordersResult.map(o => o.id);
+    const allItems = await db.select()
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+    
+    // Group items by orderId for efficient lookup
+    const itemsByOrderId = allItems.reduce((acc, item) => {
+      if (!acc[item.orderId]) acc[item.orderId] = [];
+      acc[item.orderId].push(item);
+      return acc;
+    }, {});
+    
+    // Transform orders with their items
+    const ordersWithItems = ordersResult.map(order => 
+      transformOrder(order, itemsByOrderId[order.id] || [])
     );
     
     return ordersWithItems;
