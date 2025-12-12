@@ -114,7 +114,7 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   });
   
   // Check if pagination was requested (using truthy check to match original behavior)
-  // This ensures that empty string values don't accidentally trigger pagination
+  // Empty strings are falsy, so they won't trigger pagination
   const paginationRequested = req.query.page || req.query.limit;
   
   if (paginationRequested) {
