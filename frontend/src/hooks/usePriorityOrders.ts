@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPriorityOrders } from '../services/api';
+import { getOrders } from '../services/api';
 import type { Order, OrderStatus } from '../types';
 import { MILLISECONDS, POLLING_INTERVALS } from '../constants/timeConstants';
 
@@ -135,13 +135,47 @@ export const usePriorityOrders = (options: UsePriorityOrdersOptions = {}): UsePr
     setLoading(true);
     setError('');
     try {
-      const data = await getPriorityOrders();
+      // Fetch all orders from /api/orders/all endpoint
+      const data = await getOrders();
       
       // Ensure data is an array
       const ordersArray = Array.isArray(data) ? data : [];
       
+      // Filter for priority orders (matching backend logic):
+      // 1. High priority (priority >= 5) AND not completed/cancelled
+      // 2. Delivery date within next 3 days AND not completed/cancelled
+      // 3. Overdue (delivery date in the past) AND not completed/cancelled
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const threeDaysFromNow = new Date(now.getTime() + 3 * MILLISECONDS.PER_DAY);
+      
+      const priorityOrders = ordersArray.filter(order => {
+        // Skip completed or cancelled orders
+        if (order.status === 'completed' || order.status === 'cancelled') {
+          return false;
+        }
+        
+        // Check if high priority
+        if (order.priority >= 5) {
+          return true;
+        }
+        
+        // Check delivery date conditions
+        if (order.expectedDeliveryDate) {
+          const deliveryDate = new Date(order.expectedDeliveryDate);
+          deliveryDate.setHours(0, 0, 0, 0);
+          
+          // Overdue or within next 3 days
+          if (deliveryDate < now || deliveryDate <= threeDaysFromNow) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
       // Calculate effective priority and sort
-      const ordersWithPriority: OrderWithPriority[] = ordersArray.map(order => ({
+      const ordersWithPriority: OrderWithPriority[] = priorityOrders.map(order => ({
         ...order,
         effectivePriority: calculateEffectivePriority(order),
         urgency: getUrgencyLevel(order)
