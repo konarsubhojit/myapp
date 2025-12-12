@@ -1,6 +1,7 @@
 import { eq, desc, isNull, isNotNull, ilike, or, sql, and } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { items } from '../db/schema.js';
+import { executeWithRetry } from '../utils/dbRetry.js';
 
 function transformItem(item) {
   return {
@@ -27,22 +28,26 @@ function buildSearchCondition(search) {
 
 const Item = {
   async find() {
-    const db = getDatabase();
-    const result = await db.select().from(items)
-      .where(isNull(items.deletedAt))
-      .orderBy(desc(items.createdAt));
-    return result.map(transformItem);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const result = await db.select().from(items)
+        .where(isNull(items.deletedAt))
+        .orderBy(desc(items.createdAt));
+      return result.map(transformItem);
+    }, { operationName: 'Item.find' });
   },
 
   async findById(id) {
-    const db = getDatabase();
-    const numericId = Number.parseInt(id, 10);
-    if (Number.isNaN(numericId)) return null;
-    
-    const result = await db.select().from(items).where(eq(items.id, numericId));
-    if (result.length === 0) return null;
-    
-    return transformItem(result[0]);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isNaN(numericId)) return null;
+      
+      const result = await db.select().from(items).where(eq(items.id, numericId));
+      if (result.length === 0) return null;
+      
+      return transformItem(result[0]);
+    }, { operationName: 'Item.findById' });
   },
 
   async create(data) {
@@ -123,57 +128,61 @@ const Item = {
   },
 
   async findPaginated({ page = 1, limit = 10, search = '' }) {
-    const db = getDatabase();
-    const offset = (page - 1) * limit;
-    
-    const searchCondition = buildSearchCondition(search);
-    const whereCondition = searchCondition 
-      ? and(isNull(items.deletedAt), searchCondition)
-      : isNull(items.deletedAt);
-    
-    const countResult = await db.select({ count: sql`count(*)` })
-      .from(items)
-      .where(whereCondition);
-    const total = Number.parseInt(countResult[0].count, 10);
-    
-    const result = await db.select()
-      .from(items)
-      .where(whereCondition)
-      .orderBy(desc(items.createdAt))
-      .limit(limit)
-      .offset(offset);
-    
-    return {
-      items: result.map(transformItem),
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-    };
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const offset = (page - 1) * limit;
+      
+      const searchCondition = buildSearchCondition(search);
+      const whereCondition = searchCondition 
+        ? and(isNull(items.deletedAt), searchCondition)
+        : isNull(items.deletedAt);
+      
+      const countResult = await db.select({ count: sql`count(*)` })
+        .from(items)
+        .where(whereCondition);
+      const total = Number.parseInt(countResult[0].count, 10);
+      
+      const result = await db.select()
+        .from(items)
+        .where(whereCondition)
+        .orderBy(desc(items.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      return {
+        items: result.map(transformItem),
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      };
+    }, { operationName: 'Item.findPaginated' });
   },
 
   async findDeletedPaginated({ page = 1, limit = 10, search = '' }) {
-    const db = getDatabase();
-    const offset = (page - 1) * limit;
-    
-    const searchCondition = buildSearchCondition(search);
-    const whereCondition = searchCondition 
-      ? and(isNotNull(items.deletedAt), searchCondition)
-      : isNotNull(items.deletedAt);
-    
-    const countResult = await db.select({ count: sql`count(*)` })
-      .from(items)
-      .where(whereCondition);
-    const total = Number.parseInt(countResult[0].count, 10);
-    
-    const result = await db.select()
-      .from(items)
-      .where(whereCondition)
-      .orderBy(desc(items.deletedAt))
-      .limit(limit)
-      .offset(offset);
-    
-    return {
-      items: result.map(transformItem),
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-    };
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const offset = (page - 1) * limit;
+      
+      const searchCondition = buildSearchCondition(search);
+      const whereCondition = searchCondition 
+        ? and(isNotNull(items.deletedAt), searchCondition)
+        : isNotNull(items.deletedAt);
+      
+      const countResult = await db.select({ count: sql`count(*)` })
+        .from(items)
+        .where(whereCondition);
+      const total = Number.parseInt(countResult[0].count, 10);
+      
+      const result = await db.select()
+        .from(items)
+        .where(whereCondition)
+        .orderBy(desc(items.deletedAt))
+        .limit(limit)
+        .offset(offset);
+      
+      return {
+        items: result.map(transformItem),
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      };
+    }, { operationName: 'Item.findDeletedPaginated' });
   },
 
   async permanentlyRemoveImage(id) {

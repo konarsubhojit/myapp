@@ -1,6 +1,7 @@
 import { eq, desc, sql, asc, inArray } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { orders, orderItems } from '../db/schema.js';
+import { executeWithRetry } from '../utils/dbRetry.js';
 
 function generateOrderId() {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -88,106 +89,112 @@ async function updateOrderItems(db, orderId, items) {
 
 const Order = {
   async find() {
-    const db = getDatabase();
-    const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
-    
-    // Fix N+1 query problem: Fetch all items in ONE query instead of looping
-    // This optimization reduces 101 queries to 2 queries for 100 orders (98% reduction)
-    // Before: 1 query for orders + N queries for items = O(n+1)
-    // After: 1 query for orders + 1 query for all items = O(2)
-    if (ordersResult.length === 0) {
-      return [];
-    }
-    
-    const orderIds = ordersResult.map(o => o.id);
-    const allItems = await db.select()
-      .from(orderItems)
-      .where(inArray(orderItems.orderId, orderIds));
-    
-    // Group items by orderId for efficient lookup
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      if (!acc[item.orderId]) acc[item.orderId] = [];
-      acc[item.orderId].push(item);
-      return acc;
-    }, {});
-    
-    // Transform orders with their items
-    return ordersResult.map(order => 
-      transformOrder(order, itemsByOrderId[order.id] || [])
-    );
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
+      
+      // Fix N+1 query problem: Fetch all items in ONE query instead of looping
+      // This optimization reduces 101 queries to 2 queries for 100 orders (98% reduction)
+      // Before: 1 query for orders + N queries for items = O(n+1)
+      // After: 1 query for orders + 1 query for all items = O(2)
+      if (ordersResult.length === 0) {
+        return [];
+      }
+      
+      const orderIds = ordersResult.map(o => o.id);
+      const allItems = await db.select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds));
+      
+      // Group items by orderId for efficient lookup
+      const itemsByOrderId = allItems.reduce((acc, item) => {
+        if (!acc[item.orderId]) acc[item.orderId] = [];
+        acc[item.orderId].push(item);
+        return acc;
+      }, {});
+      
+      // Transform orders with their items
+      return ordersResult.map(order => 
+        transformOrder(order, itemsByOrderId[order.id] || [])
+      );
+    }, { operationName: 'Order.find' });
   },
 
   async findById(id) {
-    const db = getDatabase();
-    const numericId = Number.parseInt(id, 10);
-    if (Number.isNaN(numericId)) return null;
-    
-    const ordersResult = await db.select().from(orders).where(eq(orders.id, numericId));
-    if (ordersResult.length === 0) return null;
-    
-    const order = ordersResult[0];
-    const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-    
-    return transformOrder(order, itemsResult);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isNaN(numericId)) return null;
+      
+      const ordersResult = await db.select().from(orders).where(eq(orders.id, numericId));
+      if (ordersResult.length === 0) return null;
+      
+      const order = ordersResult[0];
+      const itemsResult = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      
+      return transformOrder(order, itemsResult);
+    }, { operationName: 'Order.findById' });
   },
 
   async findPriorityOrders() {
-    const db = getDatabase();
-    const now = new Date();
-    
-    // Get orders that need attention:
-    // 1. High priority (priority >= 5) AND not completed/cancelled
-    // 2. Delivery date within next 3 days AND not completed/cancelled
-    // 3. Overdue (delivery date in the past) AND not completed/cancelled
-    const ordersResult = await db.select()
-      .from(orders)
-      .where(
-        sql`(
-          (${orders.priority} >= 5 OR
-          (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)}) OR
-          (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now}))
-          AND ${orders.status} NOT IN ('completed', 'cancelled')
-        )`
-      )
-      .orderBy(
-        sql`CASE 
-          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now} THEN 1
-          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 24 * 60 * 60 * 1000)} THEN 2
-          WHEN ${orders.priority} >= 8 THEN 3
-          WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)} THEN 4
-          WHEN ${orders.priority} >= 5 THEN 5
-          ELSE 6
-        END`,
-        asc(orders.expectedDeliveryDate),
-        desc(orders.priority)
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const now = new Date();
+      
+      // Get orders that need attention:
+      // 1. High priority (priority >= 5) AND not completed/cancelled
+      // 2. Delivery date within next 3 days AND not completed/cancelled
+      // 3. Overdue (delivery date in the past) AND not completed/cancelled
+      const ordersResult = await db.select()
+        .from(orders)
+        .where(
+          sql`(
+            (${orders.priority} >= 5 OR
+            (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)}) OR
+            (${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now}))
+            AND ${orders.status} NOT IN ('completed', 'cancelled')
+          )`
+        )
+        .orderBy(
+          sql`CASE 
+            WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} < ${now} THEN 1
+            WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 24 * 60 * 60 * 1000)} THEN 2
+            WHEN ${orders.priority} >= 8 THEN 3
+            WHEN ${orders.expectedDeliveryDate} IS NOT NULL AND ${orders.expectedDeliveryDate} <= ${new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)} THEN 4
+            WHEN ${orders.priority} >= 5 THEN 5
+            ELSE 6
+          END`,
+          asc(orders.expectedDeliveryDate),
+          desc(orders.priority)
+        );
+      
+      // Fix N+1 query problem: Fetch all items in ONE query instead of looping with Promise.all
+      // This optimization reduces queries from O(n+1) to O(2) for better performance
+      // Before: 1 query for orders + N queries for items (one per order)
+      // After: 1 query for orders + 1 query for all items
+      if (ordersResult.length === 0) {
+        return [];
+      }
+      
+      const orderIds = ordersResult.map(o => o.id);
+      const allItems = await db.select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds));
+      
+      // Group items by orderId for efficient lookup
+      const itemsByOrderId = allItems.reduce((acc, item) => {
+        if (!acc[item.orderId]) acc[item.orderId] = [];
+        acc[item.orderId].push(item);
+        return acc;
+      }, {});
+      
+      // Transform orders with their items
+      const ordersWithItems = ordersResult.map(order => 
+        transformOrder(order, itemsByOrderId[order.id] || [])
       );
-    
-    // Fix N+1 query problem: Fetch all items in ONE query instead of looping with Promise.all
-    // This optimization reduces queries from O(n+1) to O(2) for better performance
-    // Before: 1 query for orders + N queries for items (one per order)
-    // After: 1 query for orders + 1 query for all items
-    if (ordersResult.length === 0) {
-      return [];
-    }
-    
-    const orderIds = ordersResult.map(o => o.id);
-    const allItems = await db.select()
-      .from(orderItems)
-      .where(inArray(orderItems.orderId, orderIds));
-    
-    // Group items by orderId for efficient lookup
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      if (!acc[item.orderId]) acc[item.orderId] = [];
-      acc[item.orderId].push(item);
-      return acc;
-    }, {});
-    
-    // Transform orders with their items
-    const ordersWithItems = ordersResult.map(order => 
-      transformOrder(order, itemsByOrderId[order.id] || [])
-    );
-    
-    return ordersWithItems;
+      
+      return ordersWithItems;
+    }, { operationName: 'Order.findPriorityOrders' });
   },
 
   async create(data) {
