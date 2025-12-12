@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import FeedbackPanel from '../../components/FeedbackPanel';
 import { getFeedbacksPaginated, getFeedbackStats } from '../../services/api';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -164,8 +163,6 @@ describe('FeedbackPanel', () => {
   });
 
   it('should handle pagination controls', async () => {
-    const user = userEvent.setup();
-
     render(<FeedbackPanel />);
 
     await waitFor(() => {

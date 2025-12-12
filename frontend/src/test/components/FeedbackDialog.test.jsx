@@ -11,7 +11,6 @@ vi.mock('../../contexts/NotificationContext');
 describe('FeedbackDialog', () => {
   const mockShowNotification = vi.fn();
   const mockOnClose = vi.fn();
-  const mockOnFeedbackSubmitted = vi.fn();
 
   const mockCompletedOrder = {
     _id: 123,
@@ -151,8 +150,6 @@ describe('FeedbackDialog', () => {
   });
 
   it('should show warning if rating is not selected', async () => {
-    const user = userEvent.setup();
-
     render(
       <FeedbackDialog
         open={true}
