@@ -4,7 +4,7 @@ import { jest } from '@jest/globals';
 const mockRedisClient = {
   get: jest.fn(),
   setEx: jest.fn(),
-  keys: jest.fn(),
+  scan: jest.fn(),
   del: jest.fn(),
   flushDb: jest.fn(),
   isOpen: true,
@@ -126,23 +126,55 @@ describe('Cache Middleware', () => {
   });
 
   describe('invalidateCache', () => {
-    it('should delete all keys matching the pattern', async () => {
+    it('should delete all keys matching the pattern using SCAN', async () => {
       const keys = ['/api/items', '/api/items?page=1', '/api/items?page=2'];
-      mockRedisClient.keys.mockResolvedValue(keys);
+      // Mock SCAN to return all keys in first iteration
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: keys
+      });
       mockRedisClient.del.mockResolvedValue(3);
       
       await invalidateCache('/api/items*');
       
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/items*');
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/items*',
+        COUNT: 100
+      });
       expect(mockRedisClient.del).toHaveBeenCalledWith(keys);
     });
 
-    it('should handle no matching keys', async () => {
-      mockRedisClient.keys.mockResolvedValue([]);
+    it('should handle pagination in SCAN', async () => {
+      // Mock SCAN to return keys in multiple iterations
+      mockRedisClient.scan
+        .mockResolvedValueOnce({
+          cursor: 1,
+          keys: ['/api/items?page=1']
+        })
+        .mockResolvedValueOnce({
+          cursor: 0,
+          keys: ['/api/items?page=2']
+        });
+      mockRedisClient.del.mockResolvedValue(2);
       
       await invalidateCache('/api/items*');
       
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/items*');
+      expect(mockRedisClient.scan).toHaveBeenCalledTimes(2);
+      expect(mockRedisClient.del).toHaveBeenCalledWith(['/api/items?page=1', '/api/items?page=2']);
+    });
+
+    it('should handle no matching keys', async () => {
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
+      
+      await invalidateCache('/api/items*');
+      
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/items*',
+        COUNT: 100
+      });
       expect(mockRedisClient.del).not.toHaveBeenCalled();
     });
 
@@ -151,29 +183,39 @@ describe('Cache Middleware', () => {
       
       await invalidateCache('/api/items*');
       
-      expect(mockRedisClient.keys).not.toHaveBeenCalled();
+      expect(mockRedisClient.scan).not.toHaveBeenCalled();
     });
   });
 
   describe('invalidateItemCache', () => {
     it('should invalidate all item-related caches', async () => {
-      mockRedisClient.keys.mockResolvedValue([]);
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
       
       await invalidateItemCache();
       
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/items*');
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/items/*');
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/items*',
+        COUNT: 100
+      });
     });
   });
 
   describe('invalidateOrderCache', () => {
     it('should invalidate all order-related caches', async () => {
-      mockRedisClient.keys.mockResolvedValue([]);
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
       
       await invalidateOrderCache();
       
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/orders*');
-      expect(mockRedisClient.keys).toHaveBeenCalledWith('/api/orders/*');
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/orders*',
+        COUNT: 100
+      });
     });
   });
 

@@ -82,7 +82,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
 }
 
 /**
- * Invalidate cache for a specific pattern
+ * Invalidate cache for a specific pattern using SCAN for better performance
  * @param {string} pattern - Cache key pattern (supports wildcards with *)
  */
 export async function invalidateCache(pattern) {
@@ -94,8 +94,19 @@ export async function invalidateCache(pattern) {
       return;
     }
 
-    // Find all keys matching the pattern
-    const keys = await redis.keys(pattern);
+    // Use SCAN instead of KEYS for better performance in production
+    const keys = [];
+    let cursor = 0;
+    
+    do {
+      const result = await redis.scan(cursor, {
+        MATCH: pattern,
+        COUNT: 100
+      });
+      
+      cursor = result.cursor;
+      keys.push(...result.keys);
+    } while (cursor !== 0);
     
     if (keys.length === 0) {
       logger.debug('No cache keys found for pattern', { pattern });
@@ -114,20 +125,14 @@ export async function invalidateCache(pattern) {
  * Invalidate all item-related caches
  */
 export async function invalidateItemCache() {
-  await Promise.all([
-    invalidateCache('/api/items*'),
-    invalidateCache('/api/items/*')
-  ]);
+  await invalidateCache('/api/items*');
 }
 
 /**
  * Invalidate all order-related caches
  */
 export async function invalidateOrderCache() {
-  await Promise.all([
-    invalidateCache('/api/orders*'),
-    invalidateCache('/api/orders/*')
-  ]);
+  await invalidateCache('/api/orders*');
 }
 
 /**
