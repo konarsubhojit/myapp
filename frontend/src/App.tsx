@@ -108,29 +108,40 @@ function AppContent(): ReactElement {
   }, [])
 
   const handleOrderCreated = useCallback((): void => {
-    fetchOrders()
     // Increment key to trigger OrderHistory refresh when switching tabs
     setOrderHistoryKey(prev => prev + 1)
+    // Also refetch orders if they were already loaded (for SalesReport)
+    if (orders.length > 0) {
+      fetchOrders()
+    }
     // Clear duplicate order state
     setDuplicateOrderId(null)
-  }, [fetchOrders])
+  }, [orders.length, fetchOrders])
 
   const handleDuplicateOrder = useCallback((orderId: string): void => {
     setDuplicateOrderId(orderId)
     setCurrentTab(1) // Switch to Create Order tab
   }, [])
 
-  // Fetch initial data when authenticated (lazy loading for OrderForm)
+  // Fetch initial data when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
     
     const loadInitialData = async (): Promise<void> => {
-      // Fetch items and orders for OrderForm - ItemPanel handles its own data
-      await Promise.all([fetchItems(), fetchOrders()])
+      // Only fetch items on mount - other data loaded on demand
+      await fetchItems()
     }
     
     loadInitialData()
-  }, [isAuthenticated, fetchItems, fetchOrders])
+  }, [isAuthenticated, fetchItems])
+
+  // Lazy load orders when SalesReport tab is viewed
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (currentTab === 4 && orders.length === 0) {
+      fetchOrders()
+    }
+  }, [currentTab, isAuthenticated, orders.length, fetchOrders])
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
     setCurrentTab(newValue)
