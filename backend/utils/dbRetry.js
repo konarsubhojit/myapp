@@ -86,12 +86,12 @@ export async function executeWithRetry(operation, options = {}) {
 function isRetryableError(error) {
   // Network errors and timeouts are retryable
   const retryableMessages = [
-    'ECONNREFUSED',
-    'ECONNRESET',
-    'ETIMEDOUT',
-    'ENOTFOUND',
-    'EAI_AGAIN',
-    'ENETUNREACH',
+    'econnrefused',
+    'econnreset',
+    'etimedout',
+    'enotfound',
+    'eai_again',
+    'enetunreach',
     'timeout',
     'network',
     'connection',
@@ -102,8 +102,8 @@ function isRetryableError(error) {
   
   // Check if error message or code contains retryable keywords
   return retryableMessages.some(keyword => 
-    errorMessage.includes(keyword.toLowerCase()) || 
-    errorCode.includes(keyword.toLowerCase())
+    errorMessage.includes(keyword) || 
+    errorCode.includes(keyword)
   );
 }
 

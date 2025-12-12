@@ -124,7 +124,7 @@ describe('Cache Middleware', () => {
       expect(mockRedisClient.setEx).not.toHaveBeenCalled();
     });
 
-    it('should not cache error-only responses', async () => {
+    it('should not cache error responses with error property', async () => {
       mockRedisClient.get.mockResolvedValue(null);
       mockRedisClient.setEx.mockResolvedValue('OK');
       
@@ -133,13 +133,32 @@ describe('Cache Middleware', () => {
       
       expect(next).toHaveBeenCalled();
       
-      // Simulate error response
-      res.json({ error: 'Something went wrong' });
+      // Simulate error response with 'error' property
+      res.json({ error: 'Something went wrong', status: 500 });
       
       // Wait for async cache operation
       await new Promise(resolve => setTimeout(resolve, 10));
       
       // Should not cache error response
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+    });
+
+    it('should not cache message-only responses', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate message-only response (common for simple errors)
+      res.json({ message: 'Not found' });
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not cache message-only response
       expect(mockRedisClient.setEx).not.toHaveBeenCalled();
     });
 

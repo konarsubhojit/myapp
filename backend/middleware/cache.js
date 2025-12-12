@@ -17,11 +17,16 @@ function validateResponseForCaching(body) {
     return false;
   }
   
-  // Don't cache error responses (objects with 'error' or 'message' as only property)
+  // Don't cache error responses
+  // Check if response has 'error' or 'message' properties that indicate an error
   if (typeof body === 'object' && !Array.isArray(body)) {
+    // If response has 'error' key, it's likely an error response - don't cache
+    if ('error' in body) {
+      return false;
+    }
+    // If response only has 'message' key (common for simple errors), don't cache
     const keys = Object.keys(body);
-    // If response only has error/message properties, don't cache
-    if (keys.length === 1 && (keys[0] === 'error' || keys[0] === 'message')) {
+    if (keys.length === 1 && keys[0] === 'message') {
       return false;
     }
   }
