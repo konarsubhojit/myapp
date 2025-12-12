@@ -39,9 +39,21 @@ export const useDeletedItems = (showDeleted: boolean): UseDeletedItemsResult => 
         limit: deletedPagination.limit, 
         search: deletedSearch 
       });
-      setDeletedItemsData(result);
+      // Defensive check: ensure result.items exists and is an array
+      if (!result.items || !Array.isArray(result.items)) {
+        throw new Error('Invalid response format: items must be an array');
+      }
+      setDeletedItemsData({
+        items: result.items,
+        pagination: result.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
+      });
     } catch (err) {
       console.error('Failed to fetch deleted items:', err);
+      // Set empty array on error to prevent undefined errors
+      setDeletedItemsData({ 
+        items: [], 
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
+      });
     } finally {
       setLoadingDeleted(false);
     }

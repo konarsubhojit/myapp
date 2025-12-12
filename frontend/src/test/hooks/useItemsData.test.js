@@ -330,4 +330,100 @@ describe('useItemsData', () => {
 
     expect(api.getItemsPaginated).toHaveBeenCalled();
   });
+
+  it('should handle undefined items array from API response', async () => {
+    // Mock API returning malformed response with undefined items
+    api.getItemsPaginated.mockResolvedValue({
+      items: undefined,
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const { result } = renderHook(() => useItemsData(mockGetParam, mockGetIntParam));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should default to empty array instead of undefined
+    expect(result.current.items).toEqual([]);
+    expect(result.current.error).toBe('Invalid response format: items must be an array');
+  });
+
+  it('should handle null items array from API response', async () => {
+    // Mock API returning malformed response with null items
+    api.getItemsPaginated.mockResolvedValue({
+      items: null,
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const { result } = renderHook(() => useItemsData(mockGetParam, mockGetIntParam));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should default to empty array instead of null
+    expect(result.current.items).toEqual([]);
+    expect(result.current.error).toBe('Invalid response format: items must be an array');
+  });
+
+  it('should handle non-array items from API response', async () => {
+    // Mock API returning malformed response with non-array items
+    api.getItemsPaginated.mockResolvedValue({
+      items: 'invalid',
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const { result } = renderHook(() => useItemsData(mockGetParam, mockGetIntParam));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should default to empty array
+    expect(result.current.items).toEqual([]);
+    expect(result.current.error).toBe('Invalid response format: items must be an array');
+  });
+
+  it('should handle missing pagination from API response', async () => {
+    // Mock API returning response without pagination
+    api.getItemsPaginated.mockResolvedValue({
+      items: [{ id: '1', name: 'Item' }],
+      pagination: undefined
+    });
+
+    const { result } = renderHook(() => useItemsData(mockGetParam, mockGetIntParam));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should use default pagination
+    expect(result.current.paginationData).toEqual({ 
+      page: 1, 
+      limit: 10, 
+      total: 0, 
+      totalPages: 0 
+    });
+  });
+
+  it('should set empty items on error to prevent undefined errors', async () => {
+    api.getItemsPaginated.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useItemsData(mockGetParam, mockGetIntParam));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Should have empty array instead of undefined
+    expect(result.current.items).toEqual([]);
+    expect(result.current.paginationData).toEqual({ 
+      page: 1, 
+      limit: 10, 
+      total: 0, 
+      totalPages: 0 
+    });
+    expect(result.current.error).toBe('Network error');
+  });
 });
