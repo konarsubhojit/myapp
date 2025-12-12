@@ -1,11 +1,10 @@
-import PropTypes from 'prop-types';
 import Paper from '@mui/material/Paper';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
@@ -16,7 +15,26 @@ import {
   CONFIRMATION_STATUSES,
 } from '../../constants/orderConstants';
 
-function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
+interface OrderFilters {
+  orderId: string;
+  customerName: string;
+  customerId: string;
+  orderFrom: string;
+  confirmationStatus: string;
+  paymentStatus: string;
+}
+
+interface OrderFiltersSectionProps {
+  filters: OrderFilters;
+  onFilterChange: (field: keyof OrderFilters, value: string) => void;
+  onClearFilters: () => void;
+}
+
+function OrderFiltersSection({ filters, onFilterChange, onClearFilters }: OrderFiltersSectionProps) {
+  const handleSelectChange = (field: keyof OrderFilters) => (e: SelectChangeEvent<string>) => {
+    onFilterChange(field, e.target.value);
+  };
+
   return (
     <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
       <Grid container spacing={2}>
@@ -62,7 +80,7 @@ function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
             <Select
               value={filters.orderFrom}
               label="Source"
-              onChange={(e) => onFilterChange('orderFrom', e.target.value)}
+              onChange={handleSelectChange('orderFrom')}
             >
               <MenuItem value="">All Sources</MenuItem>
               {ORDER_SOURCES.map(source => (
@@ -79,7 +97,7 @@ function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
             <Select
               value={filters.confirmationStatus}
               label="Status"
-              onChange={(e) => onFilterChange('confirmationStatus', e.target.value)}
+              onChange={handleSelectChange('confirmationStatus')}
             >
               <MenuItem value="">All Statuses</MenuItem>
               {CONFIRMATION_STATUSES.map(status => (
@@ -96,7 +114,7 @@ function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
             <Select
               value={filters.paymentStatus}
               label="Payment"
-              onChange={(e) => onFilterChange('paymentStatus', e.target.value)}
+              onChange={handleSelectChange('paymentStatus')}
             >
               <MenuItem value="">All Payments</MenuItem>
               {PAYMENT_STATUSES.map(status => (
@@ -121,18 +139,5 @@ function OrderFiltersSection({ filters, onFilterChange, onClearFilters }) {
     </Paper>
   );
 }
-
-OrderFiltersSection.propTypes = {
-  filters: PropTypes.shape({
-    orderId: PropTypes.string,
-    customerName: PropTypes.string,
-    customerId: PropTypes.string,
-    orderFrom: PropTypes.string,
-    confirmationStatus: PropTypes.string,
-    paymentStatus: PropTypes.string,
-  }).isRequired,
-  onFilterChange: PropTypes.func.isRequired,
-  onClearFilters: PropTypes.func.isRequired,
-};
 
 export default OrderFiltersSection;

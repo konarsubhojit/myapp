@@ -114,8 +114,8 @@ const normalizeStringValues = (
   bValue: unknown
 ): NormalizedValues => {
   return { 
-    a: aValue != null ? String(aValue).toLowerCase() : '', 
-    b: bValue != null ? String(bValue).toLowerCase() : '' 
+    a: String(aValue ?? '').toLowerCase(), 
+    b: String(bValue ?? '').toLowerCase() 
   };
 };
 

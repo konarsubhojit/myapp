@@ -1,4 +1,4 @@
-import PropTypes from 'prop-types';
+import { FormEvent } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -12,6 +12,18 @@ import CustomerInfoSection from './CustomerInfoSection';
 import OrderInfoSection from './OrderInfoSection';
 import PaymentInfoSection from './PaymentInfoSection';
 import OrderItemsTable from './OrderItemsTable';
+import type { Order, OrderEditForm, PriorityData } from '../../types';
+
+interface OrderDialogContentProps {
+  order: Order | null;
+  loading: boolean;
+  error: string;
+  isEditing: boolean;
+  editForm: OrderEditForm;
+  formatPrice: (price: number) => string;
+  priority: PriorityData | null;
+  onEditChange: (field: string, value: string | number) => void;
+}
 
 function OrderDialogContent({ 
   order, 
@@ -22,7 +34,11 @@ function OrderDialogContent({
   formatPrice, 
   priority,
   onEditChange 
-}) {
+}: OrderDialogContentProps) {
+  const handleFormSubmit = (e: FormEvent) => {
+    e.preventDefault();
+  };
+
   if (loading) {
     return (
       <DialogContent dividers>
@@ -50,7 +66,7 @@ function OrderDialogContent({
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
       {isEditing ? (
-        <Box component="form" id="order-edit-form" onSubmit={(e) => e.preventDefault()}>
+        <Box component="form" id="order-edit-form" onSubmit={handleFormSubmit}>
           <Stack spacing={3}>
             <CustomerInfoSection
               isEditing={true}
@@ -66,7 +82,7 @@ function OrderDialogContent({
 
             <PaymentInfoSection
               isEditing={true}
-              data={editForm}
+              data={{ ...editForm, totalPrice: order.totalPrice }}
               formatPrice={formatPrice}
               onDataChange={onEditChange}
             />
@@ -134,16 +150,5 @@ function OrderDialogContent({
     </DialogContent>
   );
 }
-
-OrderDialogContent.propTypes = {
-  order: PropTypes.object,
-  loading: PropTypes.bool.isRequired,
-  error: PropTypes.string,
-  isEditing: PropTypes.bool.isRequired,
-  editForm: PropTypes.object,
-  formatPrice: PropTypes.func.isRequired,
-  priority: PropTypes.number,
-  onEditChange: PropTypes.func.isRequired,
-};
 
 export default OrderDialogContent;

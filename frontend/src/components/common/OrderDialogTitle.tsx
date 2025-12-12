@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -10,6 +9,18 @@ import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { getOrderStatusColor, getOrderPriorityColor } from '../../utils/orderUtils';
+import type { Order, PriorityData } from '../../types';
+
+interface OrderDialogTitleProps {
+  order: Order | null;
+  priority: PriorityData | null;
+  loading: boolean;
+  error: string;
+  isEditing: boolean;
+  onEdit: () => void;
+  onDuplicate: (() => void) | null;
+  onClose: () => void;
+}
 
 function OrderDialogTitle({ 
   order, 
@@ -20,7 +31,7 @@ function OrderDialogTitle({
   onEdit, 
   onDuplicate, 
   onClose 
-}) {
+}: OrderDialogTitleProps) {
   if (loading) {
     return (
       <DialogTitle id="order-details-dialog-title">
@@ -110,16 +121,5 @@ function OrderDialogTitle({
     </DialogTitle>
   );
 }
-
-OrderDialogTitle.propTypes = {
-  order: PropTypes.object,
-  priority: PropTypes.number,
-  loading: PropTypes.bool.isRequired,
-  error: PropTypes.string,
-  isEditing: PropTypes.bool.isRequired,
-  onEdit: PropTypes.func.isRequired,
-  onDuplicate: PropTypes.func,
-  onClose: PropTypes.func.isRequired,
-};
 
 export default OrderDialogTitle;

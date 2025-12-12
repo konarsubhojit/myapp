@@ -1,4 +1,4 @@
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
@@ -13,6 +13,12 @@ import { APP_VERSION } from '../config/version';
 
 function Login() {
   const { handleGoogleSuccess, handleGoogleError, loading, error, enableGuestMode } = useAuth();
+
+  const onGoogleSuccess = (credentialResponse: CredentialResponse) => {
+    if (credentialResponse.credential) {
+      handleGoogleSuccess({ credential: credentialResponse.credential });
+    }
+  };
 
   if (loading) {
     return (
@@ -92,7 +98,7 @@ function Login() {
             gap={2}
           >
             <GoogleLogin
-              onSuccess={handleGoogleSuccess}
+              onSuccess={onGoogleSuccess}
               onError={handleGoogleError}
               theme="outline"
               size="large"

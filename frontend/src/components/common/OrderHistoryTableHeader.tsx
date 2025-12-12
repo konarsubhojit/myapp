@@ -1,13 +1,28 @@
-import PropTypes from 'prop-types';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import TableSortLabel from '@mui/material/TableSortLabel';
 
-function OrderHistoryTableHeader({ sortConfig, onSort }) {
-  const createSortHandler = (key) => () => onSort(key);
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
+
+interface OrderHistoryTableHeaderProps {
+  sortConfig: SortConfig;
+  onSort: (key: string) => void;
+}
+
+interface Column {
+  key: string;
+  label: string;
+  align?: 'left' | 'right' | 'center';
+}
+
+function OrderHistoryTableHeader({ sortConfig, onSort }: OrderHistoryTableHeaderProps) {
+  const createSortHandler = (key: string) => () => onSort(key);
   
-  const columns = [
+  const columns: Column[] = [
     { key: 'orderId', label: 'Order ID' },
     { key: 'customerName', label: 'Customer' },
     { key: 'orderFrom', label: 'Source' },
@@ -37,13 +52,5 @@ function OrderHistoryTableHeader({ sortConfig, onSort }) {
     </TableHead>
   );
 }
-
-OrderHistoryTableHeader.propTypes = {
-  sortConfig: PropTypes.shape({
-    key: PropTypes.string.isRequired,
-    direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
-  }).isRequired,
-  onSort: PropTypes.func.isRequired,
-};
 
 export default OrderHistoryTableHeader;

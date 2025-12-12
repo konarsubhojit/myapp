@@ -34,7 +34,7 @@ export function useAuth(): AuthContextType {
 }
 
 interface AuthProviderProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 interface GoogleUserData extends AuthUser {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, SyntheticEvent } from 'react';
 import {
   Box,
   Typography,
@@ -15,20 +15,21 @@ import {
 import { getFeedbacksPaginated, getFeedbackStats } from '../services/api';
 import PaginationControls from './common/PaginationControls';
 import { useNotification } from '../contexts/NotificationContext';
+import type { Feedback, FeedbackStats, PaginationInfo } from '../types';
+
+const ITEMS_PER_PAGE = 10;
 
 const FeedbackPanel = () => {
-  const [feedbacks, setFeedbacks] = useState([]);
-  const [stats, setStats] = useState(null);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [stats, setStats] = useState<FeedbackStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [paginationData, setPaginationData] = useState({
+  const [paginationData, setPaginationData] = useState<PaginationInfo>({
     page: 1,
-    limit: 10,
+    limit: ITEMS_PER_PAGE,
     total: 0,
     totalPages: 1
   });
   const { showNotification } = useNotification();
-
-  const ITEMS_PER_PAGE = 10;
 
   const fetchFeedbacks = useCallback(async () => {
     try {
@@ -42,7 +43,8 @@ const FeedbackPanel = () => {
         totalPages: 1
       });
     } catch (error) {
-      showNotification('Failed to fetch feedbacks: ' + error.message, 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showNotification('Failed to fetch feedbacks: ' + errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -62,8 +64,8 @@ const FeedbackPanel = () => {
     fetchStats();
   }, [fetchFeedbacks, fetchStats]);
 
-  const getRatingLabel = (rating) => {
-    const labels = {
+  const getRatingLabel = (rating: number): string => {
+    const labels: Record<number, string> = {
       1: 'Very Poor',
       2: 'Poor',
       3: 'Average',
@@ -73,12 +75,26 @@ const FeedbackPanel = () => {
     return labels[rating] || '';
   };
 
-  const formatDate = (dateString) => {
+  const getRatingColor = (rating: number): 'success' | 'warning' | 'error' => {
+    if (rating >= 4) return 'success';
+    if (rating >= 3) return 'warning';
+    return 'error';
+  };
+
+  const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPaginationData(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setPaginationData(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
   if (loading && feedbacks.length === 0) {
@@ -105,7 +121,7 @@ const FeedbackPanel = () => {
                   Average Rating
                 </Typography>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Rating value={parseFloat(stats.avgRating) || 0} readOnly precision={0.1} />
+                  <Rating value={parseFloat(stats.avgRating || '0') || 0} readOnly precision={0.1} />
                   <Typography variant="h6">
                     {stats.avgRating || 'N/A'}
                   </Typography>
@@ -120,7 +136,7 @@ const FeedbackPanel = () => {
                   Product Quality
                 </Typography>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Rating value={parseFloat(stats.avgProductQuality) || 0} readOnly precision={0.1} />
+                  <Rating value={parseFloat(stats.avgProductQuality || '0') || 0} readOnly precision={0.1} />
                   <Typography variant="h6">
                     {stats.avgProductQuality || 'N/A'}
                   </Typography>
@@ -135,7 +151,7 @@ const FeedbackPanel = () => {
                   Delivery Experience
                 </Typography>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Rating value={parseFloat(stats.avgDeliveryExperience) || 0} readOnly precision={0.1} />
+                  <Rating value={parseFloat(stats.avgDeliveryExperience || '0') || 0} readOnly precision={0.1} />
                   <Typography variant="h6">
                     {stats.avgDeliveryExperience || 'N/A'}
                   </Typography>
@@ -176,7 +192,7 @@ const FeedbackPanel = () => {
                         <Rating value={feedback.rating} readOnly />
                         <Chip 
                           label={getRatingLabel(feedback.rating)} 
-                          color={feedback.rating >= 4 ? 'success' : feedback.rating >= 3 ? 'warning' : 'error'}
+                          color={getRatingColor(feedback.rating)}
                           size="small"
                         />
                       </Box>
@@ -258,8 +274,8 @@ const FeedbackPanel = () => {
           <Box sx={{ mt: 3 }}>
             <PaginationControls
               paginationData={paginationData}
-              onPageChange={(newPage) => setPaginationData(prev => ({ ...prev, page: newPage }))}
-              onLimitChange={(newLimit) => setPaginationData(prev => ({ ...prev, limit: newLimit, page: 1 }))}
+              onPageChange={handlePageChange}
+              onLimitChange={handleLimitChange}
             />
           </Box>
         </>

@@ -1,4 +1,4 @@
-import PropTypes from 'prop-types';
+import { ChangeEvent } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -6,6 +6,15 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import ImageIcon from '@mui/icons-material/Image';
 import CloseIcon from '@mui/icons-material/Close';
+
+interface ImageUploadFieldProps {
+  id: string;
+  imagePreview: string;
+  imageProcessing: boolean;
+  onImageChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onClearImage: () => void;
+  label?: string;
+}
 
 /**
  * Reusable image upload field component
@@ -18,7 +27,7 @@ function ImageUploadField({
   onImageChange,
   onClearImage,
   label = 'Item Image (Max size: 5MB, auto-compressed)'
-}) {
+}: ImageUploadFieldProps) {
   return (
     <Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -76,14 +85,5 @@ function ImageUploadField({
     </Box>
   );
 }
-
-ImageUploadField.propTypes = {
-  id: PropTypes.string.isRequired,
-  imagePreview: PropTypes.string,
-  imageProcessing: PropTypes.bool.isRequired,
-  onImageChange: PropTypes.func.isRequired,
-  onClearImage: PropTypes.func.isRequired,
-  label: PropTypes.string,
-};
 
 export default ImageUploadField;

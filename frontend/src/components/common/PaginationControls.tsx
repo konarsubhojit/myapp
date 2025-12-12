@@ -1,13 +1,21 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Pagination from '@mui/material/Pagination';
+import type { PaginationInfo } from '../../types';
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+type PageSizeOption = typeof PAGE_SIZE_OPTIONS[number];
+
+interface PaginationControlsProps {
+  paginationData: PaginationInfo;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  size?: 'small' | 'medium' | 'large';
+}
 
 /**
  * Reusable pagination controls component
@@ -18,8 +26,12 @@ function PaginationControls({
   onPageChange, 
   onLimitChange,
   size = 'medium'
-}) {
+}: PaginationControlsProps) {
   const { page, limit, total, totalPages } = paginationData;
+
+  const handleLimitChange = (event: SelectChangeEvent<number>) => {
+    onLimitChange(parseInt(String(event.target.value), 10));
+  };
 
   return (
     <Box 
@@ -39,9 +51,9 @@ function PaginationControls({
           labelId="page-size-label"
           value={limit}
           label="Per page"
-          onChange={(e) => onLimitChange(parseInt(e.target.value, 10))}
+          onChange={handleLimitChange}
         >
-          {PAGE_SIZE_OPTIONS.map(option => (
+          {PAGE_SIZE_OPTIONS.map((option: PageSizeOption) => (
             <MenuItem key={option} value={option}>{option}</MenuItem>
           ))}
         </Select>
@@ -52,7 +64,7 @@ function PaginationControls({
       <Pagination
         count={totalPages || 1}
         page={page}
-        onChange={(event, newPage) => onPageChange(newPage)}
+        onChange={(_event, newPage) => onPageChange(newPage)}
         color="primary"
         showFirstButton
         showLastButton
@@ -61,17 +73,5 @@ function PaginationControls({
     </Box>
   );
 }
-
-PaginationControls.propTypes = {
-  paginationData: PropTypes.shape({
-    page: PropTypes.number.isRequired,
-    limit: PropTypes.number.isRequired,
-    total: PropTypes.number.isRequired,
-    totalPages: PropTypes.number.isRequired,
-  }).isRequired,
-  onPageChange: PropTypes.func.isRequired,
-  onLimitChange: PropTypes.func.isRequired,
-  size: PropTypes.oneOf(['small', 'medium', 'large']),
-};
 
 export default PaginationControls;

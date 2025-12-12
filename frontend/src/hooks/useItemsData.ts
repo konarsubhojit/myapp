@@ -3,7 +3,7 @@ import { getItemsPaginated } from '../services/api';
 import type { Item, PaginatedResult, PaginationInfo } from '../types';
 
 type AllowedLimit = 10 | 20 | 50;
-const PAGE_SIZE_OPTIONS: AllowedLimit[] = [10, 20, 50];
+const PAGE_SIZE_OPTIONS = new Set<AllowedLimit>([10, 20, 50]);
 
 interface InitialState {
   page: number;
@@ -22,8 +22,8 @@ const parseInitialState = (
   const limit = getIntParam('limit', 10);
   
   return {
-    page: page < 1 ? 1 : page,
-    limit: PAGE_SIZE_OPTIONS.includes(limit as AllowedLimit) ? limit as AllowedLimit : 10,
+    page: Math.max(1, page),
+    limit: PAGE_SIZE_OPTIONS.has(limit as AllowedLimit) ? limit as AllowedLimit : 10,
     search: getParam('search', ''),
   };
 };

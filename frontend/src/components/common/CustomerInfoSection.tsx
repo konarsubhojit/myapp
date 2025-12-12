@@ -1,8 +1,19 @@
-import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
+
+interface CustomerData {
+  customerName: string;
+  customerId: string;
+  address?: string;
+}
+
+interface CustomerInfoSectionProps {
+  isEditing: boolean;
+  data: CustomerData;
+  onDataChange?: (field: keyof CustomerData, value: string) => void;
+}
 
 /**
  * Reusable customer information section
@@ -12,8 +23,8 @@ function CustomerInfoSection({
   isEditing, 
   data, 
   onDataChange 
-}) {
-  if (isEditing) {
+}: CustomerInfoSectionProps) {
+  if (isEditing && onDataChange) {
     return (
       <Box>
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -85,15 +96,5 @@ function CustomerInfoSection({
     </Box>
   );
 }
-
-CustomerInfoSection.propTypes = {
-  isEditing: PropTypes.bool.isRequired,
-  data: PropTypes.shape({
-    customerName: PropTypes.string.isRequired,
-    customerId: PropTypes.string.isRequired,
-    address: PropTypes.string,
-  }).isRequired,
-  onDataChange: PropTypes.func,
-};
 
 export default CustomerInfoSection;
