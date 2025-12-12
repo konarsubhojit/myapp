@@ -26,6 +26,9 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
     total: 0, 
     totalPages: 0 
   });
+  // Separate state for requested page/limit to avoid infinite loop
+  const [requestedPage, setRequestedPage] = useState<number>(1);
+  const [requestedLimit, setRequestedLimit] = useState<number>(10);
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -46,17 +49,18 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
   }, []);
 
   useEffect(() => {
-    fetchOrders(pagination.page, pagination.limit);
-  }, [pagination.page, pagination.limit, fetchOrders]);
+    fetchOrders(requestedPage, requestedLimit);
+  }, [requestedPage, requestedLimit, fetchOrders]);
 
   const handlePageChange = (newPage: number): void => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }));
+      setRequestedPage(newPage);
     }
   };
 
   const handlePageSizeChange = (newLimit: AllowedLimit): void => {
-    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
+    setRequestedLimit(newLimit);
+    setRequestedPage(1); // Reset to first page when changing page size
   };
 
   return {
