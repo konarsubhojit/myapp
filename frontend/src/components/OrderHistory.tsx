@@ -4,25 +4,19 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import Chip from '@mui/material/Chip';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableContainer from '@mui/material/TableContainer';
-import Pagination from '@mui/material/Pagination';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useOrderPagination } from '../hooks/useOrderPagination';
 import { useOrderFilters } from '../hooks/useOrderFilters';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import OrderDetails from './OrderDetails';
 import OrderFiltersSection from './common/OrderFiltersSection';
 import OrderHistoryTableHeader from './common/OrderHistoryTableHeader';
 import OrderHistoryTableRow from './common/OrderHistoryTableRow';
+import OrderRowSkeleton from './common/OrderRowSkeleton';
 import type { OrderId, Order } from '../types';
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 interface OrderHistoryProps {
   onDuplicateOrder: (orderId: string) => void;
@@ -33,14 +27,19 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
   
   const {
     orders,
-    pagination,
-    initialLoading,
     loading,
+    loadingMore,
+    hasMore,
     error,
+    loadMore,
     fetchOrders,
-    handlePageChange,
-    handlePageSizeChange,
   } = useOrderPagination();
+  
+  const loadMoreRef = useInfiniteScroll({
+    onLoadMore: loadMore,
+    loading: loadingMore,
+    hasMore: hasMore,
+  });
   
   const {
     filters,
@@ -61,11 +60,7 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
     setSelectedOrderId(null);
   };
 
-  const handlePageSizeChangeEvent = (e: SelectChangeEvent<number>) => {
-    handlePageSizeChange(parseInt(String(e.target.value), 10) as 10 | 20 | 50);
-  };
-
-  if (initialLoading) {
+  if (loading) {
     return (
       <Paper sx={{ p: { xs: 2, sm: 3 } }}>
         <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
@@ -120,67 +115,44 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
         onClearFilters={handleClearFilters}
       />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id="page-size-label">Per page</InputLabel>
-          <Select
-            labelId="page-size-label"
-            id="pageSize"
-            value={pagination.limit}
-            label="Per page"
-            onChange={handlePageSizeChangeEvent}
-          >
-            {PAGE_SIZE_OPTIONS.map(size => (
-              <MenuItem key={size} value={size}>{size}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Typography variant="body2" color="text.secondary">
-          Showing {sortedOrders.length} of {pagination.total} orders
-        </Typography>
-      </Box>
-
-      {loading && (
-        <Box display="flex" justifyContent="center" py={4}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {!loading && sortedOrders.length === 0 ? (
+      {sortedOrders.length === 0 ? (
         <Typography color="text.secondary" textAlign="center" py={4}>
           No orders found
         </Typography>
-      ) : !loading && (
-        <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
-          <Table size="small" aria-label="Orders table">
-            <OrderHistoryTableHeader sortConfig={{ key: sortConfig.key, direction: sortConfig.direction }} onSort={(key) => handleSort(key as keyof Order)} />
-            <TableBody>
-              {sortedOrders.map(order => (
-                <OrderHistoryTableRow
-                  key={order._id}
-                  order={order}
-                  formatPrice={formatPrice}
-                  onClick={handleOrderClick}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      ) : (
+        <>
+          <TableContainer component={Paper} variant="outlined" sx={{ mb: 2 }}>
+            <Table size="small" aria-label="Orders table">
+              <OrderHistoryTableHeader sortConfig={{ key: sortConfig.key, direction: sortConfig.direction }} onSort={(key) => handleSort(key as keyof Order)} />
+              <TableBody>
+                {sortedOrders.map(order => (
+                  <OrderHistoryTableRow
+                    key={order._id}
+                    order={order}
+                    formatPrice={formatPrice}
+                    onClick={handleOrderClick}
+                  />
+                ))}
+                
+                {/* Loading skeletons while fetching more orders */}
+                {loadingMore && Array.from({ length: 3 }).map((_, index) => (
+                  <OrderRowSkeleton key={`skeleton-${index}`} />
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          {/* Infinite scroll trigger element */}
+          <div ref={loadMoreRef} style={{ height: '20px', margin: '20px 0' }} />
+          
+          {/* Show message when all orders are loaded */}
+          {!hasMore && !loadingMore && orders.length > 0 && (
+            <Typography color="text.secondary" textAlign="center" py={2}>
+              All orders loaded ({orders.length} total)
+            </Typography>
+          )}
+        </>
       )}
-
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-        <Pagination
-          count={pagination.totalPages || 1}
-          page={pagination.page}
-          onChange={(_event, page) => handlePageChange(page)}
-          color="primary"
-          showFirstButton
-          showLastButton
-        />
-        <Typography variant="caption" color="text.secondary">
-          Page {pagination.page} of {pagination.totalPages}
-        </Typography>
-      </Box>
 
       {selectedOrderId && (
         <OrderDetails 

@@ -33,9 +33,11 @@ import { useItemForm } from '../hooks/useItemForm';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import { useItemsData } from '../hooks/useItemsData';
 import { useDeletedItems } from '../hooks/useDeletedItems';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
 import PaginationControls from './common/PaginationControls';
 import ImageUploadField from './common/ImageUploadField';
 import ItemCard from './common/ItemCard';
+import ItemCardSkeleton from './common/ItemCardSkeleton';
 import type { Item, ItemId } from '../types';
 
 interface ItemPanelProps {
@@ -90,40 +92,54 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     resetImage,
   } = useImageProcessing(showSuccess);
   
-  // Use items data hook
+  // Use items data hook with infinite scroll
   const {
     items: activeItems,
-    paginationData: activePaginationData,
+    loading: loadingActive,
+    loadingMore: loadingMoreActive,
+    hasMore: hasMoreActive,
+    error: activeError,
     search: activeSearch,
     searchInput: activeSearchInput,
-    loading: loadingActive,
-    error: activeError,
     setSearchInput: setActiveSearchInput,
     handleSearch: handleActiveSearch,
     clearSearch: clearActiveSearch,
-    handlePageChange: handleActivePageChange,
-    handleLimitChange: handleActiveLimitChange,
+    loadMore: loadMoreActive,
     fetchItems: fetchActiveItems,
     setError: setActiveError,
-  } = useItemsData(getParam, getIntParam);
+  } = useItemsData();
+  
+  // Infinite scroll observer for active items
+  const loadMoreRef = useInfiniteScroll({
+    onLoadMore: loadMoreActive,
+    loading: loadingMoreActive,
+    hasMore: hasMoreActive,
+  });
   
   // Deleted items state
   const [showDeleted, setShowDeleted] = useState(getBoolParam('deleted', false));
   
-  // Use deleted items hook
+  // Use deleted items hook with infinite scroll
   const {
     deletedItems,
-    deletedPaginationData,
+    loadingDeleted,
+    loadingMoreDeleted,
+    hasMoreDeleted,
     deletedSearch,
     deletedSearchInput,
-    loadingDeleted,
     setDeletedSearchInput,
     handleDeletedSearch,
     clearDeletedSearch,
-    handleDeletedPageChange,
-    handleDeletedLimitChange,
+    loadMoreDeleted,
     fetchDeletedItems,
   } = useDeletedItems(showDeleted);
+  
+  // Infinite scroll observer for deleted items
+  const loadMoreDeletedRef = useInfiniteScroll({
+    onLoadMore: loadMoreDeleted,
+    loading: loadingMoreDeleted,
+    hasMore: hasMoreDeleted,
+  });
   
   const [loading, setLoading] = useState(false);
   
@@ -511,7 +527,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
             onClick={() => setShowDeleted(!showDeleted)}
             size="small"
           >
-            {showDeleted ? 'Hide Deleted' : 'Show Deleted'} ({deletedPaginationData.total || 0})
+            {showDeleted ? 'Hide Deleted' : 'Show Deleted'} ({deletedItems.length})
           </Button>
         </Box>
         
@@ -574,12 +590,24 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                   />
                 </Grid>
               ))}
+              
+              {/* Loading skeletons while fetching more items */}
+              {loadingMoreActive && Array.from({ length: 3 }).map((_, index) => (
+                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={`skeleton-${index}`}>
+                  <ItemCardSkeleton />
+                </Grid>
+              ))}
             </Grid>
-            <PaginationControls
-              paginationData={activePaginationData}
-              onPageChange={handleActivePageChange}
-              onLimitChange={(limit) => handleActiveLimitChange(limit as 10 | 20 | 50)}
-            />
+            
+            {/* Infinite scroll trigger element */}
+            <div ref={loadMoreRef} style={{ height: '20px', margin: '20px 0' }} />
+            
+            {/* Show message when all items are loaded */}
+            {!hasMoreActive && !loadingMoreActive && activeItems.length > 0 && (
+              <Typography color="text.secondary" textAlign="center" py={2}>
+                All items loaded
+              </Typography>
+            )}
           </>
         )}
       </Box>
@@ -682,12 +710,26 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                     </CardContent>
                   </Card>
                 ))}
+                
+                {/* Loading skeletons while fetching more deleted items */}
+                {loadingMoreDeleted && Array.from({ length: 2 }).map((_, index) => (
+                  <Card key={`deleted-skeleton-${index}`} variant="outlined">
+                    <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1.5 }}>
+                      <ItemCardSkeleton />
+                    </CardContent>
+                  </Card>
+                ))}
               </Stack>
-              <PaginationControls
-                paginationData={deletedPaginationData}
-                onPageChange={handleDeletedPageChange}
-                onLimitChange={(limit) => handleDeletedLimitChange(limit as 10 | 20 | 50)}
-              />
+              
+              {/* Infinite scroll trigger element */}
+              <div ref={loadMoreDeletedRef} style={{ height: '20px', margin: '20px 0' }} />
+              
+              {/* Show message when all deleted items are loaded */}
+              {!hasMoreDeleted && !loadingMoreDeleted && deletedItems.length > 0 && (
+                <Typography color="text.secondary" textAlign="center" py={2}>
+                  All deleted items loaded
+                </Typography>
+              )}
             </>
           )}
         </Paper>
