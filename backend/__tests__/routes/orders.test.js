@@ -9,7 +9,6 @@ jest.unstable_mockModule('../../models/Order', () => ({
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
     create: jest.fn(),
-    findPaginated: jest.fn(),
     findPriorityOrders: jest.fn(),
   },
 }));

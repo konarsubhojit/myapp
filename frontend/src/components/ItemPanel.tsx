@@ -34,7 +34,6 @@ import { useImageProcessing } from '../hooks/useImageProcessing';
 import { useItemsData } from '../hooks/useItemsData';
 import { useDeletedItems } from '../hooks/useDeletedItems';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import PaginationControls from './common/PaginationControls';
 import ImageUploadField from './common/ImageUploadField';
 import ItemCard from './common/ItemCard';
 import ItemCardSkeleton from './common/ItemCardSkeleton';
@@ -57,8 +56,8 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   const { formatPrice } = useCurrency();
   const { showSuccess, showError } = useNotification();
   
-  // Use URL sync hook
-  const { getParam, getIntParam, getBoolParam, updateUrl } = useUrlSync();
+  // Use URL sync hook (only for deleted state now that pagination is removed)
+  const { getBoolParam, updateUrl } = useUrlSync();
   
   // Use item form hook
   const {
