@@ -95,12 +95,12 @@ describe('FeedbackPanel', () => {
 
     // Check all stats values exist (some may appear multiple times)
     expect(screen.getByText('4.5')).toBeInTheDocument();
-    expect(screen.getAllByText('Product Quality').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Product Quality')[0]).toBeInTheDocument();
     expect(screen.getByText('4.7')).toBeInTheDocument();
-    expect(screen.getAllByText('Delivery Experience').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Delivery Experience')[0]).toBeInTheDocument();
     expect(screen.getByText('4.3')).toBeInTheDocument();
     expect(screen.getByText('Total Feedbacks')).toBeInTheDocument();
-    expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('10')[0]).toBeInTheDocument();
   });
 
   it('should display list of feedbacks', async () => {
