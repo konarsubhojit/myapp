@@ -64,9 +64,11 @@ describe('FeedbackPanel', () => {
     getFeedbackStats.mockResolvedValue(mockStats);
   });
 
-  it('should render title', () => {
+  it('should render title', async () => {
     render(<FeedbackPanel />);
-    expect(screen.getByText(/Customer Feedback/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Customer Feedback/i)).toBeInTheDocument();
+    });
   });
 
   it('should fetch feedbacks on mount', async () => {
@@ -86,16 +88,19 @@ describe('FeedbackPanel', () => {
   it('should display feedback statistics', async () => {
     render(<FeedbackPanel />);
 
+    // Wait for stats to load
     await waitFor(() => {
       expect(screen.getByText('Average Rating')).toBeInTheDocument();
-      expect(screen.getByText('4.5')).toBeInTheDocument();
-      expect(screen.getByText('Product Quality')).toBeInTheDocument();
-      expect(screen.getByText('4.7')).toBeInTheDocument();
-      expect(screen.getByText('Delivery Experience')).toBeInTheDocument();
-      expect(screen.getByText('4.3')).toBeInTheDocument();
-      expect(screen.getByText('Total Feedbacks')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
     });
+
+    // Check all stats values exist (some may appear multiple times)
+    expect(screen.getByText('4.5')).toBeInTheDocument();
+    expect(screen.getAllByText('Product Quality').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('4.7')).toBeInTheDocument();
+    expect(screen.getAllByText('Delivery Experience').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('4.3')).toBeInTheDocument();
+    expect(screen.getByText('Total Feedbacks')).toBeInTheDocument();
+    expect(screen.getAllByText('10').length).toBeGreaterThanOrEqual(1);
   });
 
   it('should display list of feedbacks', async () => {
