@@ -5,6 +5,7 @@ import Item from '../models/Item.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
 import { parsePaginationParams } from '../utils/pagination.js';
+import { cacheMiddleware, invalidateOrderCache } from '../middleware/cache.js';
 import {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
@@ -294,12 +295,12 @@ async function processUpdateOrderItems(items) {
   return buildOrderItemsList(items);
 }
 
-router.get('/priority', asyncHandler(async (req, res) => {
+router.get('/priority', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const priorityOrders = await Order.findPriorityOrders();
   res.json(priorityOrders);
 }));
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   if (req.query.page || req.query.limit) {
@@ -388,11 +389,14 @@ router.post('/', asyncHandler(async (req, res) => {
     actualDeliveryDate: actualDeliveryDateValidation.parsedDate
   });
 
+  // Invalidate order cache after creating a new order
+  await invalidateOrderCache();
+
   logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
   res.status(201).json(newOrder);
 }));
 
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
     throw notFoundError('Order');
@@ -538,6 +542,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (!updatedOrder) {
     throw notFoundError('Order');
   }
+
+  // Invalidate order cache after updating
+  await invalidateOrderCache();
 
   logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
   res.json(updatedOrder);

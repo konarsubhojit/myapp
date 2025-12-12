@@ -3,6 +3,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import 'dotenv/config';
 import { connectToDatabase } from './db/connection.js';
+import { getRedisClient } from './db/redisClient.js';
 import { createLogger } from './utils/logger.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './utils/errorHandler.js';
@@ -40,6 +41,17 @@ app.use('/api/', limiter);
   } catch (err) {
     logger.error('Database initialization failed', err);
     process.exit(1);
+  }
+
+  // Initialize Redis connection (optional, won't fail if not configured)
+  try {
+    const redis = await getRedisClient();
+    if (redis) {
+      logger.info('Redis connection successful');
+    }
+  } catch (err) {
+    logger.warn('Redis initialization failed, caching disabled', err);
+    // Continue without Redis - caching is optional
   }
 })();
 
