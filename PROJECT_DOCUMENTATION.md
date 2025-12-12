@@ -25,7 +25,7 @@ The Order Management System is a full-stack application designed for managing or
 - **Inventory Management**: Manage items with images, colors, fabrics, and pricing
 - **Delivery Tracking**: Track delivery status with AWB numbers and delivery partners
 - **Sales Analytics**: Comprehensive reports by time period, customer, and source
-- **Priority Dashboard**: Visual priority indicators based on delivery dates
+- **Urgent Order Notifications**: Visual notification panel for orders requiring immediate attention
 - **Authentication**: Google OAuth integration with guest mode support
 - **Multi-Currency**: Support for multiple currencies (USD, EUR, GBP, INR)
 
@@ -67,11 +67,13 @@ The Order Management System is a full-stack application designed for managing or
 - Item-wise sales analysis
 - Revenue calculations with multi-currency support
 
-#### 5. Priority Dashboard
-- Visual priority indicators based on delivery dates
-- Color-coded priorities: Overdue (red), Critical (red), Urgent (orange), Medium (blue), Normal (green)
-- Priority calculation based on 1-2 week production timeline
-- Notifications for high-priority orders
+#### 5. Urgent Order Notifications
+- Visual notification bell icon with badge in the header
+- Shows count of orders requiring immediate attention
+- Drawer panel with list of critical and high-priority orders
+- Based on delivery dates and priority levels
+- Auto-refresh capability for real-time updates
+- Notification message on login if critical orders exist
 
 ### Additional Features
 
@@ -884,7 +886,7 @@ Check `backend/server.js` CORS configuration matches frontend URL.
 
 ### Major Features by Version
 - v1.0.0: Initial release with full order management, delivery tracking, and sales reports
-- v0.9.0: Added priority dashboard and notifications
+- v0.9.0: Added urgent order notification system
 - v0.8.0: Implemented delivery tracking
 - v0.7.0: Added sales reports and analytics
 - v0.6.0: Implemented soft delete and restore

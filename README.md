@@ -47,7 +47,7 @@ npm run frontend
 - ✅ **Item Management** - Manage inventory with images and details
 - ✅ **Delivery Tracking** - Track shipments with AWB numbers
 - ✅ **Sales Reports** - Analyze sales by time, customer, and source
-- ✅ **Priority Dashboard** - Visual indicators for urgent orders
+- ✅ **Urgent Order Notifications** - Bell icon with real-time alerts for orders requiring immediate attention
 - ✅ **Multi-Currency** - Support for USD, EUR, GBP, INR
 - ✅ **Google OAuth** - Secure authentication
 - ✅ **Soft Delete** - Restore accidentally deleted items

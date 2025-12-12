@@ -27,7 +27,6 @@ import ItemPanel from './components/ItemPanel'
 import OrderForm from './components/OrderForm'
 import OrderHistory from './components/OrderHistory'
 import SalesReport from './components/SalesReport'
-import PriorityDashboard from './components/PriorityDashboard'
 import PriorityNotificationPanel from './components/PriorityNotificationPanel'
 import FeedbackPanel from './components/FeedbackPanel'
 import Login from './components/Login'
@@ -45,7 +44,6 @@ interface TabRoute {
 }
 
 const TAB_ROUTES: TabRoute[] = [
-  { id: 'priority', label: 'Priority', icon: <NotificationsActiveIcon /> },
   { id: 'new-order', label: 'Create Order', icon: <AddShoppingCartIcon /> },
   { id: 'items', label: 'Manage Items', icon: <InventoryIcon /> },
   { id: 'history', label: 'Order History', icon: <HistoryIcon /> },
@@ -120,7 +118,7 @@ function AppContent(): ReactElement {
 
   const handleDuplicateOrder = useCallback((orderId: string): void => {
     setDuplicateOrderId(orderId)
-    setCurrentTab(1) // Switch to Create Order tab
+    setCurrentTab(0) // Switch to Create Order tab (now index 0)
   }, [])
 
   // Fetch initial data when authenticated
@@ -138,7 +136,7 @@ function AppContent(): ReactElement {
   // Lazy load orders when SalesReport tab is viewed
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (currentTab === 4 && orders.length === 0) {
+    if (currentTab === 3 && orders.length === 0) {
       fetchOrders()
     }
   }, [currentTab, isAuthenticated, orders.length, fetchOrders])
@@ -146,7 +144,7 @@ function AppContent(): ReactElement {
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
     setCurrentTab(newValue)
     // Clear duplicate order when switching away from Create Order tab
-    if (newValue !== 1) {
+    if (newValue !== 0) {
       setDuplicateOrderId(null)
     }
   }
@@ -202,7 +200,7 @@ function AppContent(): ReactElement {
             </Typography>
           </Tooltip>
           <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
-            {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentTab(0)} />}
+            {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentTab(2)} />}
             {guestMode && (
               <Chip 
                 icon={<PreviewIcon />} 
@@ -325,16 +323,6 @@ function AppContent(): ReactElement {
         }}
       >
         {currentTab === 0 && (
-          <PriorityDashboard 
-            onRefresh={() => {
-              fetchOrders();
-              setOrderHistoryKey(prev => prev + 1);
-            }}
-            onDuplicateOrder={handleDuplicateOrder}
-          />
-        )}
-        
-        {currentTab === 1 && (
           <OrderForm 
             items={items} 
             onOrderCreated={handleOrderCreated}
@@ -342,24 +330,24 @@ function AppContent(): ReactElement {
           />
         )}
         
-        {currentTab === 2 && (
+        {currentTab === 1 && (
           <ItemPanel 
             onItemsChange={fetchItems} 
           />
         )}
         
-        {currentTab === 3 && (
+        {currentTab === 2 && (
           <OrderHistory 
             key={orderHistoryKey}
             onDuplicateOrder={handleDuplicateOrder}
           />
         )}
         
-        {currentTab === 4 && (
+        {currentTab === 3 && (
           <SalesReport orders={orders} />
         )}
         
-        {currentTab === 5 && (
+        {currentTab === 4 && (
           <FeedbackPanel />
         )}
       </Container>
