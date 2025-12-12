@@ -76,9 +76,21 @@ export const useItemsData = (
         limit: pagination.limit, 
         search: search 
       });
-      setItemsData(result);
+      // Defensive check: ensure result.items exists and is an array
+      if (!result.items || !Array.isArray(result.items)) {
+        throw new Error('Invalid response format: items must be an array');
+      }
+      setItemsData({
+        items: result.items,
+        pagination: result.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
+      // Set empty array on error to prevent undefined errors
+      setItemsData({ 
+        items: [], 
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
+      });
     } finally {
       setLoading(false);
     }

@@ -262,4 +262,108 @@ describe('useDeletedItems', () => {
     expect(api.getDeletedItems).toHaveBeenCalled();
     expect(result.current.deletedItems).toEqual(mockData.items);
   });
+
+  it('should handle undefined items array from API response', async () => {
+    // Mock API returning malformed response with undefined items
+    api.getDeletedItems.mockResolvedValue({
+      items: undefined,
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useDeletedItems(true));
+
+    await waitFor(() => {
+      expect(result.current.loadingDeleted).toBe(false);
+    });
+
+    // Should default to empty array instead of undefined
+    expect(result.current.deletedItems).toEqual([]);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('should handle null items array from API response', async () => {
+    // Mock API returning malformed response with null items
+    api.getDeletedItems.mockResolvedValue({
+      items: null,
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useDeletedItems(true));
+
+    await waitFor(() => {
+      expect(result.current.loadingDeleted).toBe(false);
+    });
+
+    // Should default to empty array instead of null
+    expect(result.current.deletedItems).toEqual([]);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('should handle non-array items from API response', async () => {
+    // Mock API returning malformed response with non-array items
+    api.getDeletedItems.mockResolvedValue({
+      items: 'invalid',
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 }
+    });
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { result } = renderHook(() => useDeletedItems(true));
+
+    await waitFor(() => {
+      expect(result.current.loadingDeleted).toBe(false);
+    });
+
+    // Should default to empty array
+    expect(result.current.deletedItems).toEqual([]);
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('should handle missing pagination from API response', async () => {
+    // Mock API returning response without pagination
+    api.getDeletedItems.mockResolvedValue({
+      items: [{ id: '1', name: 'Item' }],
+      pagination: undefined
+    });
+
+    const { result } = renderHook(() => useDeletedItems(true));
+
+    await waitFor(() => {
+      expect(result.current.loadingDeleted).toBe(false);
+    });
+
+    // Should use default pagination
+    expect(result.current.deletedPaginationData).toEqual({ 
+      page: 1, 
+      limit: 10, 
+      total: 0, 
+      totalPages: 0 
+    });
+  });
+
+  it('should set empty items on error to prevent undefined errors', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    api.getDeletedItems.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useDeletedItems(true));
+
+    await waitFor(() => {
+      expect(result.current.loadingDeleted).toBe(false);
+    });
+
+    // Should have empty array instead of undefined
+    expect(result.current.deletedItems).toEqual([]);
+    expect(result.current.deletedPaginationData).toEqual({ 
+      page: 1, 
+      limit: 10, 
+      total: 0, 
+      totalPages: 0 
+    });
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
 });
