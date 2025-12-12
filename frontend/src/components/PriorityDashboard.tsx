@@ -17,7 +17,7 @@ import TodayIcon from '@mui/icons-material/Today';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { usePriorityOrders, OrderWithPriority, getDaysUntilDelivery } from '../hooks';
+import { usePriorityOrders, OrderWithPriority } from '../hooks';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
 import StatCard from './common/StatCard';
