@@ -84,11 +84,44 @@ function validateItemPrice(price) {
 router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
-  if (req.query.page || req.query.limit) {
+  // Log request details for debugging
+  logger.debug('GET /api/items request', { 
+    hasPageParam: 'page' in req.query,
+    hasLimitParam: 'limit' in req.query,
+    pageValue: req.query.page,
+    limitValue: req.query.limit,
+    searchValue: req.query.search 
+  });
+  
+  // Check if pagination was requested
+  // Use explicit property checking to handle edge cases
+  const paginationRequested = 'page' in req.query || 'limit' in req.query;
+  
+  if (paginationRequested) {
     const result = await Item.findPaginated({ page, limit, search });
+    
+    // Defensive check: ensure result has expected format
+    if (!result || !result.items || !Array.isArray(result.items)) {
+      logger.error('Invalid paginated result from Item.findPaginated', { result });
+      throw new Error('Internal server error: invalid data format');
+    }
+    
+    logger.debug('Returning paginated response', { 
+      itemCount: result.items.length, 
+      page: result.pagination?.page,
+      totalPages: result.pagination?.totalPages 
+    });
     res.json(result);
   } else {
     const items = await Item.find();
+    
+    // Defensive check: ensure items is an array
+    if (!Array.isArray(items)) {
+      logger.error('Invalid result from Item.find', { items });
+      throw new Error('Internal server error: invalid data format');
+    }
+    
+    logger.debug('Returning non-paginated response', { itemCount: items.length });
     res.json(items);
   }
 }));
