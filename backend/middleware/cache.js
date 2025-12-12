@@ -7,6 +7,50 @@ const logger = createLogger('CacheMiddleware');
 const DEFAULT_TTL = 300; // 5 minutes
 
 /**
+ * Validate response data before caching to prevent caching invalid/empty data
+ * @param {*} body - Response body to validate
+ * @returns {boolean} True if response should be cached
+ */
+function validateResponseForCaching(body) {
+  // Don't cache null or undefined responses
+  if (body === null || body === undefined) {
+    return false;
+  }
+  
+  // Don't cache error responses
+  // Check if response has 'error' or 'message' properties that indicate an error
+  if (typeof body === 'object' && !Array.isArray(body)) {
+    // If response has 'error' key, it's likely an error response - don't cache
+    if ('error' in body) {
+      return false;
+    }
+    // If response only has 'message' key (common for simple errors), don't cache
+    // Note: Valid responses with 'message' + other properties will still be cached
+    const keys = Object.keys(body);
+    if (keys.length === 1 && keys[0] === 'message') {
+      return false;
+    }
+  }
+  
+  // For paginated responses, validate structure
+  if (body && typeof body === 'object' && 'pagination' in body) {
+    // Ensure items/orders array exists and pagination metadata is present
+    const dataKey = body.items !== undefined ? 'items' : body.orders !== undefined ? 'orders' : null;
+    if (!dataKey || !Array.isArray(body[dataKey]) || !body.pagination) {
+      return false;
+    }
+  }
+  
+  // For array responses, ensure it's a valid array
+  if (Array.isArray(body)) {
+    return true; // Cache empty arrays too, as they're valid responses
+  }
+  
+  // Cache all other valid object responses
+  return typeof body === 'object';
+}
+
+/**
  * Generate a cache key from request path and query parameters
  * @param {Object} req - Express request object
  * @returns {string} Cache key
@@ -59,14 +103,21 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       
       // Override res.json to cache the response
       res.json = function(body) {
-        // Cache the response asynchronously (don't wait)
-        redis.setEx(cacheKey, ttl, JSON.stringify(body))
-          .then(() => {
-            logger.debug('Response cached', { key: cacheKey, ttl });
-          })
-          .catch(err => {
-            logger.error('Failed to cache response', { key: cacheKey, error: err.message });
-          });
+        // Validate response before caching to prevent caching invalid/empty data
+        const shouldCache = validateResponseForCaching(body);
+        
+        if (shouldCache) {
+          // Cache the response asynchronously (don't wait)
+          redis.setEx(cacheKey, ttl, JSON.stringify(body))
+            .then(() => {
+              logger.debug('Response cached', { key: cacheKey, ttl });
+            })
+            .catch(err => {
+              logger.error('Failed to cache response', { key: cacheKey, error: err.message });
+            });
+        } else {
+          logger.debug('Response not cached due to validation failure', { key: cacheKey });
+        }
         
         // Call original res.json
         return originalJson(body);

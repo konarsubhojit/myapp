@@ -3,7 +3,7 @@ import { getItemsPaginated } from '../services/api';
 import type { Item, PaginatedResult, PaginationInfo } from '../types';
 
 type AllowedLimit = 10 | 20 | 50;
-const ITEMS_PER_PAGE = 20; // Fixed page size for infinite scroll
+const ITEMS_PER_PAGE = 10; // Fixed page size for infinite scroll
 
 interface ItemsDataResult {
   items: Item[];

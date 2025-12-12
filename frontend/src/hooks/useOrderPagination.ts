@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { getOrdersPaginated } from '../services/api';
 import type { Order } from '../types';
 
-const ORDERS_PER_PAGE = 20; // Fixed page size for infinite scroll
+const ORDERS_PER_PAGE = 10; // Fixed page size for infinite scroll
 
 interface UseOrderPaginationResult {
   orders: Order[];

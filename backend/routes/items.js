@@ -182,6 +182,9 @@ router.post('/', asyncHandler(async (req, res) => {
     }
   }
 
+  // Proactively invalidate cache BEFORE creating item to prevent race conditions
+  await invalidateItemCache();
+
   const newItem = await Item.create({
     name: name.trim(),
     price: parsedPrice,
@@ -191,7 +194,7 @@ router.post('/', asyncHandler(async (req, res) => {
     imageUrl: imageUrl
   });
   
-  // Invalidate item cache after creating a new item
+  // Invalidate item cache again after creating to ensure consistency
   await invalidateItemCache();
   
   logger.info('Item created', { itemId: newItem._id, name: newItem.name });
@@ -236,6 +239,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (specialFeatures !== undefined) updateData.specialFeatures = specialFeatures;
   if (imageResult.newImageUrl !== existingItem.imageUrl) updateData.imageUrl = imageResult.newImageUrl;
 
+  // Proactively invalidate cache BEFORE updating to prevent race conditions
+  await invalidateItemCache();
+
   const updatedItem = await Item.findByIdAndUpdate(req.params.id, updateData);
   if (!updatedItem) {
     throw notFoundError('Item');
@@ -244,7 +250,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   // Delete old image if needed
   await deleteOldImage(imageResult.oldImageUrl);
   
-  // Invalidate item cache after updating
+  // Invalidate item cache again after updating to ensure consistency
   await invalidateItemCache();
   
   logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
@@ -252,12 +258,15 @@ router.put('/:id', asyncHandler(async (req, res) => {
 }));
 
 router.delete('/:id', asyncHandler(async (req, res) => {
+  // Proactively invalidate cache BEFORE deletion to prevent race conditions
+  await invalidateItemCache();
+  
   const item = await Item.findByIdAndDelete(req.params.id);
   if (!item) {
     throw notFoundError('Item');
   }
   
-  // Invalidate item cache after soft deletion
+  // Invalidate item cache again after soft deletion to ensure consistency
   await invalidateItemCache();
   
   logger.info('Item soft deleted', { itemId: req.params.id });
@@ -265,12 +274,15 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 }));
 
 router.post('/:id/restore', asyncHandler(async (req, res) => {
+  // Proactively invalidate cache BEFORE restoration to prevent race conditions
+  await invalidateItemCache();
+  
   const item = await Item.restore(req.params.id);
   if (!item) {
     throw notFoundError('Item');
   }
   
-  // Invalidate item cache after restoration
+  // Invalidate item cache again after restoration to ensure consistency
   await invalidateItemCache();
   
   logger.info('Item restored', { itemId: req.params.id });

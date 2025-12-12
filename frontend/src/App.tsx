@@ -166,11 +166,11 @@ function AppContent(): ReactElement {
       {/* Header */}
       <AppBar 
         position="sticky" 
-        elevation={0}
+        elevation={1}
         sx={{ 
-          bgcolor: '#000000',
+          bgcolor: '#ffffff',
           borderBottom: '1px solid',
-          borderColor: 'rgba(255, 255, 255, 0.12)',
+          borderColor: 'divider',
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
@@ -179,16 +179,23 @@ function AppContent(): ReactElement {
               variant="h6" 
               component="h1" 
               sx={{ 
-                fontWeight: 600,
-                letterSpacing: '0.01em',
-                fontSize: { xs: '1rem', sm: '1.25rem' },
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                fontSize: { xs: '1.1rem', sm: '1.5rem' },
                 flexShrink: 1,
                 minWidth: 0,
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                color: '#ffffff',
+                color: '#5568d3', // Fallback color for accessibility
+                background: 'linear-gradient(135deg, #5568d3 0%, #667eea 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
                 cursor: 'default',
+                '@supports not (-webkit-background-clip: text)': {
+                  color: '#5568d3', // Fallback for browsers without gradient text support
+                },
               }}
             >
               {isMobile ? 'OMS' : 'Order Management System'}
@@ -202,12 +209,12 @@ function AppContent(): ReactElement {
                 label={isMobile ? "Guest" : "Guest Mode"} 
                 size="small"
                 sx={{ 
-                  bgcolor: 'rgba(255,255,255,0.1)', 
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.2)',
+                  bgcolor: '#f0f4ff', 
+                  color: '#5568d3',
+                  border: '1px solid #cbd5e1',
                   fontWeight: 500,
                   '& .MuiChip-icon': {
-                    color: 'white'
+                    color: '#5568d3'
                   }
                 }}
               />
@@ -216,15 +223,15 @@ function AppContent(): ReactElement {
               <Avatar 
                 src={user.picture} 
                 alt={user?.name || 'User'}
-                sx={{ width: 32, height: 32, border: '2px solid rgba(255,255,255,0.2)' }}
+                sx={{ width: 32, height: 32, border: '2px solid #e2e8f0' }}
               />
             ) : (
-              <Avatar sx={{ width: 32, height: 32, bgcolor: '#ffffff', color: '#000000', fontSize: '0.875rem', fontWeight: 600 }}>
+              <Avatar sx={{ width: 32, height: 32, bgcolor: '#5568d3', color: '#ffffff', fontSize: '0.875rem', fontWeight: 600 }}>
                 {(user?.name || user?.email || 'U')[0]?.toUpperCase() ?? 'U'}
               </Avatar>
             )}
             {!isMobile && !guestMode && (
-              <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', color: '#ffffff' }}>
+              <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155', fontWeight: 500 }}>
                 {user?.name || user?.email}
               </Typography>
             )}
@@ -234,13 +241,14 @@ function AppContent(): ReactElement {
               onClick={logout}
               startIcon={isMobile ? undefined : <LogoutIcon />}
               sx={{ 
-                color: 'white', 
-                borderColor: 'rgba(255,255,255,0.3)',
+                color: '#5568d3', 
+                borderColor: '#cbd5e1',
                 minWidth: isMobile ? 40 : 'auto',
                 px: isMobile ? 1 : 2,
+                fontWeight: 500,
                 '&:hover': {
-                  borderColor: 'white',
-                  bgcolor: 'rgba(255,255,255,0.08)',
+                  borderColor: '#5568d3',
+                  bgcolor: '#f0f4ff',
                 }
               }}
               aria-label="Sign out"

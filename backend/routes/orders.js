@@ -382,6 +382,9 @@ router.post('/', asyncHandler(async (req, res) => {
     throw badRequestError(paymentValidation.error);
   }
 
+  // Proactively invalidate cache BEFORE creating order to prevent race conditions
+  await invalidateOrderCache();
+
   const newOrder = await Order.create({
     orderFrom,
     customerName,
@@ -402,7 +405,7 @@ router.post('/', asyncHandler(async (req, res) => {
     actualDeliveryDate: actualDeliveryDateValidation.parsedDate
   });
 
-  // Invalidate order cache after creating a new order
+  // Invalidate order cache again after creating to ensure consistency
   await invalidateOrderCache();
 
   logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
@@ -551,12 +554,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
   }
 
   const updateData = buildUpdateData(validation.data, req.body);
+  
+  // Proactively invalidate cache BEFORE updating to prevent race conditions
+  await invalidateOrderCache();
+  
   const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
   if (!updatedOrder) {
     throw notFoundError('Order');
   }
 
-  // Invalidate order cache after updating
+  // Invalidate order cache again after updating to ensure consistency
   await invalidateOrderCache();
 
   logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });

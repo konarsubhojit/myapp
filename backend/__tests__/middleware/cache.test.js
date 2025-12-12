@@ -91,8 +91,8 @@ describe('Cache Middleware', () => {
       expect(mockRedisClient.get).toHaveBeenCalledWith('/api/items');
       expect(next).toHaveBeenCalled();
       
-      // Simulate response
-      const responseData = { items: [] };
+      // Simulate response with valid data
+      const responseData = { items: [{ id: 1, name: 'Test' }] };
       res.json(responseData);
       
       // Wait for async cache operation
@@ -102,6 +102,130 @@ describe('Cache Middleware', () => {
         '/api/items',
         300,
         JSON.stringify(responseData)
+      );
+    });
+
+    it('should not cache invalid responses (null/undefined)', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate response with null
+      res.json(null);
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not cache null response
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+    });
+
+    it('should not cache error responses with error property', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate error response with 'error' property
+      res.json({ error: 'Something went wrong', status: 500 });
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not cache error response
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+    });
+
+    it('should not cache message-only responses', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate message-only response (common for simple errors)
+      res.json({ message: 'Not found' });
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not cache message-only response
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+    });
+
+    it('should cache valid paginated responses', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate paginated response
+      const responseData = { 
+        items: [{ id: 1, name: 'Test' }], 
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 }
+      };
+      res.json(responseData);
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(mockRedisClient.setEx).toHaveBeenCalledWith(
+        '/api/items',
+        300,
+        JSON.stringify(responseData)
+      );
+    });
+
+    it('should not cache invalid paginated responses (missing items/pagination)', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate invalid paginated response (missing items array)
+      res.json({ pagination: { page: 1, limit: 10, total: 0 } });
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      // Should not cache invalid response
+      expect(mockRedisClient.setEx).not.toHaveBeenCalled();
+    });
+
+    it('should cache empty arrays (valid response)', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.setEx.mockResolvedValue('OK');
+      
+      const middleware = cacheMiddleware(300);
+      await middleware(req, res, next);
+      
+      expect(next).toHaveBeenCalled();
+      
+      // Simulate empty array response (valid)
+      res.json([]);
+      
+      // Wait for async cache operation
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
+      expect(mockRedisClient.setEx).toHaveBeenCalledWith(
+        '/api/items',
+        300,
+        JSON.stringify([])
       );
     });
 
