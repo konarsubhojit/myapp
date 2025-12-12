@@ -1,83 +1,90 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getOrdersPaginated } from '../services/api';
-import type { Order, PaginationInfo } from '../types';
+import type { Order } from '../types';
 
-type AllowedLimit = 10 | 20 | 50;
+const ORDERS_PER_PAGE = 20; // Fixed page size for infinite scroll
 
 interface UseOrderPaginationResult {
   orders: Order[];
-  pagination: PaginationInfo;
-  initialLoading: boolean;
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string;
-  fetchOrders: (page: number, limit: number) => Promise<void>;
-  handlePageChange: (newPage: number) => void;
-  handlePageSizeChange: (newLimit: AllowedLimit) => void;
+  loadMore: () => void;
+  fetchOrders: () => Promise<void>;
 }
 
 /**
- * Custom hook for managing order pagination and fetching
+ * Custom hook for managing order data with infinite scroll
  */
 export const useOrderPagination = (): UseOrderPaginationResult => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo>({ 
-    page: 1, 
-    limit: 10, 
-    total: 0, 
-    totalPages: 0 
-  });
-  // Separate state for requested page/limit to avoid infinite loop
-  const [requestedPage, setRequestedPage] = useState<number>(1);
-  const [requestedLimit, setRequestedLimit] = useState<number>(10);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchOrders = useCallback(async (page: number, limit: number): Promise<void> => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (pageNum: number, appendMode: boolean): Promise<void> => {
+    if (appendMode) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
+    
     try {
-      const result = await getOrdersPaginated({ page, limit });
+      const result = await getOrdersPaginated({ page: pageNum, limit: ORDERS_PER_PAGE });
+      
       // Defensive check: ensure result.orders exists and is an array
       const ordersData = result.orders || [];
       if (!Array.isArray(ordersData)) {
         throw new Error('Invalid response format: orders must be an array');
       }
-      setOrders(ordersData);
-      setPagination(result.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
+      
+      if (appendMode) {
+        // Append new orders for infinite scroll
+        setOrders(prev => [...prev, ...ordersData]);
+      } else {
+        // Replace orders for initial load
+        setOrders(ordersData);
+      }
+      
+      setTotalPages(result.pagination?.totalPages || 0);
+      setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
-      // Set empty array on error to prevent undefined errors
-      setOrders([]);
+      if (!appendMode) {
+        setOrders([]);
+      }
     } finally {
       setLoading(false);
-      setInitialLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
+  // Initial fetch
   useEffect(() => {
-    fetchOrders(requestedPage, requestedLimit);
-  }, [requestedPage, requestedLimit, fetchOrders]);
+    fetchOrders(1, false);
+  }, [fetchOrders]);
 
-  const handlePageChange = (newPage: number): void => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setRequestedPage(newPage);
+  const loadMore = useCallback((): void => {
+    if (!loadingMore && page < totalPages) {
+      fetchOrders(page + 1, true);
     }
-  };
+  }, [loadingMore, page, totalPages, fetchOrders]);
 
-  const handlePageSizeChange = (newLimit: AllowedLimit): void => {
-    setRequestedLimit(newLimit);
-    setRequestedPage(1); // Reset to first page when changing page size
+  const refetchOrders = async (): Promise<void> => {
+    await fetchOrders(1, false);
   };
 
   return {
     orders,
-    pagination,
-    initialLoading,
     loading,
+    loadingMore,
+    hasMore: page < totalPages,
     error,
-    fetchOrders,
-    handlePageChange,
-    handlePageSizeChange,
+    loadMore,
+    fetchOrders: refetchOrders,
   };
 };

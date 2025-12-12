@@ -10,3 +10,4 @@ export { useSalesAnalytics, TIME_RANGES } from './useSalesAnalytics';
 export type { ItemData, CustomerData, SourceData, RangeAnalytics } from './useSalesAnalytics';
 export { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, getUrgencyLevel } from './usePriorityOrders';
 export type { OrderWithPriority } from './usePriorityOrders';
+export { useInfiniteScroll } from './useInfiniteScroll';

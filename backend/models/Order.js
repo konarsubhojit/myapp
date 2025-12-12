@@ -117,56 +117,6 @@ const Order = {
     );
   },
 
-  async findPaginated({ page = 1, limit = 10 }) {
-    const db = getDatabase();
-    const offset = (page - 1) * limit;
-    
-    const countResult = await db.select({ count: sql`count(*)` }).from(orders);
-    const total = Number.parseInt(countResult[0].count, 10);
-    
-    const ordersResult = await db.select()
-      .from(orders)
-      .orderBy(
-        sql`${orders.expectedDeliveryDate} IS NULL`,
-        asc(orders.expectedDeliveryDate),
-        desc(orders.createdAt)
-      )
-      .limit(limit)
-      .offset(offset);
-    
-    // Fix N+1 query problem: Fetch all items in ONE query instead of looping
-    // This optimization reduces queries from O(n+1) to O(2) for better performance
-    // Particularly important for paginated results with many items per order
-    if (ordersResult.length === 0) {
-      return {
-        orders: [],
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-      };
-    }
-    
-    const orderIds = ordersResult.map(o => o.id);
-    const allItems = await db.select()
-      .from(orderItems)
-      .where(inArray(orderItems.orderId, orderIds));
-    
-    // Group items by orderId for efficient lookup
-    const itemsByOrderId = allItems.reduce((acc, item) => {
-      if (!acc[item.orderId]) acc[item.orderId] = [];
-      acc[item.orderId].push(item);
-      return acc;
-    }, {});
-    
-    // Transform orders with their items
-    const ordersWithItems = ordersResult.map(order => 
-      transformOrder(order, itemsByOrderId[order.id] || [])
-    );
-    
-    return {
-      orders: ordersWithItems,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
-    };
-  },
-
   async findById(id) {
     const db = getDatabase();
     const numericId = Number.parseInt(id, 10);

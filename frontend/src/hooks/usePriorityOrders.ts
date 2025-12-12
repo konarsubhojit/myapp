@@ -135,6 +135,7 @@ export const usePriorityOrders = (options: UsePriorityOrdersOptions = {}): UsePr
     setLoading(true);
     setError('');
     try {
+      // Use backend /api/orders/priority endpoint - more efficient (DB filtering)
       const data = await getPriorityOrders();
       
       // Ensure data is an array

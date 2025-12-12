@@ -230,7 +230,7 @@ export const permanentlyDeleteItem = async (id: number | string): Promise<{ mess
 
 // Orders API
 export const getOrders = async (): Promise<Order[]> => {
-  const response = await authFetch(`${API_BASE_URL}/orders`);
+  const response = await authFetch(`${API_BASE_URL}/orders/all`);
   if (!response.ok) throw new Error('Failed to fetch orders');
   return response.json();
 };

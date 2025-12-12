@@ -50,13 +50,12 @@ describe('OrderHistory', () => {
 
   const defaultPaginationReturn = {
     orders: mockOrders,
-    pagination: { page: 1, totalPages: 1, total: 2, limit: 10 },
-    initialLoading: false,
     loading: false,
+    loadingMore: false,
+    hasMore: false,
     error: null,
+    loadMore: vi.fn(),
     fetchOrders: vi.fn(),
-    handlePageChange: vi.fn(),
-    handlePageSizeChange: vi.fn(),
   };
 
   const defaultFiltersReturn = {
@@ -91,7 +90,7 @@ describe('OrderHistory', () => {
   it('should show loading state', () => {
     useOrderPagination.mockReturnValue({
       ...defaultPaginationReturn,
-      initialLoading: true,
+      loading: true,
     });
 
     render(<OrderHistory onDuplicateOrder={mockOnDuplicateOrder} />);
