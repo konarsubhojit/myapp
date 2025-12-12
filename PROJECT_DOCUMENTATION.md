@@ -9,9 +9,10 @@
 6. [Project Structure](#project-structure)
 7. [API Documentation](#api-documentation)
 8. [Database Schema](#database-schema)
-9. [Testing](#testing)
-10. [Deployment](#deployment)
-11. [Development Guidelines](#development-guidelines)
+9. [Redis Caching](#redis-caching)
+10. [Testing](#testing)
+11. [Deployment](#deployment)
+12. [Development Guidelines](#development-guidelines)
 
 ---
 
@@ -100,6 +101,7 @@ The Order Management System is a full-stack application designed for managing or
 - **Framework**: Express.js
 - **Database**: Neon PostgreSQL (serverless)
 - **ORM**: Drizzle ORM
+- **Cache**: Redis (optional, for improved performance)
 - **Authentication**: Google OAuth + JWT
 - **Image Storage**: Vercel Blob Storage
 - **Testing**: Jest + Supertest
@@ -121,6 +123,7 @@ The Order Management System is a full-stack application designed for managing or
 - Neon PostgreSQL account (https://neon.tech)
 - Vercel Blob Storage account (for images)
 - Google OAuth credentials (for authentication)
+- Redis instance (optional, for caching - https://redis.io or https://upstash.com)
 
 ### Step 1: Clone Repository
 ```bash
@@ -156,7 +159,14 @@ AUTH_DISABLED=false  # Set to 'true' to disable auth in development
 
 # Image Storage
 BLOB_READ_WRITE_TOKEN=vercel_blob_rw_xxxxxxxxxxxxx
+
+# Redis Cache (Optional - improves API response times)
+REDIS_URL=redis://localhost:6379
+# For production: redis://user:password@host:port
+# For Upstash: redis://default:xxxxx@region.upstash.io:6379
 ```
+
+**Note**: Redis is optional but recommended for production. Without Redis, the API will work normally but without caching benefits.
 
 #### Frontend Configuration
 Create `frontend/.env`:
@@ -550,6 +560,97 @@ Health check endpoint (no authentication required).
 - `orders.customer_id`: For customer history
 - `orders.expected_delivery_date`: For priority calculations
 - `order_items.order_id`: For order lookup
+
+---
+
+## Redis Caching
+
+The API uses Redis for caching to improve response times and reduce database load. Caching is **optional** - the application will work without Redis, but with better performance when Redis is configured.
+
+### Cache Strategy
+
+#### Cached Endpoints
+All GET endpoints are cached with appropriate TTLs:
+
+| Endpoint | Cache TTL | Description |
+|----------|-----------|-------------|
+| `GET /api/items` | 300s (5 min) | All items list |
+| `GET /api/items?page=X` | 300s (5 min) | Paginated items |
+| `GET /api/items/deleted` | 300s (5 min) | Deleted items |
+| `GET /api/orders` | 300s (5 min) | All orders list |
+| `GET /api/orders?page=X` | 300s (5 min) | Paginated orders |
+| `GET /api/orders/priority` | 60s (1 min) | Priority orders |
+| `GET /api/orders/:id` | 300s (5 min) | Single order details |
+
+#### Cache Invalidation
+Caches are automatically invalidated when data changes:
+
+- **Item mutations** (POST, PUT, DELETE, restore) → Invalidates all `/api/items*` caches
+- **Order mutations** (POST, PUT) → Invalidates all `/api/orders*` caches
+
+### Setup
+
+#### Local Development
+```bash
+# Install and start Redis locally
+# Option 1: Using Docker
+docker run -d -p 6379:6379 redis:alpine
+
+# Option 2: Using Homebrew (macOS)
+brew install redis
+brew services start redis
+
+# Option 3: Using apt (Ubuntu/Debian)
+sudo apt-get install redis-server
+sudo systemctl start redis
+```
+
+Add to `backend/.env`:
+```env
+REDIS_URL=redis://localhost:6379
+```
+
+#### Production (Upstash)
+1. Create a free Redis database at [Upstash](https://upstash.com)
+2. Copy the Redis URL from the dashboard
+3. Add to Vercel environment variables:
+   ```env
+   REDIS_URL=redis://default:xxxxx@region.upstash.io:6379
+   ```
+
+#### Production (Other Providers)
+- **AWS ElastiCache**: Use the primary endpoint
+- **Azure Cache for Redis**: Use the connection string
+- **Google Cloud Memorystore**: Use the Redis host and port
+
+### Performance Benefits
+
+With Redis caching enabled:
+- **First request**: Database query (~50-200ms)
+- **Cached requests**: Redis lookup (~5-20ms)
+- **Improvement**: 90-95% faster response times
+
+### Monitoring
+
+Check Redis connection status in application logs:
+```
+[RedisClient] Connecting to Redis...
+[RedisClient] Redis connection successful
+[Server] Redis connection successful
+```
+
+If Redis is not configured:
+```
+[RedisClient] Redis URL not configured, caching disabled
+```
+
+### Cache Management
+
+The cache automatically handles:
+- **Connection failures**: App continues without caching
+- **Reconnection**: Automatic retry with exponential backoff
+- **Memory management**: Redis TTL ensures old data is purged
+- **Race conditions**: Concurrent requests are handled safely
 
 ---
 
