@@ -300,7 +300,7 @@ router.get('/priority', cacheMiddleware(60), asyncHandler(async (req, res) => {
   res.json(priorityOrders);
 }));
 
-router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   if (req.query.page || req.query.limit) {
