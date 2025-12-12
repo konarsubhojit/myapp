@@ -234,4 +234,41 @@ describe('useOrderPagination', () => {
 
     expect(result.current.error).toBe('');
   });
+
+  it('should handle malformed API response with missing orders field', async () => {
+    // API returns unexpected structure (e.g., { items: [...] } instead of { orders: [...] })
+    api.getOrdersPaginated.mockResolvedValue({
+      items: [{ id: '1', name: 'Item' }],  // Wrong field name
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 }
+    });
+
+    const { result } = renderHook(() => useOrderPagination());
+
+    await waitFor(() => {
+      expect(result.current.initialLoading).toBe(false);
+    });
+
+    // Should handle gracefully by setting empty array
+    expect(result.current.orders).toEqual([]);
+    expect(result.current.error).toBe('');
+    expect(result.current.pagination.page).toBe(1);
+  });
+
+  it('should handle API response with non-array orders field', async () => {
+    // API returns orders as object instead of array
+    api.getOrdersPaginated.mockResolvedValue({
+      orders: { id: '1', name: 'Not an array' },  // Wrong type
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 }
+    });
+
+    const { result } = renderHook(() => useOrderPagination());
+
+    await waitFor(() => {
+      expect(result.current.initialLoading).toBe(false);
+    });
+
+    // Should detect invalid format and set error
+    expect(result.current.orders).toEqual([]);
+    expect(result.current.error).toBe('Invalid response format: orders must be an array');
+  });
 });
