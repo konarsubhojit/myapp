@@ -11,6 +11,7 @@ A full-stack application for managing orders with React frontend and Node.js/Pos
 - Neon PostgreSQL database
 - Vercel Blob Storage (for images)
 - Google OAuth credentials
+- Redis instance (optional, for caching)
 
 ### Installation
 
@@ -50,11 +51,12 @@ npm run frontend
 - ✅ **Multi-Currency** - Support for USD, EUR, GBP, INR
 - ✅ **Google OAuth** - Secure authentication
 - ✅ **Soft Delete** - Restore accidentally deleted items
+- ✅ **Redis Caching** - Fast API responses with automatic cache invalidation
 
 ## Tech Stack
 
 **Frontend**: React 19, Vite, Material-UI, React Router  
-**Backend**: Node.js, Express, PostgreSQL, Drizzle ORM  
+**Backend**: Node.js, Express, PostgreSQL, Drizzle ORM, Redis Cache  
 **Deployment**: Vercel, Docker support  
 **Testing**: Jest (backend), Vitest (frontend)
 

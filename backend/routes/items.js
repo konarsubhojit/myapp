@@ -7,6 +7,7 @@ import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHand
 import { parsePaginationParams } from '../utils/pagination.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
 import { IMAGE_CONFIG } from '../constants/imageConstants.js';
+import { cacheMiddleware, invalidateItemCache } from '../middleware/cache.js';
 
 const logger = createLogger('ItemsRoute');
 
@@ -80,7 +81,7 @@ function validateItemPrice(price) {
   return { valid: true, parsedPrice };
 }
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   if (req.query.page || req.query.limit) {
@@ -92,7 +93,7 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 }));
 
-router.get('/deleted', asyncHandler(async (req, res) => {
+router.get('/deleted', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   const result = await Item.findDeletedPaginated({ page, limit, search });
@@ -131,6 +132,9 @@ router.post('/', asyncHandler(async (req, res) => {
     specialFeatures: specialFeatures || '',
     imageUrl: imageUrl
   });
+  
+  // Invalidate item cache after creating a new item
+  await invalidateItemCache();
   
   logger.info('Item created', { itemId: newItem._id, name: newItem.name });
   res.status(201).json(newItem);
@@ -182,6 +186,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
   // Delete old image if needed
   await deleteOldImage(imageResult.oldImageUrl);
   
+  // Invalidate item cache after updating
+  await invalidateItemCache();
+  
   logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
   res.json(updatedItem);
 }));
@@ -192,6 +199,9 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     throw notFoundError('Item');
   }
   
+  // Invalidate item cache after soft deletion
+  await invalidateItemCache();
+  
   logger.info('Item soft deleted', { itemId: req.params.id });
   res.json({ message: 'Item deleted' });
 }));
@@ -201,6 +211,9 @@ router.post('/:id/restore', asyncHandler(async (req, res) => {
   if (!item) {
     throw notFoundError('Item');
   }
+  
+  // Invalidate item cache after restoration
+  await invalidateItemCache();
   
   logger.info('Item restored', { itemId: req.params.id });
   res.json(item);
