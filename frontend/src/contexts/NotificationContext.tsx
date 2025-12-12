@@ -15,7 +15,7 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
-function SlideTransition(props: SlideProps): ReactElement {
+function SlideTransition(props: Readonly<SlideProps>): ReactElement {
   return <Slide {...props} direction="up" />;
 }
 
@@ -28,7 +28,7 @@ interface NotificationState {
 }
 
 interface NotificationProviderProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps): ReactElement {

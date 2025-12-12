@@ -27,7 +27,7 @@ export function useCurrency(): CurrencyContextType {
 }
 
 interface CurrencyProviderProps {
-  children: ReactNode;
+  readonly children: ReactNode;
 }
 
 export function CurrencyProvider({ children }: CurrencyProviderProps): ReactElement {

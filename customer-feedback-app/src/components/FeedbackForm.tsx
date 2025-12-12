@@ -5,11 +5,11 @@ import {
   TextField,
   Typography,
   Rating,
-  Grid,
   CircularProgress,
   Alert,
   Snackbar
 } from '@mui/material';
+import Grid from '@mui/material/Grid2';
 import SendIcon from '@mui/icons-material/Send';
 import { createFeedback } from '../services/api';
 import type { FeedbackFormProps, FeedbackFormData } from '../types';
@@ -105,7 +105,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
           Rate Specific Aspects
         </Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Typography component="legend" variant="body2" gutterBottom>
               Product Quality
             </Typography>
@@ -116,7 +116,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
               onChange={handleRatingChange('productQuality')}
             />
           </Grid>
-          <Grid item xs={12} sm={6}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Typography component="legend" variant="body2" gutterBottom>
               Delivery Experience
             </Typography>
@@ -139,7 +139,7 @@ const FeedbackForm = ({ token, order: _order, onSuccess }: FeedbackFormProps): R
         value={formData.comment}
         onChange={handleCommentChange}
         placeholder="Tell us about your experience..."
-        inputProps={{ maxLength: 1000 }}
+        slotProps={{ htmlInput: { maxLength: 1000 } }}
         helperText={`${formData.comment.length}/1000 characters`}
         sx={{ mb: 3 }}
       />

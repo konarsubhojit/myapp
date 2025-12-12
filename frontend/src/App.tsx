@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode, type ReactElement } from 'react'
+import { useState, useEffect, useCallback, type ReactElement } from 'react'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
@@ -54,7 +54,7 @@ const TAB_ROUTES: TabRoute[] = [
 ]
 
 interface LoadingScreenProps {
-  message: string;
+  readonly message: string;
 }
 
 // Loading screen component to reduce cognitive complexity

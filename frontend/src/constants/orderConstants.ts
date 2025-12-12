@@ -65,17 +65,17 @@ const findLabel = <T extends string | number>(
 ): string => 
   array.find(s => s.value === value)?.label ?? defaultLabel;
 
-export const getPaymentStatusLabel = (status: PaymentStatus | string): string => 
+export const getPaymentStatusLabel = (status: string): string => 
   findLabel(PAYMENT_STATUSES, status as PaymentStatus, 'Unpaid');
 
-export const getConfirmationStatusLabel = (status: ConfirmationStatus | string): string => 
+export const getConfirmationStatusLabel = (status: string): string => 
   findLabel(CONFIRMATION_STATUSES, status as ConfirmationStatus, 'Unconfirmed');
 
 export const getPriorityLabel = (priority: number): string => 
   findLabel(PRIORITY_LEVELS, priority, 'Normal');
 
-export const getOrderStatusLabel = (status: OrderStatus | string): string => 
+export const getOrderStatusLabel = (status: string): string => 
   findLabel(ORDER_STATUSES, status as OrderStatus, 'Pending');
 
-export const getDeliveryStatusLabel = (status: DeliveryStatus | string): string => 
+export const getDeliveryStatusLabel = (status: string): string => 
   findLabel(DELIVERY_STATUSES, status as DeliveryStatus, 'Not Shipped');

@@ -1,11 +1,11 @@
-import type { OrderStatus, PriorityData } from '../types';
+import type { PriorityData } from '../types';
 
 type ChipColor = 'warning' | 'info' | 'success' | 'error' | 'default';
 
 /**
  * Gets the color for order status chips
  */
-export const getOrderStatusColor = (status: OrderStatus | string): ChipColor => {
+export const getOrderStatusColor = (status: string): ChipColor => {
   switch (status) {
     case 'pending': return 'warning';
     case 'processing': return 'info';

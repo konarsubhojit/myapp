@@ -20,7 +20,7 @@ function App(): ReactElement {
 
   useEffect(() => {
     // Get token from URL parameter
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(globalThis.location.search);
     const tokenParam = params.get('token');
     
     if (!tokenParam) {
