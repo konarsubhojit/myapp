@@ -38,10 +38,17 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
     setError('');
     try {
       const result = await getOrdersPaginated({ page, limit });
-      setOrders(result.orders);
-      setPagination(result.pagination);
+      // Defensive check: ensure result.orders exists and is an array
+      const ordersData = result.orders || [];
+      if (!Array.isArray(ordersData)) {
+        throw new Error('Invalid response format: orders must be an array');
+      }
+      setOrders(ordersData);
+      setPagination(result.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
+      // Set empty array on error to prevent undefined errors
+      setOrders([]);
     } finally {
       setLoading(false);
       setInitialLoading(false);

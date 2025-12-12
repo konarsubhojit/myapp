@@ -193,6 +193,10 @@ export const useOrderFilters = (orders: Order[]): UseOrderFiltersResult => {
   };
 
   const filteredOrders = useMemo((): Order[] => {
+    // Defensive check: ensure orders is an array
+    if (!orders || !Array.isArray(orders)) {
+      return [];
+    }
     return orders.filter(order => orderMatchesFilters(order, filters));
   }, [orders, filters]);
 
