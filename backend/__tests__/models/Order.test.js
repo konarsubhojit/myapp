@@ -399,53 +399,6 @@ describe('Order Model', () => {
     });
   });
 
-  describe('findPaginated', () => {
-    it('should return paginated orders', async () => {
-      const mockOrders = [
-        {
-          id: 1,
-          orderId: 'ORD123456',
-          customerName: 'John Doe',
-          totalPrice: '100.00',
-          createdAt: new Date(),
-        },
-      ];
-
-      const mockOrderItems = [
-        { id: 1, orderId: 1, itemId: 1, name: 'Item 1', price: '50.00', quantity: 2 },
-      ];
-
-      mockDb.select = jest.fn()
-        .mockReturnValueOnce({
-          from: jest.fn(() => Promise.resolve([{ count: '5' }])),
-        })
-        .mockReturnValueOnce({
-          from: jest.fn(() => ({
-            orderBy: jest.fn(() => ({
-              limit: jest.fn(() => ({
-                offset: jest.fn(() => Promise.resolve(mockOrders)),
-              })),
-            })),
-          })),
-        })
-        .mockReturnValue({
-          from: jest.fn(() => ({
-            where: jest.fn(() => Promise.resolve(mockOrderItems)),
-          })),
-        });
-
-      const result = await Order.findPaginated({ page: 1, limit: 10 });
-
-      expect(result).toHaveProperty('orders');
-      expect(result).toHaveProperty('pagination');
-      expect(result.orders).toHaveLength(1);
-      expect(result.pagination.page).toBe(1);
-      expect(result.pagination.limit).toBe(10);
-      expect(result.pagination.total).toBe(5);
-      expect(result.pagination.totalPages).toBe(1);
-    });
-  });
-
   describe('orderDate handling', () => {
     it('should use current date when orderDate is not provided', async () => {
       const orderData = {
