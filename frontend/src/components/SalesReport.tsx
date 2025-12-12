@@ -1,4 +1,4 @@
-import { useMemo, useState, ReactNode } from 'react';
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -17,7 +17,6 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PersonIcon from '@mui/icons-material/Person';
@@ -28,14 +27,10 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { DATE_RANGES, MILLISECONDS } from '../constants/timeConstants';
+import { useSalesAnalytics, TIME_RANGES, ItemData, CustomerData, SourceData, RangeAnalytics } from '../hooks';
+import StatCard from './common/StatCard';
+import ProgressBarWithLabel from './common/ProgressBarWithLabel';
 import type { Order } from '../types';
-
-interface TimeRange {
-  key: string;
-  label: string;
-  days: number;
-}
 
 interface ViewOption {
   key: string;
@@ -46,14 +41,6 @@ interface StatusFilterOption {
   key: string;
   label: string;
 }
-
-const TIME_RANGES: TimeRange[] = [
-  { key: 'week', label: 'Last Week', days: DATE_RANGES.WEEK },
-  { key: 'month', label: 'Last Month', days: DATE_RANGES.MONTH },
-  { key: 'quarter', label: 'Last Quarter', days: DATE_RANGES.QUARTER },
-  { key: 'halfYear', label: 'Last 6 Months', days: 180 },
-  { key: 'year', label: 'Last Year', days: 365 },
-];
 
 const VIEW_OPTIONS: ViewOption[] = [
   { key: 'overview', label: 'Overview' },
@@ -67,269 +54,28 @@ const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
   { key: 'all', label: 'All Orders' },
 ];
 
-interface ItemData {
-  name: string;
-  quantity: number;
-  revenue: number;
-}
-
-interface CustomerData {
-  customerId: string;
-  customerName: string;
-  orderCount: number;
-  totalSpent: number;
-  items: Record<string, number>;
-}
-
-interface SourceData {
-  count: number;
-  revenue: number;
-}
-
-interface RangeAnalytics {
-  totalSales: number;
-  orderCount: number;
-  topItems: ItemData[];
-  topItemsByRevenue: ItemData[];
-  sourceBreakdown: Record<string, SourceData>;
-  topCustomersByOrders: CustomerData[];
-  topCustomersByRevenue: CustomerData[];
-  highestOrderingCustomer: CustomerData | null;
-  averageOrderValue: number;
-  uniqueCustomers: number;
-}
-
-/**
- * Aggregates item counts and revenue from filtered orders
- */
-const aggregateItemCounts = (filteredOrders: Order[]): Record<string, { quantity: number; revenue: number }> => {
-  const itemCounts: Record<string, { quantity: number; revenue: number }> = {};
-  
-  filteredOrders.forEach(order => {
-    if (order.items?.length) {
-      order.items.forEach(item => {
-        if (!itemCounts[item.name]) {
-          itemCounts[item.name] = { quantity: 0, revenue: 0 };
-        }
-        itemCounts[item.name].quantity += item.quantity;
-        itemCounts[item.name].revenue += item.price * item.quantity;
-      });
-    }
-  });
-  
-  return itemCounts;
-};
-
-/**
- * Aggregates customer order data including total spent and items purchased
- */
-const aggregateCustomerData = (filteredOrders: Order[]): Record<string, CustomerData> => {
-  const customerCounts: Record<string, CustomerData> = {};
-  
-  filteredOrders.forEach(order => {
-    const customerId = order.customerId;
-    const customerName = order.customerName;
-    const key = `${customerId}_${customerName}`;
-    
-    if (!customerCounts[key]) {
-      customerCounts[key] = { 
-        customerId, 
-        customerName, 
-        orderCount: 0, 
-        totalSpent: 0,
-        items: {}
-      };
-    }
-    customerCounts[key].orderCount += 1;
-    customerCounts[key].totalSpent += order.totalPrice;
-    
-    // Track items purchased by each customer
-    if (order.items?.length) {
-      order.items.forEach(item => {
-        const itemName = item.name;
-        if (!customerCounts[key].items[itemName]) {
-          customerCounts[key].items[itemName] = 0;
-        }
-        customerCounts[key].items[itemName] += item.quantity;
-      });
-    }
-  });
-  
-  return customerCounts;
-};
-
-/**
- * Aggregates order count and revenue by source
- */
-const aggregateSourceBreakdown = (filteredOrders: Order[]): Record<string, SourceData> => {
-  const sourceBreakdown: Record<string, SourceData> = {};
-  
-  filteredOrders.forEach(order => {
-    const orderSource = order.orderFrom || 'unknown';
-    if (!sourceBreakdown[orderSource]) {
-      sourceBreakdown[orderSource] = { count: 0, revenue: 0 };
-    }
-    sourceBreakdown[orderSource].count += 1;
-    sourceBreakdown[orderSource].revenue += order.totalPrice;
-  });
-  
-  return sourceBreakdown;
-};
-
 interface SalesReportProps {
   orders: Order[];
 }
 
-interface StatCardProps {
-  value: string | number;
-  label: string;
-  icon?: ReactNode;
-  color?: string;
+// Helper to get max value from array
+const getMaxValue = <T,>(items: T[], getValue: (item: T) => number): number => {
+  if (items.length === 0) return 1;
+  return Math.max(...items.map(getValue));
+};
+
+// Sub-component: Overview View
+interface OverviewViewProps {
+  currentStats: RangeAnalytics;
+  analytics: Record<string, RangeAnalytics>;
+  selectedRange: string;
+  formatPrice: (price: number) => string;
 }
 
-function SalesReport({ orders }: SalesReportProps) {
-  const { formatPrice } = useCurrency();
-  const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
-  
-  // Use local state instead of URL params
-  const [selectedRange, setSelectedRange] = useState('month');
-  const [selectedView, setSelectedView] = useState('overview');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('completed');
-
-  // Create stable reference for useMemo dependency
-  const stableStatusFilter = useMemo(() => selectedStatusFilter, [selectedStatusFilter]);
-
-  const analytics = useMemo((): Record<string, RangeAnalytics> => {
-    const now = new Date();
-    const results: Record<string, RangeAnalytics> = {};
-
-    TIME_RANGES.forEach(range => {
-      const cutoffDate = new Date(now.getTime() - range.days * MILLISECONDS.PER_DAY);
-      
-      const filteredOrders = orders.filter(order => {
-        // Use orderDate if available, otherwise fall back to createdAt
-        const dateToUse = order.orderDate || order.createdAt;
-        const orderDate = new Date(dateToUse);
-        const isInTimeRange = orderDate >= cutoffDate;
-        
-        // Apply status filter
-        const matchesStatusFilter = stableStatusFilter === 'all' || order.status === 'completed' || order.status == null;
-        
-        return isInTimeRange && matchesStatusFilter;
-      });
-
-      const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
-      const orderCount = filteredOrders.length;
-
-      // Use helper functions to aggregate data
-      const itemCounts = aggregateItemCounts(filteredOrders);
-      const itemsArray: ItemData[] = Object.entries(itemCounts).map(([name, data]) => ({
-        name,
-        quantity: data.quantity,
-        revenue: data.revenue
-      }));
-
-      itemsArray.sort((a, b) => b.quantity - a.quantity);
-      const topItems = itemsArray.slice(0, 5);
-      const topItemsByRevenue = [...itemsArray].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-
-      const sourceBreakdown = aggregateSourceBreakdown(filteredOrders);
-      
-      const customerCounts = aggregateCustomerData(filteredOrders);
-      const customersArray = Object.values(customerCounts);
-      customersArray.sort((a, b) => b.orderCount - a.orderCount);
-      const topCustomersByOrders = customersArray.slice(0, 5);
-      
-      const topCustomersByRevenue = [...customersArray].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-      const highestOrderingCustomer = customersArray.length > 0 ? customersArray[0] : null;
-
-      results[range.key] = {
-        totalSales,
-        orderCount,
-        topItems,
-        topItemsByRevenue,
-        sourceBreakdown,
-        topCustomersByOrders,
-        topCustomersByRevenue,
-        highestOrderingCustomer,
-        averageOrderValue: orderCount > 0 ? totalSales / orderCount : 0,
-        uniqueCustomers: customersArray.length
-      };
-    });
-
-    return results;
-  }, [orders, stableStatusFilter]);
-
-  const currentStats: RangeAnalytics = analytics[selectedRange] || {
-    totalSales: 0,
-    orderCount: 0,
-    topItems: [],
-    topItemsByRevenue: [],
-    sourceBreakdown: {},
-    topCustomersByOrders: [],
-    topCustomersByRevenue: [],
-    highestOrderingCustomer: null,
-    averageOrderValue: 0,
-    uniqueCustomers: 0
-  };
-
-  const getMaxQuantity = (): number => {
-    if (currentStats.topItems.length === 0) return 1;
-    return Math.max(...currentStats.topItems.map(item => item.quantity));
-  };
-
-  const getMaxRevenue = (): number => {
-    if (currentStats.topItemsByRevenue.length === 0) return 1;
-    return Math.max(...currentStats.topItemsByRevenue.map(item => item.revenue));
-  };
-
-  const getMaxSourceCount = (): number => {
-    const counts = Object.values(currentStats.sourceBreakdown).map(s => s.count);
-    if (counts.length === 0) return 1;
-    return Math.max(...counts);
-  };
-
-  const getMaxCustomerOrders = (): number => {
-    if (currentStats.topCustomersByOrders.length === 0) return 1;
-    return Math.max(...currentStats.topCustomersByOrders.map(c => c.orderCount));
-  };
-
-  const getMaxCustomerRevenue = (): number => {
-    if (currentStats.topCustomersByRevenue.length === 0) return 1;
-    return Math.max(...currentStats.topCustomersByRevenue.map(c => c.totalSpent));
-  };
-
-  // Get the top selling item for the highlight card
+function OverviewView({ currentStats, analytics, selectedRange, formatPrice }: OverviewViewProps) {
   const topSellingItem = currentStats.topItems.length > 0 ? currentStats.topItems[0] : null;
 
-  const StatCard = ({ value, label, icon, color = 'primary' }: StatCardProps) => (
-    <Card sx={{ height: '100%' }}>
-      <CardContent sx={{ textAlign: 'center' }}>
-        {icon && <Box sx={{ color: `${color}.main`, mb: 1 }}>{icon}</Box>}
-        <Typography variant="h4" fontWeight={700} color={`${color}.main`}>
-          {value}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {label}
-        </Typography>
-      </CardContent>
-    </Card>
-  );
-
-  const handleRangeChange = (e: SelectChangeEvent<string>) => {
-    setSelectedRange(e.target.value);
-  };
-
-  const handleStatusFilterChange = (e: SelectChangeEvent<string>) => {
-    setSelectedStatusFilter(e.target.value);
-  };
-
-  const handleViewChange = (e: SelectChangeEvent<string>) => {
-    setSelectedView(e.target.value);
-  };
-
-  const renderOverviewView = () => (
+  return (
     <>
       <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid size={{ xs: 6, md: 3 }}>
@@ -427,45 +173,39 @@ function SalesReport({ orders }: SalesReportProps) {
       </Box>
     </>
   );
+}
 
-  const renderItemsView = () => (
+// Sub-component: Items View
+interface ItemsViewProps {
+  topItems: ItemData[];
+  topItemsByRevenue: ItemData[];
+  formatPrice: (price: number) => string;
+}
+
+function ItemsView({ topItems, topItemsByRevenue, formatPrice }: ItemsViewProps) {
+  const maxQuantity = getMaxValue(topItems, item => item.quantity);
+  const maxRevenue = getMaxValue(topItemsByRevenue, item => item.revenue);
+
+  return (
     <Grid container spacing={3}>
       <Grid size={{ xs: 12, md: 6 }}>
         <Typography variant="h6" gutterBottom>Top Items by Quantity Sold</Typography>
-        {currentStats.topItems.length === 0 ? (
+        {topItems.length === 0 ? (
           <Typography color="text.secondary">No items sold in this period</Typography>
         ) : (
           <Stack spacing={2}>
-            {currentStats.topItems.map((item, idx) => (
-              <Box key={item.name}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
-                    #{idx + 1} {item.name} {idx === 0 && '🏆'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatPrice(item.revenue)}
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(item.quantity / getMaxQuantity()) * 100}
-                      sx={{ 
-                        height: 20, 
-                        borderRadius: 1,
-                        bgcolor: 'grey.200',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: idx === 0 ? 'success.main' : 'primary.main',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" sx={{ minWidth: 60 }}>
-                    {item.quantity} units
-                  </Typography>
-                </Box>
-              </Box>
+            {topItems.map((item, idx) => (
+              <ProgressBarWithLabel
+                key={item.name}
+                value={item.quantity}
+                maxValue={maxQuantity}
+                label={`#${idx + 1} ${item.name}`}
+                sublabel={formatPrice(item.revenue)}
+                valueLabel={`${item.quantity} units`}
+                color={idx === 0 ? 'success' : 'primary'}
+                isHighlighted={idx === 0}
+                emoji="🏆"
+              />
             ))}
           </Stack>
         )}
@@ -473,87 +213,65 @@ function SalesReport({ orders }: SalesReportProps) {
 
       <Grid size={{ xs: 12, md: 6 }}>
         <Typography variant="h6" gutterBottom>Top Items by Revenue</Typography>
-        {currentStats.topItemsByRevenue.length === 0 ? (
+        {topItemsByRevenue.length === 0 ? (
           <Typography color="text.secondary">No items sold in this period</Typography>
         ) : (
           <Stack spacing={2}>
-            {currentStats.topItemsByRevenue.map((item, idx) => (
-              <Box key={item.name}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
-                    #{idx + 1} {item.name} {idx === 0 && '💰'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {item.quantity} units
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(item.revenue / getMaxRevenue()) * 100}
-                      sx={{ 
-                        height: 20, 
-                        borderRadius: 1,
-                        bgcolor: 'grey.200',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: idx === 0 ? 'warning.main' : 'secondary.main',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" sx={{ minWidth: 80 }}>
-                    {formatPrice(item.revenue)}
-                  </Typography>
-                </Box>
-              </Box>
+            {topItemsByRevenue.map((item, idx) => (
+              <ProgressBarWithLabel
+                key={item.name}
+                value={item.revenue}
+                maxValue={maxRevenue}
+                label={`#${idx + 1} ${item.name}`}
+                sublabel={`${item.quantity} units`}
+                valueLabel={formatPrice(item.revenue)}
+                color={idx === 0 ? 'warning' : 'secondary'}
+                isHighlighted={idx === 0}
+                emoji="💰"
+              />
             ))}
           </Stack>
         )}
       </Grid>
     </Grid>
   );
+}
 
-  const renderCustomersView = () => (
+// Sub-component: Customers View
+interface CustomersViewProps {
+  topCustomersByOrders: CustomerData[];
+  topCustomersByRevenue: CustomerData[];
+  formatPrice: (price: number) => string;
+}
+
+function CustomersView({ topCustomersByOrders, topCustomersByRevenue, formatPrice }: CustomersViewProps) {
+  const maxOrders = getMaxValue(topCustomersByOrders, c => c.orderCount);
+  const maxRevenue = getMaxValue(topCustomersByRevenue, c => c.totalSpent);
+
+  return (
     <Grid container spacing={3}>
       <Grid size={{ xs: 12, md: 6 }}>
         <Typography variant="h6" gutterBottom>Top Customers by Order Count</Typography>
-        {currentStats.topCustomersByOrders.length === 0 ? (
+        {topCustomersByOrders.length === 0 ? (
           <Typography color="text.secondary">No customers in this period</Typography>
         ) : (
           <Stack spacing={2}>
-            {currentStats.topCustomersByOrders.map((customer, idx) => (
+            {topCustomersByOrders.map((customer, idx) => (
               <Box key={customer.customerId}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
-                    #{idx + 1} {customer.customerName} {idx === 0 && '👤'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatPrice(customer.totalSpent)}
-                  </Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                <ProgressBarWithLabel
+                  value={customer.orderCount}
+                  maxValue={maxOrders}
+                  label={`#${idx + 1} ${customer.customerName}`}
+                  sublabel={formatPrice(customer.totalSpent)}
+                  valueLabel={`${customer.orderCount} orders`}
+                  color={idx === 0 ? 'info' : 'primary'}
+                  height={16}
+                  isHighlighted={idx === 0}
+                  emoji="👤"
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                   {customer.customerId}
                 </Typography>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(customer.orderCount / getMaxCustomerOrders()) * 100}
-                      sx={{ 
-                        height: 16, 
-                        borderRadius: 1,
-                        bgcolor: 'grey.200',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: idx === 0 ? 'info.main' : 'primary.main',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" sx={{ minWidth: 70 }}>
-                    {customer.orderCount} orders
-                  </Typography>
-                </Box>
               </Box>
             ))}
           </Stack>
@@ -562,42 +280,26 @@ function SalesReport({ orders }: SalesReportProps) {
 
       <Grid size={{ xs: 12, md: 6 }}>
         <Typography variant="h6" gutterBottom>Top Customers by Revenue</Typography>
-        {currentStats.topCustomersByRevenue.length === 0 ? (
+        {topCustomersByRevenue.length === 0 ? (
           <Typography color="text.secondary">No customers in this period</Typography>
         ) : (
           <Stack spacing={2}>
-            {currentStats.topCustomersByRevenue.map((customer, idx) => (
+            {topCustomersByRevenue.map((customer, idx) => (
               <Box key={customer.customerId}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" fontWeight={idx === 0 ? 600 : 400}>
-                    #{idx + 1} {customer.customerName} {idx === 0 && '💰'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {customer.orderCount} orders
-                  </Typography>
-                </Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>
+                <ProgressBarWithLabel
+                  value={customer.totalSpent}
+                  maxValue={maxRevenue}
+                  label={`#${idx + 1} ${customer.customerName}`}
+                  sublabel={`${customer.orderCount} orders`}
+                  valueLabel={formatPrice(customer.totalSpent)}
+                  color={idx === 0 ? 'warning' : 'secondary'}
+                  height={16}
+                  isHighlighted={idx === 0}
+                  emoji="💰"
+                />
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                   {customer.customerId}
                 </Typography>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(customer.totalSpent / getMaxCustomerRevenue()) * 100}
-                      sx={{ 
-                        height: 16, 
-                        borderRadius: 1,
-                        bgcolor: 'grey.200',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: idx === 0 ? 'warning.main' : 'secondary.main',
-                        }
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" sx={{ minWidth: 80 }}>
-                    {formatPrice(customer.totalSpent)}
-                  </Typography>
-                </Box>
               </Box>
             ))}
           </Stack>
@@ -605,46 +307,66 @@ function SalesReport({ orders }: SalesReportProps) {
       </Grid>
     </Grid>
   );
+}
 
-  const renderSourceView = () => (
+// Sub-component: Source View
+interface SourceViewProps {
+  sourceBreakdown: Record<string, SourceData>;
+  formatPrice: (price: number) => string;
+}
+
+function SourceView({ sourceBreakdown, formatPrice }: SourceViewProps) {
+  const sources = Object.entries(sourceBreakdown).sort((a, b) => b[1].count - a[1].count);
+  const maxCount = sources.length > 0 ? Math.max(...sources.map(([, data]) => data.count)) : 1;
+
+  return (
     <Box>
       <Typography variant="h6" gutterBottom>Orders by Source</Typography>
-      {Object.keys(currentStats.sourceBreakdown).length === 0 ? (
+      {sources.length === 0 ? (
         <Typography color="text.secondary">No orders in this period</Typography>
       ) : (
         <Stack spacing={2}>
-          {Object.entries(currentStats.sourceBreakdown)
-            .sort((a, b) => b[1].count - a[1].count)
-            .map(([source, data]) => (
-              <Box key={source}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                  <Typography variant="body2" fontWeight={500}>{source}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatPrice(data.revenue)}
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={(data.count / getMaxSourceCount()) * 100}
-                      sx={{ 
-                        height: 20, 
-                        borderRadius: 1,
-                        bgcolor: 'grey.200',
-                      }}
-                    />
-                  </Box>
-                  <Typography variant="caption" sx={{ minWidth: 70 }}>
-                    {data.count} orders
-                  </Typography>
-                </Box>
-              </Box>
-            ))}
+          {sources.map(([source, data]) => (
+            <ProgressBarWithLabel
+              key={source}
+              value={data.count}
+              maxValue={maxCount}
+              label={source}
+              sublabel={formatPrice(data.revenue)}
+              valueLabel={`${data.count} orders`}
+              color="primary"
+            />
+          ))}
         </Stack>
       )}
     </Box>
   );
+}
+
+// Main Component
+function SalesReport({ orders }: SalesReportProps) {
+  const { formatPrice } = useCurrency();
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  
+  const [selectedRange, setSelectedRange] = useState('month');
+  const [selectedView, setSelectedView] = useState('overview');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('completed');
+
+  const { analytics, getStatsForRange } = useSalesAnalytics(orders, selectedStatusFilter);
+  const currentStats = getStatsForRange(selectedRange);
+
+  const handleRangeChange = (e: SelectChangeEvent<string>) => {
+    setSelectedRange(e.target.value);
+  };
+
+  const handleStatusFilterChange = (e: SelectChangeEvent<string>) => {
+    setSelectedStatusFilter(e.target.value);
+  };
+
+  const handleViewChange = (e: SelectChangeEvent<string>) => {
+    setSelectedView(e.target.value);
+  };
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -700,29 +422,53 @@ function SalesReport({ orders }: SalesReportProps) {
             </FormControl>
 
             <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel id="view-select-label">View</InputLabel>
-            <Select 
-              labelId="view-select-label"
-              id="viewSelect"
-              value={selectedView} 
-              label="View"
-              onChange={handleViewChange}
-            >
-              {VIEW_OPTIONS.map(option => (
-                <MenuItem key={option.key} value={option.key}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              <InputLabel id="view-select-label">View</InputLabel>
+              <Select 
+                labelId="view-select-label"
+                id="viewSelect"
+                value={selectedView} 
+                label="View"
+                onChange={handleViewChange}
+              >
+                {VIEW_OPTIONS.map(option => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Box>
         </Box>
       </Box>
 
-      {selectedView === 'overview' && renderOverviewView()}
-      {selectedView === 'byItem' && renderItemsView()}
-      {selectedView === 'byCustomer' && renderCustomersView()}
-      {selectedView === 'bySource' && renderSourceView()}
+      {selectedView === 'overview' && (
+        <OverviewView 
+          currentStats={currentStats} 
+          analytics={analytics} 
+          selectedRange={selectedRange}
+          formatPrice={formatPrice}
+        />
+      )}
+      {selectedView === 'byItem' && (
+        <ItemsView 
+          topItems={currentStats.topItems}
+          topItemsByRevenue={currentStats.topItemsByRevenue}
+          formatPrice={formatPrice}
+        />
+      )}
+      {selectedView === 'byCustomer' && (
+        <CustomersView 
+          topCustomersByOrders={currentStats.topCustomersByOrders}
+          topCustomersByRevenue={currentStats.topCustomersByRevenue}
+          formatPrice={formatPrice}
+        />
+      )}
+      {selectedView === 'bySource' && (
+        <SourceView 
+          sourceBreakdown={currentStats.sourceBreakdown}
+          formatPrice={formatPrice}
+        />
+      )}
     </Paper>
   );
 }

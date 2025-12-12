@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ReactElement } from 'react';
+import { useState, ReactElement } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -16,79 +16,16 @@ import WarningIcon from '@mui/icons-material/Warning';
 import TodayIcon from '@mui/icons-material/Today';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { getPriorityOrders } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { usePriorityOrders, OrderWithPriority, getDaysUntilDelivery } from '../hooks';
 import { getPriorityStatus } from '../utils/priorityUtils';
 import OrderDetails from './OrderDetails';
-import type { Order, OrderId, OrderStatus } from '../types';
-
-type UrgencyLevel = 'critical' | 'high' | 'medium' | 'normal';
-
-interface OrderWithPriority extends Order {
-  effectivePriority: number;
-  urgency: UrgencyLevel;
-}
+import StatCard from './common/StatCard';
+import type { OrderId } from '../types';
 
 interface PriorityDashboardProps {
   onRefresh?: () => void;
   onDuplicateOrder?: (orderId: string) => void;
-}
-
-/**
- * Calculate effective priority score for sorting
- * Higher score = more urgent
- */
-function calculateEffectivePriority(order: Order): number {
-  let score = order.priority || 0;
-  
-  if (order.expectedDeliveryDate) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deliveryDate = new Date(order.expectedDeliveryDate);
-    deliveryDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Overdue orders get highest priority
-    if (diffDays < 0) {
-      score += 100 + Math.abs(diffDays); // More overdue = higher score
-    }
-    // Due today
-    else if (diffDays === 0) {
-      score += 50;
-    }
-    // Due within 3 days
-    else if (diffDays <= 3) {
-      score += 30 - (diffDays * 5); // Closer = higher score
-    }
-  }
-  
-  return score;
-}
-
-/**
- * Get urgency level for visual styling in the dashboard
- */
-function getUrgencyLevel(order: Order): UrgencyLevel {
-  if (!order.expectedDeliveryDate) {
-    if (order.priority >= 8) return 'critical';
-    if (order.priority >= 5) return 'high';
-    return 'normal';
-  }
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const deliveryDate = new Date(order.expectedDeliveryDate);
-  deliveryDate.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Overdue or ≤3 days = critical
-  if (diffDays < 0 || diffDays <= 3) return 'critical';
-  // 4-7 days = high
-  if (diffDays <= 7) return 'high';
-  // 8-14 days = medium
-  if (diffDays <= 14) return 'medium';
-  // >14 days = normal
-  return 'normal';
 }
 
 interface UrgencyDisplay {
@@ -100,7 +37,7 @@ interface UrgencyDisplay {
 /**
  * Get color and icon based on urgency level
  */
-function getUrgencyDisplay(urgency: UrgencyLevel): UrgencyDisplay {
+function getUrgencyDisplay(urgency: 'critical' | 'high' | 'medium' | 'normal'): UrgencyDisplay {
   switch (urgency) {
     case 'critical':
       return { color: 'error', icon: <WarningIcon />, label: 'Critical' };
@@ -125,43 +62,148 @@ function formatDate(dateString: string | null): string {
   });
 }
 
+// Sub-component: Priority Order Card
+interface PriorityOrderCardProps {
+  order: OrderWithPriority;
+  formatPrice: (price: number) => string;
+  onClick: (orderId: OrderId) => void;
+}
+
+function PriorityOrderCard({ order, formatPrice, onClick }: PriorityOrderCardProps) {
+  const urgencyDisplay = getUrgencyDisplay(order.urgency);
+  const priorityStatus = getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status });
+  
+  const getPriorityChipColor = (status: string): 'error' | 'warning' | 'info' | 'success' => {
+    if (status === 'overdue') return 'error';
+    if (status === 'critical') return 'error';
+    if (status === 'urgent') return 'warning';
+    if (status === 'medium') return 'info';
+    return 'success';
+  };
+
+  return (
+    <Card 
+      variant="outlined"
+      sx={{ 
+        borderLeft: 4, 
+        borderLeftColor: `${urgencyDisplay.color}.main`,
+        '&:hover': { 
+          boxShadow: 2,
+          bgcolor: 'action.hover'
+        }
+      }}
+    >
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography variant="h6" fontWeight={600} color="primary">
+              {order.orderId}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {order.customerName} • {order.customerId}
+            </Typography>
+          </Box>
+          <Chip 
+            icon={urgencyDisplay.icon}
+            label={urgencyDisplay.label}
+            color={urgencyDisplay.color}
+            size="small"
+          />
+        </Box>
+
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Order Date
+            </Typography>
+            <Typography variant="body2">
+              {formatDate(order.orderDate)}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Delivery Date
+            </Typography>
+            <Typography variant="body2">
+              {formatDate(order.expectedDeliveryDate)}
+            </Typography>
+            {priorityStatus && (
+              <Chip 
+                label={priorityStatus.label} 
+                size="small" 
+                sx={{ mt: 0.5 }}
+                color={getPriorityChipColor(priorityStatus.status)}
+                variant="outlined"
+              />
+            )}
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Priority Level
+            </Typography>
+            <Typography variant="body2">
+              {order.priority}/10
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Total
+            </Typography>
+            <Typography variant="body2" fontWeight={600}>
+              {formatPrice(order.totalPrice)}
+            </Typography>
+          </Grid>
+        </Grid>
+
+        {order.items && order.items.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Items ({order.items.length})
+            </Typography>
+            <Typography variant="body2">
+              {order.items.map(item => `${item.name} (×${item.quantity})`).join(', ')}
+            </Typography>
+          </Box>
+        )}
+
+        {order.customerNotes && (
+          <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Notes
+            </Typography>
+            <Typography variant="body2">
+              {order.customerNotes}
+            </Typography>
+          </Box>
+        )}
+      </CardContent>
+
+      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
+        <Button 
+          size="small" 
+          startIcon={<LocalShippingIcon />}
+          onClick={() => onClick(order._id)}
+        >
+          View Details
+        </Button>
+      </CardActions>
+    </Card>
+  );
+}
+
 function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardProps) {
   const { formatPrice } = useCurrency();
-  const [orders, setOrders] = useState<OrderWithPriority[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<OrderId | null>(null);
 
-  const fetchPriorityOrders = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await getPriorityOrders();
-      
-      // Ensure data is an array
-      const ordersArray = Array.isArray(data) ? data : [];
-      
-      // Calculate effective priority and sort
-      const ordersWithPriority: OrderWithPriority[] = ordersArray.map(order => ({
-        ...order,
-        effectivePriority: calculateEffectivePriority(order),
-        urgency: getUrgencyLevel(order)
-      }));
-      
-      ordersWithPriority.sort((a, b) => b.effectivePriority - a.effectivePriority);
-      
-      setOrders(ordersWithPriority);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPriorityOrders();
-  }, [fetchPriorityOrders]);
+  const {
+    orders,
+    criticalOrders,
+    highPriorityOrders,
+    mediumPriorityOrders,
+    loading,
+    error,
+    fetchPriorityOrders,
+  } = usePriorityOrders();
 
   const handleOrderClick = (orderId: OrderId) => {
     setSelectedOrderId(orderId);
@@ -178,14 +220,6 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardPro
     }
   };
 
-  const getPriorityChipColor = (status: string): 'error' | 'warning' | 'info' | 'success' => {
-    if (status === 'overdue') return 'error';
-    if (status === 'critical') return 'error';
-    if (status === 'urgent') return 'warning';
-    if (status === 'medium') return 'info';
-    return 'success';
-  };
-
   if (loading) {
     return (
       <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -198,10 +232,6 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardPro
       </Paper>
     );
   }
-
-  const criticalOrders = orders.filter(o => o.urgency === 'critical');
-  const highPriorityOrders = orders.filter(o => o.urgency === 'high');
-  const mediumPriorityOrders = orders.filter(o => o.urgency === 'medium');
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -223,43 +253,34 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardPro
       {/* Summary Cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <Card sx={{ bgcolor: 'error.50', border: '2px solid', borderColor: 'error.200' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <WarningIcon sx={{ color: 'error.main', fontSize: 40 }} />
-              <Typography variant="h4" fontWeight={700} color="error.main">
-                {criticalOrders.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Critical Orders
-              </Typography>
-            </CardContent>
-          </Card>
+          <StatCard
+            value={criticalOrders.length}
+            label="Critical Orders"
+            icon={<WarningIcon sx={{ fontSize: 40 }} />}
+            color="error"
+            bgcolor="error.50"
+            borderColor="error.200"
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <Card sx={{ bgcolor: 'warning.50', border: '2px solid', borderColor: 'warning.200' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <PriorityHighIcon sx={{ color: 'warning.main', fontSize: 40 }} />
-              <Typography variant="h4" fontWeight={700} color="warning.main">
-                {highPriorityOrders.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                High Priority
-              </Typography>
-            </CardContent>
-          </Card>
+          <StatCard
+            value={highPriorityOrders.length}
+            label="High Priority"
+            icon={<PriorityHighIcon sx={{ fontSize: 40 }} />}
+            color="warning"
+            bgcolor="warning.50"
+            borderColor="warning.200"
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <Card sx={{ bgcolor: 'info.50', border: '2px solid', borderColor: 'info.200' }}>
-            <CardContent sx={{ textAlign: 'center' }}>
-              <TodayIcon sx={{ color: 'info.main', fontSize: 40 }} />
-              <Typography variant="h4" fontWeight={700} color="info.main">
-                {mediumPriorityOrders.length}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Medium Priority
-              </Typography>
-            </CardContent>
-          </Card>
+          <StatCard
+            value={mediumPriorityOrders.length}
+            label="Medium Priority"
+            icon={<TodayIcon sx={{ fontSize: 40 }} />}
+            color="info"
+            bgcolor="info.50"
+            borderColor="info.200"
+          />
         </Grid>
       </Grid>
 
@@ -271,120 +292,14 @@ function PriorityDashboard({ onRefresh, onDuplicateOrder }: PriorityDashboardPro
         </Alert>
       ) : (
         <Stack spacing={2}>
-          {orders.map(order => {
-            const urgencyDisplay = getUrgencyDisplay(order.urgency);
-            const priorityStatus = getPriorityStatus(order.expectedDeliveryDate, { orderStatus: order.status });
-            
-            return (
-              <Card 
-                key={order._id}
-                variant="outlined"
-                sx={{ 
-                  borderLeft: 4, 
-                  borderLeftColor: `${urgencyDisplay.color}.main`,
-                  '&:hover': { 
-                    boxShadow: 2,
-                    bgcolor: 'action.hover'
-                  }
-                }}
-              >
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                    <Box>
-                      <Typography variant="h6" fontWeight={600} color="primary">
-                        {order.orderId}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {order.customerName} • {order.customerId}
-                      </Typography>
-                    </Box>
-                    <Chip 
-                      icon={urgencyDisplay.icon}
-                      label={urgencyDisplay.label}
-                      color={urgencyDisplay.color}
-                      size="small"
-                    />
-                  </Box>
-
-                  <Grid container spacing={2}>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Order Date
-                      </Typography>
-                      <Typography variant="body2">
-                        {formatDate(order.orderDate)}
-                      </Typography>
-                    </Grid>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Delivery Date
-                      </Typography>
-                      <Typography variant="body2">
-                        {formatDate(order.expectedDeliveryDate)}
-                      </Typography>
-                      {priorityStatus && (
-                        <Chip 
-                          label={priorityStatus.label} 
-                          size="small" 
-                          sx={{ mt: 0.5 }}
-                          color={getPriorityChipColor(priorityStatus.status)}
-                          variant="outlined"
-                        />
-                      )}
-                    </Grid>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Priority Level
-                      </Typography>
-                      <Typography variant="body2">
-                        {order.priority}/10
-                      </Typography>
-                    </Grid>
-                    <Grid size={{ xs: 6, sm: 3 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Total
-                      </Typography>
-                      <Typography variant="body2" fontWeight={600}>
-                        {formatPrice(order.totalPrice)}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-
-                  {order.items && order.items.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Items ({order.items.length})
-                      </Typography>
-                      <Typography variant="body2">
-                        {order.items.map(item => `${item.name} (×${item.quantity})`).join(', ')}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {order.customerNotes && (
-                    <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Notes
-                      </Typography>
-                      <Typography variant="body2">
-                        {order.customerNotes}
-                      </Typography>
-                    </Box>
-                  )}
-                </CardContent>
-
-                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-                  <Button 
-                    size="small" 
-                    startIcon={<LocalShippingIcon />}
-                    onClick={() => handleOrderClick(order._id)}
-                  >
-                    View Details
-                  </Button>
-                </CardActions>
-              </Card>
-            );
-          })}
+          {orders.map(order => (
+            <PriorityOrderCard
+              key={order._id}
+              order={order}
+              formatPrice={formatPrice}
+              onClick={handleOrderClick}
+            />
+          ))}
         </Stack>
       )}
 

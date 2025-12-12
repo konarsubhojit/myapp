@@ -15,117 +15,96 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CloseIcon from '@mui/icons-material/Close';
 import WarningIcon from '@mui/icons-material/Warning';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
-import { getPriorityOrders } from '../services/api';
+import { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, OrderWithPriority } from '../hooks';
 import { useNotification } from '../contexts/NotificationContext';
-import { MILLISECONDS, POLLING_INTERVALS } from '../constants/timeConstants';
-import type { Order } from '../types';
 
 interface PriorityNotificationPanelProps {
   onNavigateToPriority: () => void;
 }
 
-/**
- * Calculate how many days until/since delivery date
- */
-function getDaysUntilDelivery(deliveryDate: string | null): number | null {
-  if (!deliveryDate) return null;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const delivery = new Date(deliveryDate);
-  delivery.setHours(0, 0, 0, 0);
-  
-  const diffDays = Math.ceil((delivery.getTime() - today.getTime()) / MILLISECONDS.PER_DAY);
-  return diffDays;
+// Sub-component: Notification Item
+interface NotificationItemProps {
+  order: OrderWithPriority;
+  isCritical: boolean;
+  onClick: () => void;
 }
 
-/**
- * Get notification message for an order
- */
-function getNotificationMessage(order: Order): string {
-  const days = getDaysUntilDelivery(order.expectedDeliveryDate);
-  
-  if (days !== null) {
-    if (days < 0) {
-      return `Overdue by ${Math.abs(days)} day${Math.abs(days) > 1 ? 's' : ''}`;
-    }
-    if (days === 0) {
-      return 'Due today!';
-    }
-    if (days <= 3) {
-      return `Due in ${days} day${days > 1 ? 's' : ''}`;
-    }
-  }
-  
-  if (order.priority >= 8) {
-    return 'Critical priority';
-  }
-  if (order.priority >= 5) {
-    return 'High priority';
-  }
-  
-  return 'Needs attention';
+function NotificationItem({ order, isCritical, onClick }: NotificationItemProps) {
+  return (
+    <ListItemButton onClick={onClick}>
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600} color="primary">
+              {order.orderId}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {order.customerName}
+            </Typography>
+          </Box>
+          {isCritical ? (
+            <Chip 
+              icon={<WarningIcon />}
+              label="Critical" 
+              color="error" 
+              size="small"
+            />
+          ) : (
+            <Chip 
+              icon={<PriorityHighIcon />}
+              label="High" 
+              color="warning" 
+              size="small"
+            />
+          )}
+        </Box>
+        
+        <Typography variant="body2" color="text.secondary">
+          {getNotificationMessage(order)}
+        </Typography>
+        
+        {order.items && order.items.length > 0 && (
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+          </Typography>
+        )}
+      </Box>
+    </ListItemButton>
+  );
 }
 
-/**
- * Notification panel that shows priority orders
- * Shows a badge icon in header and floating panel when clicked
- */
 function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificationPanelProps) {
   const { showWarning } = useNotification();
   const [open, setOpen] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(false);
   const [hasShownLoginNotification, setHasShownLoginNotification] = useState(false);
 
-  const fetchPriorityOrders = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getPriorityOrders();
-      
-      // Ensure data is an array
-      const ordersArray = Array.isArray(data) ? data : [];
-      
-      // Filter to show only most critical orders (top 10)
-      const criticalOrders = ordersArray
-        .filter(order => {
-          const days = getDaysUntilDelivery(order.expectedDeliveryDate);
-          return (days !== null && days <= 3) || order.priority >= 5;
-        })
-        .slice(0, 10);
-      
-      setOrders(criticalOrders);
-      
-      // Show notification on first load if there are critical orders
-      if (!hasShownLoginNotification && criticalOrders.length > 0) {
-        const criticalCount = criticalOrders.filter(o => {
-          const days = getDaysUntilDelivery(o.expectedDeliveryDate);
-          return (days !== null && days < 0) || o.priority >= 8;
-        }).length;
-        
-        if (criticalCount > 0) {
-          showWarning(
-            `You have ${criticalCount} critical order${criticalCount > 1 ? 's' : ''} requiring immediate attention.`,
-            'Important Orders'
-          );
-        }
-        setHasShownLoginNotification(true);
-      }
-    } catch (err) {
-      console.error('Failed to fetch priority orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [hasShownLoginNotification, showWarning]);
+  const { orders, criticalCount, loading } = usePriorityOrders({ autoRefresh: true });
 
+  // Filter to show only most critical orders (top 10)
+  const criticalOrders = orders
+    .filter(order => {
+      const days = getDaysUntilDelivery(order.expectedDeliveryDate);
+      return (days !== null && days <= 3) || order.priority >= 5;
+    })
+    .slice(0, 10);
+
+  // Show notification on first load if there are critical orders
   useEffect(() => {
-    fetchPriorityOrders();
-    
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchPriorityOrders, POLLING_INTERVALS.PRIORITY_ORDERS);
-    
-    return () => clearInterval(interval);
-  }, [fetchPriorityOrders]);
+    if (!hasShownLoginNotification && criticalOrders.length > 0) {
+      const trueCriticalCount = criticalOrders.filter(o => {
+        const days = getDaysUntilDelivery(o.expectedDeliveryDate);
+        return (days !== null && days < 0) || o.priority >= 8;
+      }).length;
+      
+      if (trueCriticalCount > 0) {
+        showWarning(
+          `You have ${trueCriticalCount} critical order${trueCriticalCount > 1 ? 's' : ''} requiring immediate attention.`,
+          'Important Orders'
+        );
+      }
+      setHasShownLoginNotification(true);
+    }
+  }, [criticalOrders, hasShownLoginNotification, showWarning]);
 
   const handleToggle = () => {
     setOpen(!open);
@@ -141,20 +120,15 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
     onNavigateToPriority();
   };
 
-  const criticalCount = orders.filter(order => {
-    const days = getDaysUntilDelivery(order.expectedDeliveryDate);
-    return (days !== null && days < 0) || order.priority >= 8;
-  }).length;
-
   return (
     <>
       <IconButton 
         color="inherit" 
         onClick={handleToggle}
-        aria-label={`${orders.length} priority notifications`}
+        aria-label={`${criticalOrders.length} priority notifications`}
       >
         <Badge 
-          badgeContent={orders.length} 
+          badgeContent={criticalOrders.length} 
           color="error"
           max={99}
         >
@@ -193,7 +167,7 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
           </Box>
         )}
         
-        {!loading && orders.length === 0 && (
+        {!loading && criticalOrders.length === 0 && (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography color="text.secondary">
               No priority orders at the moment! 🎉
@@ -201,7 +175,7 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
           </Box>
         )}
         
-        {!loading && orders.length > 0 && (
+        {!loading && criticalOrders.length > 0 && (
           <>
             {criticalCount > 0 && (
               <Paper 
@@ -227,7 +201,7 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
             )}
 
             <List sx={{ pt: 0 }}>
-              {orders.map((order, index) => {
+              {criticalOrders.map((order, index) => {
                 const days = getDaysUntilDelivery(order.expectedDeliveryDate);
                 const isCritical = (days !== null && days < 0) || order.priority >= 8;
                 
@@ -235,45 +209,11 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
                   <Box key={order._id}>
                     {index > 0 && <Divider />}
                     <ListItem disablePadding>
-                      <ListItemButton onClick={handleOrderClick}>
-                        <Box sx={{ width: '100%' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                            <Box>
-                              <Typography variant="subtitle2" fontWeight={600} color="primary">
-                                {order.orderId}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {order.customerName}
-                              </Typography>
-                            </Box>
-                            {isCritical ? (
-                              <Chip 
-                                icon={<WarningIcon />}
-                                label="Critical" 
-                                color="error" 
-                                size="small"
-                              />
-                            ) : (
-                              <Chip 
-                                icon={<PriorityHighIcon />}
-                                label="High" 
-                                color="warning" 
-                                size="small"
-                              />
-                            )}
-                          </Box>
-                          
-                          <Typography variant="body2" color="text.secondary">
-                            {getNotificationMessage(order)}
-                          </Typography>
-                          
-                          {order.items && order.items.length > 0 && (
-                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                              {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                            </Typography>
-                          )}
-                        </Box>
-                      </ListItemButton>
+                      <NotificationItem
+                        order={order}
+                        isCritical={isCritical}
+                        onClick={handleOrderClick}
+                      />
                     </ListItem>
                   </Box>
                 );
