@@ -3,136 +3,118 @@ import { getItemsPaginated } from '../services/api';
 import type { Item, PaginatedResult, PaginationInfo } from '../types';
 
 type AllowedLimit = 10 | 20 | 50;
-const PAGE_SIZE_OPTIONS = new Set<AllowedLimit>([10, 20, 50]);
-
-interface InitialState {
-  page: number;
-  limit: AllowedLimit;
-  search: string;
-}
-
-/**
- * Parse URL params to initial state
- */
-const parseInitialState = (
-  getParam: (key: string, defaultValue: string) => string,
-  getIntParam: (key: string, defaultValue: number) => number
-): InitialState => {
-  const page = getIntParam('page', 1);
-  const limit = getIntParam('limit', 10);
-  
-  return {
-    page: Math.max(1, page),
-    limit: PAGE_SIZE_OPTIONS.has(limit as AllowedLimit) ? limit as AllowedLimit : 10,
-    search: getParam('search', ''),
-  };
-};
+const ITEMS_PER_PAGE = 20; // Fixed page size for infinite scroll
 
 interface ItemsDataResult {
   items: Item[];
-  paginationData: PaginationInfo;
+  loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  error: string;
   search: string;
   searchInput: string;
-  loading: boolean;
-  error: string;
   setSearchInput: (value: string) => void;
   handleSearch: (e: React.FormEvent) => void;
   clearSearch: () => void;
-  handlePageChange: (page: number) => void;
-  handleLimitChange: (limit: AllowedLimit) => void;
+  loadMore: () => void;
   fetchItems: () => Promise<void>;
   setError: (error: string) => void;
 }
 
 /**
- * Custom hook for managing active items data, pagination, and search
+ * Custom hook for managing active items data with infinite scroll
  */
-export const useItemsData = (
-  getParam: (key: string, defaultValue: string) => string,
-  getIntParam: (key: string, defaultValue: number) => number
-): ItemsDataResult => {
-  // Parse initial state from URL
-  const initialState = parseInitialState(getParam, getIntParam);
-  
-  const [itemsData, setItemsData] = useState<PaginatedResult<Item>>({ 
-    items: [], 
-    pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
-  });
-  const [search, setSearch] = useState<string>(initialState.search);
-  const [searchInput, setSearchInput] = useState<string>(initialState.search);
-  const [pagination, setPagination] = useState<{ page: number; limit: AllowedLimit }>({ 
-    page: initialState.page, 
-    limit: initialState.limit 
-  });
+export const useItemsData = (): ItemsDataResult => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [search, setSearch] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchItems = useCallback(async (): Promise<void> => {
-    setLoading(true);
+  const fetchItems = useCallback(async (pageNum: number, appendMode: boolean): Promise<void> => {
+    if (appendMode) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
+    
     try {
       const result = await getItemsPaginated({ 
-        page: pagination.page, 
-        limit: pagination.limit, 
+        page: pageNum, 
+        limit: ITEMS_PER_PAGE, 
         search: search 
       });
+      
       // Defensive check: ensure result.items exists and is an array
       if (!result.items || !Array.isArray(result.items)) {
         throw new Error('Invalid response format: items must be an array');
       }
-      setItemsData({
-        items: result.items,
-        pagination: result.pagination || { page: 1, limit: 10, total: 0, totalPages: 0 }
-      });
+      
+      if (appendMode) {
+        // Append new items for infinite scroll
+        setItems(prev => [...prev, ...result.items]);
+      } else {
+        // Replace items for initial load or search
+        setItems(result.items);
+      }
+      
+      setTotalPages(result.pagination?.totalPages || 0);
+      setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
-      // Set empty array on error to prevent undefined errors
-      setItemsData({ 
-        items: [], 
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
-      });
+      if (!appendMode) {
+        setItems([]);
+      }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [pagination.page, pagination.limit, search]);
+  }, [search]);
 
+  // Initial fetch
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    fetchItems(1, false);
+  }, [search]); // Re-fetch from page 1 when search changes
+
+  const loadMore = useCallback((): void => {
+    if (!loadingMore && page < totalPages) {
+      fetchItems(page + 1, true);
+    }
+  }, [loadingMore, page, totalPages, fetchItems]);
 
   const handleSearch = (e: React.FormEvent): void => {
     e.preventDefault();
     setSearch(searchInput);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const clearSearch = (): void => {
     setSearchInput('');
     setSearch('');
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
-  const handlePageChange = (page: number): void => {
-    setPagination(prev => ({ ...prev, page }));
-  };
-
-  const handleLimitChange = (limit: AllowedLimit): void => {
-    setPagination({ page: 1, limit });
+  const refetchItems = async (): Promise<void> => {
+    await fetchItems(1, false);
   };
 
   return {
-    items: itemsData.items,
-    paginationData: itemsData.pagination,
+    items,
+    loading,
+    loadingMore,
+    hasMore: page < totalPages,
+    error,
     search,
     searchInput,
-    loading,
-    error,
     setSearchInput,
     handleSearch,
     clearSearch,
-    handlePageChange,
-    handleLimitChange,
-    fetchItems,
+    loadMore,
+    fetchItems: refetchItems,
     setError,
   };
 };
