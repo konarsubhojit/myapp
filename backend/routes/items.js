@@ -81,14 +81,68 @@ function validateItemPrice(price) {
   return { valid: true, parsedPrice };
 }
 
+/**
+ * Validate paginated response format
+ * @param {*} result - Result from paginated query
+ * @param {string} source - Source function name for error logging
+ * @throws {Error} If result format is invalid
+ */
+function validatePaginatedResponse(result, source) {
+  if (!result || !result.items || !Array.isArray(result.items) || !result.pagination) {
+    logger.error(`Invalid paginated result from ${source}`, { 
+      resultType: typeof result,
+      hasItems: !!result?.items,
+      itemsIsArray: Array.isArray(result?.items),
+      itemsLength: result?.items?.length,
+      hasPagination: !!result?.pagination
+    });
+    throw badRequestError('Invalid paginated response: expected object with items array and pagination metadata');
+  }
+}
+
 router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
-  if (req.query.page || req.query.limit) {
+  // Log request details for debugging (metadata only to avoid exposing sensitive data)
+  logger.debug('GET /api/items request', { 
+    hasPageParam: 'page' in req.query,
+    hasLimitParam: 'limit' in req.query,
+    pageValue: req.query.page,
+    limitValue: req.query.limit,
+    hasSearchParam: !!req.query.search,
+    searchLength: req.query.search?.length
+  });
+  
+  // Check if pagination was requested (using truthy check to match original behavior)
+  // Empty strings are falsy, so they won't trigger pagination
+  const paginationRequested = req.query.page || req.query.limit;
+  
+  if (paginationRequested) {
     const result = await Item.findPaginated({ page, limit, search });
+    
+    // Defensive check: ensure result has expected format
+    validatePaginatedResponse(result, 'Item.findPaginated');
+    
+    logger.debug('Returning paginated response', { 
+      itemCount: result.items.length, 
+      page: result.pagination.page,
+      totalPages: result.pagination.totalPages 
+    });
     res.json(result);
   } else {
     const items = await Item.find();
+    
+    // Defensive check: ensure items is an array
+    if (!Array.isArray(items)) {
+      logger.error('Invalid result from Item.find', { 
+        resultType: typeof items,
+        isArray: Array.isArray(items),
+        length: items?.length
+      });
+      throw badRequestError('Invalid non-paginated response: expected items array');
+    }
+    
+    logger.debug('Returning non-paginated response', { itemCount: items.length });
     res.json(items);
   }
 }));
@@ -97,6 +151,10 @@ router.get('/deleted', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   const result = await Item.findDeletedPaginated({ page, limit, search });
+  
+  // Defensive check: ensure result has expected format
+  validatePaginatedResponse(result, 'Item.findDeletedPaginated');
+  
   res.json(result);
 }));
 
