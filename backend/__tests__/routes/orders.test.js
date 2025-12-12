@@ -43,30 +43,24 @@ describe('Orders Routes', () => {
   });
 
   describe('GET /api/orders', () => {
-    it('should return all orders without pagination', async () => {
-      const mockOrders = [
-        {
-          _id: 1,
-          orderId: 'ORD123456',
-          customerName: 'John Doe',
-          totalPrice: 100.0,
-          items: [],
+    it('should return llls without paoin', async ()
+      const mockO= 
+        _id: 1,
+          derId: 'ORD123456',
+          stomerName: 'John Doe',
+          talPrice: 100.0,
+          ems: [],
         },
       ];
 
-      Order.find.mockResolvedValue(mockOrders);
-
       const response = await request(app).get('/api/orders');
-
+Ordr
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(1);
       expect(response.body[0].orderId).toBe('ORD123456');
     });
 
-    it('should return paginated orders when pagination params provided', async () => {
-      const mockResult = {
-        orders: [
-          { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0 },
+        orders: [e: 100.0 },
         ],
         pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
       };
