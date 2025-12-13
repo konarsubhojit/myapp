@@ -359,6 +359,40 @@ describe('Cache Middleware', () => {
     });
   });
 
+  describe('invalidatePaginatedOrderCache', () => {
+    it('should invalidate paginated order caches', async () => {
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
+      
+      const { invalidatePaginatedOrderCache } = await import('../../middleware/cache.js');
+      await invalidatePaginatedOrderCache();
+      
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/orders/?*',
+        COUNT: 100
+      });
+    });
+  });
+
+  describe('invalidatePriorityOrderCache', () => {
+    it('should invalidate priority order caches', async () => {
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
+      
+      const { invalidatePriorityOrderCache } = await import('../../middleware/cache.js');
+      await invalidatePriorityOrderCache();
+      
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/orders/priority*',
+        COUNT: 100
+      });
+    });
+  });
+
   describe('clearAllCache', () => {
     it('should clear all caches', async () => {
       mockRedisClient.flushDb.mockResolvedValue('OK');

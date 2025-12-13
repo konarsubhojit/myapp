@@ -300,7 +300,7 @@ export async function invalidateFeedbackCache() {
  * Invalidate only paginated order history caches
  */
 export async function invalidatePaginatedOrderCache() {
-  await invalidateCache('/api/orders?*');
+  await invalidateCache('/api/orders/?*');
 }
 
 /**
