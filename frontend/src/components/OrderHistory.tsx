@@ -12,7 +12,7 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import { useOrderPagination } from '../hooks/useOrderPagination';
 import { useOrderFilters } from '../hooks/useOrderFilters';
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import OrderDetails from './OrderDetails';
+import OrderDetailsPage from './OrderDetailsPage';
 import OrderFiltersSection from './common/OrderFiltersSection';
 import OrderHistoryTableHeader from './common/OrderHistoryTableHeader';
 import OrderHistoryTableRow from './common/OrderHistoryTableRow';
@@ -83,6 +83,18 @@ function OrderHistory({ onDuplicateOrder, initialSelectedOrderId = null, onOrder
           <CircularProgress />
         </Box>
       </Paper>
+    );
+  }
+
+  // Show order details page when an order is selected
+  if (selectedOrderId) {
+    return (
+      <OrderDetailsPage
+        orderId={selectedOrderId}
+        onBack={handleCloseDetails}
+        onOrderUpdated={() => fetchOrders()}
+        onDuplicateOrder={onDuplicateOrder}
+      />
     );
   }
 
@@ -165,15 +177,6 @@ function OrderHistory({ onDuplicateOrder, initialSelectedOrderId = null, onOrder
             </Typography>
           )}
         </>
-      )}
-
-      {selectedOrderId && (
-        <OrderDetails 
-          orderId={selectedOrderId} 
-          onClose={handleCloseDetails}
-          onOrderUpdated={() => fetchOrders()}
-          onDuplicateOrder={onDuplicateOrder}
-        />
       )}
     </Paper>
   );
