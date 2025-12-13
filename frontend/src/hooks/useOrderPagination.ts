@@ -21,7 +21,8 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [page, setPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(false);
+  // Start with loading=true to prevent flash of "no orders" on initial load
+  const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 

@@ -35,7 +35,7 @@ import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { getItems, getOrders } from './services/api'
 import { APP_VERSION } from './config/version'
-import type { Item, Order } from './types'
+import type { Item, Order, OrderId } from './types'
 
 interface TabRoute {
   id: string;
@@ -84,6 +84,7 @@ function AppContent(): ReactElement {
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const [currentTab, setCurrentTab] = useState<number>(0)
   const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null)
+  const [selectedOrderIdFromPriority, setSelectedOrderIdFromPriority] = useState<OrderId | null>(null)
   const muiTheme = useTheme()
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
 
@@ -119,6 +120,15 @@ function AppContent(): ReactElement {
   const handleDuplicateOrder = useCallback((orderId: string): void => {
     setDuplicateOrderId(orderId)
     setCurrentTab(0) // Switch to Create Order tab (now index 0)
+  }, [])
+
+  const handleViewOrderFromPriority = useCallback((orderId: OrderId): void => {
+    setSelectedOrderIdFromPriority(orderId)
+    setCurrentTab(2) // Switch to Order History tab
+  }, [])
+
+  const handleOrderDetailsClose = useCallback((): void => {
+    setSelectedOrderIdFromPriority(null)
   }, [])
 
   // Fetch initial data when authenticated
@@ -200,7 +210,7 @@ function AppContent(): ReactElement {
             </Typography>
           </Tooltip>
           <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
-            {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentTab(2)} />}
+            {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentTab(2)} onViewOrder={handleViewOrderFromPriority} />}
             {guestMode && (
               <Chip 
                 icon={<PreviewIcon />} 
@@ -340,6 +350,8 @@ function AppContent(): ReactElement {
           <OrderHistory 
             key={orderHistoryKey}
             onDuplicateOrder={handleDuplicateOrder}
+            initialSelectedOrderId={selectedOrderIdFromPriority}
+            onOrderDetailsClose={handleOrderDetailsClose}
           />
         )}
         

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -21,9 +21,11 @@ import type { OrderId, Order } from '../types';
 
 interface OrderHistoryProps {
   onDuplicateOrder: (orderId: string) => void;
+  initialSelectedOrderId?: OrderId | null;
+  onOrderDetailsClose?: () => void;
 }
 
-function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
+function OrderHistory({ onDuplicateOrder, initialSelectedOrderId = null, onOrderDetailsClose }: OrderHistoryProps) {
   const { formatPrice } = useCurrency();
   
   const {
@@ -51,7 +53,14 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
     handleSort,
   } = useOrderFilters(orders);
   
-  const [selectedOrderId, setSelectedOrderId] = useState<OrderId | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<OrderId | null>(initialSelectedOrderId);
+
+  // Update selectedOrderId when initialSelectedOrderId changes (from priority panel)
+  useEffect(() => {
+    if (initialSelectedOrderId) {
+      setSelectedOrderId(initialSelectedOrderId);
+    }
+  }, [initialSelectedOrderId]);
 
   const handleOrderClick = (orderId: OrderId) => {
     setSelectedOrderId(orderId);
@@ -59,6 +68,9 @@ function OrderHistory({ onDuplicateOrder }: OrderHistoryProps) {
 
   const handleCloseDetails = () => {
     setSelectedOrderId(null);
+    if (onOrderDetailsClose) {
+      onOrderDetailsClose();
+    }
   };
 
   if (loading) {

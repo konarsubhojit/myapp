@@ -30,7 +30,8 @@ export const useItemsData = (): ItemsDataResult => {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [search, setSearch] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+  // Start with loading=true to prevent flash of "no items" on initial load
+  const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
