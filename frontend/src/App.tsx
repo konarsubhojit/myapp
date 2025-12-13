@@ -176,7 +176,9 @@ function AppContent(): ReactElement {
           minHeight: '100vh',
           transition: (theme) => theme.transitions.create(['width'], {
             easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
+            duration: desktopDrawerOpen 
+              ? theme.transitions.duration.enteringScreen 
+              : theme.transitions.duration.leavingScreen,
           }),
         }}
       >

@@ -161,7 +161,9 @@ function NavigationDrawer({
           flexShrink: 0,
           transition: (theme) => theme.transitions.create(['width'], {
             easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.leavingScreen,
+            duration: desktopOpen 
+              ? theme.transitions.duration.enteringScreen 
+              : theme.transitions.duration.leavingScreen,
           }),
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
