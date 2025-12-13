@@ -4,7 +4,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import { inject } from '@vercel/analytics'
-import { injectSpeedInsights } from '@vercel/speed-insights'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { googleConfig } from './config/authConfig'
 import theme from './config/theme'
 import { NotificationProvider } from './contexts/NotificationContext'
@@ -13,9 +13,6 @@ import App from './App'
 
 // Initialize Vercel Web Analytics
 inject()
-
-// Initialize Vercel Speed Insights
-injectSpeedInsights()
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
@@ -29,6 +26,7 @@ createRoot(rootElement).render(
         <CssBaseline />
         <NotificationProvider>
           <App />
+          <SpeedInsights />
         </NotificationProvider>
       </ThemeProvider>
     </GoogleOAuthProvider>
