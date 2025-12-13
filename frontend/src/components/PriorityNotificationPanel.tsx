@@ -125,9 +125,9 @@ function PriorityNotificationPanel({ onNavigateToPriority, onViewOrder }: Priori
   return (
     <>
       <IconButton 
-        color="inherit" 
         onClick={handleToggle}
         aria-label={`${criticalOrders.length} priority notifications`}
+        sx={{ color: '#5568d3' }}
       >
         <Badge 
           badgeContent={criticalOrders.length} 

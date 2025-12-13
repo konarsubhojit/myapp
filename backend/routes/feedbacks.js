@@ -84,7 +84,7 @@ router.post('/generate-token/:orderId', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/feedbacks - Get all feedbacks with optional pagination
-router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   if (req.query.page || req.query.limit) {
@@ -97,7 +97,7 @@ router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
 }));
 
 // GET /api/feedbacks/order/:orderId - Get feedback for a specific order
-router.get('/order/:orderId', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/order/:orderId', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const feedback = await Feedback.findByOrderId(req.params.orderId);
   if (!feedback) {
     throw notFoundError('Feedback for this order');
@@ -106,13 +106,13 @@ router.get('/order/:orderId', cacheMiddleware(300), asyncHandler(async (req, res
 }));
 
 // GET /api/feedbacks/stats - Get feedback statistics
-router.get('/stats', cacheMiddleware(120), asyncHandler(async (req, res) => {
+router.get('/stats', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const stats = await Feedback.getAverageRatings();
   res.json(stats);
 }));
 
 // GET /api/feedbacks/:id - Get a specific feedback
-router.get('/:id', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/:id', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const feedback = await Feedback.findById(req.params.id);
   if (!feedback) {
     throw notFoundError('Feedback');
