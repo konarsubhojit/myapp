@@ -132,9 +132,6 @@ router.post('/', asyncHandler(async (req, res) => {
     throw badRequestError(commentValidation.error);
   }
 
-  // Proactively invalidate cache BEFORE creating feedback to prevent race conditions
-  await invalidateFeedbackCache();
-
   const newFeedback = await Feedback.create({
     orderId: Number.parseInt(orderId, 10),
     rating: ratingValidation.parsedRating,
@@ -147,7 +144,7 @@ router.post('/', asyncHandler(async (req, res) => {
   // Mark token as used
   await FeedbackToken.markAsUsed(token);
 
-  // Invalidate feedback cache again after creating to ensure consistency
+  // Invalidate feedback cache after creating to ensure consistency
   await invalidateFeedbackCache();
 
   logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
