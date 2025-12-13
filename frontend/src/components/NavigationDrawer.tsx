@@ -53,7 +53,7 @@ function NavigationDrawer({
 
   const handleNavigate = (routeId: string) => {
     onNavigate(routeId)
-    if (isMobile) {
+    if (isMobile && mobileOpen) {
       onMobileToggle()
     }
   }

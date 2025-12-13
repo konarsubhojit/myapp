@@ -124,12 +124,12 @@ function AppContent(): ReactElement {
   }, [])
 
   const handleMobileDrawerToggle = useCallback((): void => {
-    setMobileDrawerOpen(!mobileDrawerOpen)
-  }, [mobileDrawerOpen])
+    setMobileDrawerOpen((prev) => !prev)
+  }, [])
 
   const handleDesktopDrawerToggle = useCallback((): void => {
-    setDesktopDrawerOpen(!desktopDrawerOpen)
-  }, [desktopDrawerOpen])
+    setDesktopDrawerOpen((prev) => !prev)
+  }, [])
 
   // Fetch initial data when authenticated
   useEffect(() => {
