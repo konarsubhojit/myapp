@@ -8,6 +8,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react'
 import { googleConfig } from './config/authConfig'
 import theme from './config/theme'
 import { NotificationProvider } from './contexts/NotificationContext'
+import ErrorBoundary from './ErrorBoundary'
 import './index.css'
 import App from './App'
 
@@ -21,14 +22,16 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={googleConfig.clientId}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <NotificationProvider>
-          <App />
-          <SpeedInsights />
-        </NotificationProvider>
-      </ThemeProvider>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <GoogleOAuthProvider clientId={googleConfig.clientId}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <NotificationProvider>
+            <App />
+            <SpeedInsights />
+          </NotificationProvider>
+        </ThemeProvider>
+      </GoogleOAuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )
