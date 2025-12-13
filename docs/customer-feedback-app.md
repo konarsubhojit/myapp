@@ -628,8 +628,8 @@ https://feedback.example.com?token=<one-time-token>
 
 ## Additional Resources
 
-- [Main Frontend Documentation](../frontend/README.md)
-- [Backend API Documentation](../../PROJECT_DOCUMENTATION.md#api-documentation)
+- [Main Frontend Documentation](./frontend.md)
+- [Backend API Documentation](../PROJECT_DOCUMENTATION.md#api-documentation)
 - [Material-UI Documentation](https://mui.com/)
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)

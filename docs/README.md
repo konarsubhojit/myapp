@@ -12,9 +12,6 @@ This directory contains technical documentation for the Order Management System.
 ### Additional Documentation
 - [Complete Project Documentation](../PROJECT_DOCUMENTATION.md) - Full technical documentation
 - [Architecture Analysis](../ARCHITECTURE_ANALYSIS.md) - Architecture review and optimization recommendations
-- `CACHE_FIX_EXPLANATION.md` - Cache optimization implementation details
-- `DATABASE_AND_CACHE_OPTIMIZATION.md` - Database and caching strategies
-- `IMPLEMENTATION_SUMMARY.md` - Implementation notes and summaries
 
 ## Quick Links
 
