@@ -10,6 +10,8 @@ const DEFAULT_TTL = 300; // 5 minutes
 export const CACHE_VERSION_KEY = 'cache:v:global';
 
 // In-memory memoization for version lookup to reduce Redis calls in burst traffic
+// Note: Node.js is single-threaded, so concurrent requests are handled sequentially
+// in the event loop, making this safe for per-instance caching in serverless
 let localVersion = null;
 let localVersionFetchedAt = 0;
 const VERSION_MEMO_TTL_MS = 3000; // 3 seconds memoization
@@ -92,9 +94,15 @@ async function getGlobalCacheVersion(redis) {
     
     if (version === null) {
       // Initialize version to 1 if it doesn't exist (use SETNX for atomicity)
-      await redis.setNX(CACHE_VERSION_KEY, '1');
-      version = '1';
-      logger.debug('Initialized global cache version', { version: 1 });
+      const wasSet = await redis.setNX(CACHE_VERSION_KEY, '1');
+      if (wasSet) {
+        version = '1';
+        logger.debug('Initialized global cache version', { version: 1 });
+      } else {
+        // Another process set it first, fetch the actual value
+        version = await redis.get(CACHE_VERSION_KEY) || '1';
+        logger.debug('Fetched existing global cache version after race', { version });
+      }
     }
     
     const parsedVersion = parseInt(version, 10);
