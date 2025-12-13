@@ -6,7 +6,7 @@ import MenuItem from '@mui/material/MenuItem'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import { NAVIGATION_GROUPS, type NavigationGroup, type NavigationRoute } from '../constants/navigation'
+import { NAVIGATION_GROUPS, type NavigationGroup, type NavigationRoute } from '../constants/navigation.tsx'
 
 interface TopNavigationBarProps {
   currentRoute: string
