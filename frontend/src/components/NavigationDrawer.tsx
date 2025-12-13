@@ -7,9 +7,7 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Collapse from '@mui/material/Collapse'
-import IconButton from '@mui/material/IconButton'
 import Divider from '@mui/material/Divider'
-import MenuIcon from '@mui/icons-material/Menu'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import useMediaQuery from '@mui/material/useMediaQuery'
@@ -24,21 +22,27 @@ const APPBAR_HEIGHT_DESKTOP = 64
 interface NavigationDrawerProps {
   currentRoute: string
   onNavigate: (routeId: string) => void
+  mobileOpen: boolean
+  desktopOpen: boolean
+  onMobileToggle: () => void
+  onDesktopToggle: () => void
 }
 
-function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): ReactElement {
+function NavigationDrawer({ 
+  currentRoute, 
+  onNavigate, 
+  mobileOpen, 
+  desktopOpen,
+  onMobileToggle,
+  onDesktopToggle 
+}: NavigationDrawerProps): ReactElement {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     orders: true,
     items: true,
     analytics: true,
   })
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen)
-  }
 
   const handleGroupToggle = (groupId: string) => {
     setExpandedGroups((prev) => ({
@@ -50,7 +54,7 @@ function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): 
   const handleNavigate = (routeId: string) => {
     onNavigate(routeId)
     if (isMobile) {
-      setMobileOpen(false)
+      onMobileToggle()
     }
   }
 
@@ -133,24 +137,11 @@ function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): 
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      {isMobile && (
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={handleDrawerToggle}
-          sx={{ mr: 2, display: { md: 'none' } }}
-        >
-          <MenuIcon />
-        </IconButton>
-      )}
-
       {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
         open={mobileOpen}
-        onClose={handleDrawerToggle}
+        onClose={onMobileToggle}
         ModalProps={{
           keepMounted: true, // Better open performance on mobile
         }}
@@ -164,9 +155,12 @@ function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): 
 
       {/* Desktop Drawer */}
       <Drawer
-        variant="permanent"
+        variant="persistent"
+        open={desktopOpen}
         sx={{
           display: { xs: 'none', md: 'block' },
+          width: desktopOpen ? DRAWER_WIDTH : 0,
+          flexShrink: 0,
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
@@ -179,7 +173,6 @@ function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): 
             },
           },
         }}
-        open
       >
         {drawerContent}
       </Drawer>
