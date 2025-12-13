@@ -34,9 +34,9 @@ createRoot(rootElement).render(
               <App />
               <SpeedInsights />
             </NotificationProvider>
+            <ReactQueryDevtools initialIsOpen={false} />
           </ThemeProvider>
         </GoogleOAuthProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,

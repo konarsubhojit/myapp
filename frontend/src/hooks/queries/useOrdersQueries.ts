@@ -42,7 +42,7 @@ export function useOrder(
   options?: Omit<UseQueryOptions<Order, Error>, 'queryKey' | 'queryFn' | 'enabled'>
 ): UseQueryResult<Order, Error> {
   return useQuery({
-    queryKey: queryKeys.order(id ?? 0),
+    queryKey: queryKeys.order(id ?? 'undefined'),
     queryFn: () => api.getOrder(id!),
     enabled: !!id, // Only fetch when id exists
     ...options,

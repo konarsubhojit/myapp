@@ -42,7 +42,7 @@ export function useFeedback(
   options?: Omit<UseQueryOptions<Feedback, Error>, 'queryKey' | 'queryFn' | 'enabled'>
 ): UseQueryResult<Feedback, Error> {
   return useQuery({
-    queryKey: queryKeys.feedback(id ?? 0),
+    queryKey: queryKeys.feedback(id ?? 'undefined'),
     queryFn: () => api.getFeedback(id!),
     enabled: !!id, // Only fetch when id exists
     ...options,
@@ -58,7 +58,7 @@ export function useFeedbackByOrderId(
   options?: Omit<UseQueryOptions<Feedback | null, Error>, 'queryKey' | 'queryFn' | 'enabled'>
 ): UseQueryResult<Feedback | null, Error> {
   return useQuery({
-    queryKey: queryKeys.feedbackByOrder(orderId ?? 0),
+    queryKey: queryKeys.feedbackByOrder(orderId ?? 'undefined'),
     queryFn: () => api.getFeedbackByOrderId(orderId!),
     enabled: !!orderId, // Only fetch when orderId exists
     ...options,

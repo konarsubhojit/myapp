@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import * as api from '../../services/api';
+import { queryKeys } from '../../queryKeys';
 import type { Feedback, CreateFeedbackData, UpdateFeedbackData, TokenGenerationResponse } from '../../types';
 
 /**
@@ -14,9 +15,9 @@ export function useCreateFeedback(): UseMutationResult<Feedback, Error, CreateFe
     onSuccess: (_data, variables) => {
       // Invalidate all feedbacks-related queries
       queryClient.invalidateQueries({ queryKey: ['feedbacks'] });
-      // Invalidate specific order's feedback
+      // Invalidate specific order's feedback using centralized query key factory
       if (variables.orderId) {
-        queryClient.invalidateQueries({ queryKey: ['feedbacks', 'byOrder', String(variables.orderId)] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.feedbackByOrder(variables.orderId) });
       }
       // Orders may show feedback status
       queryClient.invalidateQueries({ queryKey: ['orders'] });
