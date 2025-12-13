@@ -205,6 +205,11 @@ To enable error tracking with Rollbar:
 - [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md) - **NEW** ⭐ Comprehensive architecture review with optimization recommendations
 - [Optimization Summary](./OPTIMIZATION_SUMMARY.md) - **NEW** ⭐ Quick reference guide for improvements
 
+### Application-Specific Documentation
+- [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
+- [Frontend Technical Documentation](./docs/frontend/README.md) - React frontend architecture, components, and flows
+- [Customer Feedback App Documentation](./docs/customer-feedback-app/README.md) - Standalone feedback app technical details
+
 ## Development
 
 ```bash
