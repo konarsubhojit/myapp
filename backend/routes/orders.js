@@ -306,14 +306,14 @@ router.get('/all', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   res.json(orders);
 }));
 
-// Get orders with pagination - uses cached all orders internally
-router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
+// Get orders with pagination
+router.get('/', asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
-  // Always use pagination - fetch all orders first (will be cached)
+  // Fetch all orders from database
   const allOrders = await Order.find();
   
-  // Paginate in-memory from the cached all orders
+  // Paginate in-memory
   const total = allOrders.length;
   const totalPages = Math.ceil(total / limit);
   const offset = (page - 1) * limit;
