@@ -175,7 +175,10 @@ function AppContent(): ReactElement {
             md: desktopDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%' 
           },
           minHeight: '100vh',
-          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+          transition: (theme) => theme.transitions.create(['width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         {/* Header */}
