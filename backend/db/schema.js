@@ -1,4 +1,4 @@
-import { pgTable, serial, text, numeric, timestamp, integer, pgEnum, index } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, numeric, timestamp, integer, pgEnum, index, date, boolean } from 'drizzle-orm/pg-core';
 
 export const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
@@ -91,3 +91,31 @@ export const feedbackTokens = pgTable('feedback_tokens', {
   orderIdIdx: index('idx_feedback_tokens_order_id').on(table.orderId),
   tokenIdx: index('idx_feedback_tokens_token').on(table.token)
 }));
+
+// Daily digest notification system tables
+
+export const notificationRecipients = pgTable('notification_recipients', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  enabled: boolean('enabled').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const orderReminderState = pgTable('order_reminder_state', {
+  orderId: integer('order_id').primaryKey().references(() => orders.id, { onDelete: 'cascade' }),
+  deliveryDateSnapshot: timestamp('delivery_date_snapshot').notNull(),
+  sent7d: boolean('sent_7d').default(false).notNull(),
+  sent3d: boolean('sent_3d').default(false).notNull(),
+  sent1d: boolean('sent_1d').default(false).notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export const digestRuns = pgTable('digest_runs', {
+  id: serial('id').primaryKey(),
+  digestDate: date('digest_date').notNull().unique(),
+  status: text('status').notNull(),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  sentAt: timestamp('sent_at'),
+  error: text('error')
+});

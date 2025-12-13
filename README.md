@@ -48,6 +48,7 @@ npm run frontend
 - ✅ **Delivery Tracking** - Track shipments with AWB numbers
 - ✅ **Sales Reports** - Analyze sales by time, customer, and source
 - ✅ **Urgent Order Notifications** - Bell icon with real-time alerts for orders requiring immediate attention
+- ✅ **Daily Digest Reminders** - Email notifications for orders due in 1, 3, or 7 days
 - ✅ **Multi-Currency** - Support for USD, EUR, GBP, INR
 - ✅ **Google OAuth** - Secure authentication
 - ✅ **Soft Delete** - Restore accidentally deleted items
@@ -96,6 +97,9 @@ npm run frontend
 
 ### Health
 - `GET /api/health` - Health check (no auth)
+
+### Internal (Digest)
+- `POST /api/internal/digest/run` - Trigger daily digest (requires X-DIGEST-SECRET header)
 
 ## Testing
 
@@ -201,6 +205,7 @@ To enable error tracking with Rollbar:
 - [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, and database details
 - [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
 - [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
+- [Daily Digest Reminders](./docs/daily-digest.md) - Email reminder system for upcoming deliveries
 
 ## Development
 
