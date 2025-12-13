@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode, type ReactElement } from 'react';
 import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } from '../services/api';
+import { clearQueryCache } from '../queryClient';
 import type { AuthUser, GuestUser } from '../types';
 
 // Guest user constant
@@ -161,6 +162,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
 
   // Enable guest mode
   const enableGuestMode = useCallback((): void => {
+    // Clear any existing cached data to avoid mixing authenticated and guest data
+    clearQueryCache();
     setGuestMode(true);
     sessionStorage.setItem('guestMode', 'true');
     console.log('[Auth] Guest mode enabled');
@@ -168,6 +171,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
 
   // Logout
   const logout = useCallback((): void => {
+    // Clear query cache to avoid showing stale data on next login
+    clearQueryCache();
     setGoogleUser(null);
     setGuestMode(false);
     sessionStorage.removeItem('googleUser');
