@@ -5,34 +5,36 @@ This directory contains technical documentation for the Order Management System.
 ## 📚 Documentation Structure
 
 ### Application Documentation
-- **[Frontend Documentation](./frontend/README.md)** - React-based admin dashboard for order and inventory management
-- **[Customer Feedback App Documentation](./customer-feedback-app/README.md)** - Customer-facing feedback collection application
+- **[Frontend Documentation](./frontend.md)** - React-based admin dashboard for order and inventory management
+- **[Customer Feedback App Documentation](./customer-feedback-app.md)** - Customer-facing feedback collection application
+- **[Backend Documentation](./backend.md)** - Backend API, database, and server architecture
 
-### Backend Documentation
-For backend API documentation, database schema, and deployment details, see:
-- [Complete Project Documentation](../PROJECT_DOCUMENTATION.md)
-- [Architecture Analysis](../ARCHITECTURE_ANALYSIS.md)
+### Additional Documentation
+- [Complete Project Documentation](../PROJECT_DOCUMENTATION.md) - Full technical documentation
+- [Architecture Analysis](../ARCHITECTURE_ANALYSIS.md) - Architecture review and optimization recommendations
+- `CACHE_FIX_EXPLANATION.md` - Cache optimization implementation details
+- `DATABASE_AND_CACHE_OPTIMIZATION.md` - Database and caching strategies
+- `IMPLEMENTATION_SUMMARY.md` - Implementation notes and summaries
 
 ## Quick Links
 
 ### Frontend
-- [Architecture Overview](./frontend/README.md#architecture-overview)
-- [Key Components](./frontend/README.md#key-components)
-- [User Journeys](./frontend/README.md#user-journeys)
-- [Development Setup](./frontend/README.md#development-setup)
+- [Architecture Overview](./frontend.md#architecture-overview)
+- [Key Components](./frontend.md#key-components)
+- [User Journeys](./frontend.md#user-journeys)
+- [Development Setup](./frontend.md#development-setup)
 
 ### Customer Feedback App
-- [Architecture Overview](./customer-feedback-app/README.md#architecture-overview)
-- [Key Components](./customer-feedback-app/README.md#key-components)
-- [Feedback Flow](./customer-feedback-app/README.md#feedback-submission-flow)
-- [Development Setup](./customer-feedback-app/README.md#development-setup)
+- [Architecture Overview](./customer-feedback-app.md#architecture-overview)
+- [Key Components](./customer-feedback-app.md#key-components)
+- [Feedback Flow](./customer-feedback-app.md#feedback-submission-flow)
+- [Development Setup](./customer-feedback-app.md#development-setup)
 
-## Additional Documentation
-
-### Existing Documentation
-- `CACHE_FIX_EXPLANATION.md` - Cache optimization implementation details
-- `DATABASE_AND_CACHE_OPTIMIZATION.md` - Database and caching strategies
-- `IMPLEMENTATION_SUMMARY.md` - Implementation notes and summaries
+### Backend
+- [Architecture Overview](./backend.md#architecture-overview)
+- [API Endpoints](./backend.md#api-endpoints)
+- [Database Schema](./backend.md#database-schema)
+- [Development Setup](./backend.md#development-setup)
 
 ## Contributing
 

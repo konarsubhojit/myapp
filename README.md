@@ -198,18 +198,16 @@ To enable error tracking with Rollbar:
 ## Documentation
 
 - [Complete Project Documentation](./PROJECT_DOCUMENTATION.md) - Full technical documentation
-- [Backend Technical Documentation](./docs/backend.md) - **NEW** ⭐ Backend architecture, request lifecycle, auth, caching, and database details
+- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, and database details
+- [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
+- [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
+- [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
 - [API Documentation](./PROJECT_DOCUMENTATION.md#api-documentation) - Detailed API reference
 - [Database Schema](./PROJECT_DOCUMENTATION.md#database-schema) - Database structure
 - [Development Guidelines](./PROJECT_DOCUMENTATION.md#development-guidelines) - Coding standards
 - [Deployment Guide](./PROJECT_DOCUMENTATION.md#deployment) - Deployment instructions
-- [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md) - **NEW** ⭐ Comprehensive architecture review with optimization recommendations
-- [Optimization Summary](./OPTIMIZATION_SUMMARY.md) - **NEW** ⭐ Quick reference guide for improvements
-
-### Application-Specific Documentation
-- [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
-- [Frontend Technical Documentation](./docs/frontend/README.md) - React frontend architecture, components, and flows
-- [Customer Feedback App Documentation](./docs/customer-feedback-app/README.md) - Standalone feedback app technical details
+- [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md) - Comprehensive architecture review with optimization recommendations
+- [Optimization Summary](./OPTIMIZATION_SUMMARY.md) - Quick reference guide for improvements
 
 ## Development
 
