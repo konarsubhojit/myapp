@@ -34,7 +34,8 @@ describe('Cache Middleware', () => {
     
     req = {
       method: 'GET',
-      path: '/api/items',
+      baseUrl: '/api/items',
+      path: '/',
       query: {},
     };
     
@@ -47,15 +48,29 @@ describe('Cache Middleware', () => {
   });
 
   describe('generateCacheKey', () => {
-    it('should generate cache key from path', () => {
+    it('should generate cache key from baseUrl and path', () => {
       const key = generateCacheKey(req);
-      expect(key).toBe('/api/items');
+      expect(key).toBe('/api/items/');
     });
 
     it('should include sorted query parameters', () => {
       req.query = { page: '1', limit: '10', search: 'test' };
       const key = generateCacheKey(req);
-      expect(key).toBe('/api/items?limit=10&page=1&search=test');
+      expect(key).toBe('/api/items/?limit=10&page=1&search=test');
+    });
+
+    it('should handle different routes correctly', () => {
+      req.baseUrl = '/api/orders';
+      req.path = '/priority';
+      const key = generateCacheKey(req);
+      expect(key).toBe('/api/orders/priority');
+    });
+
+    it('should handle route parameters', () => {
+      req.baseUrl = '/api/orders';
+      req.path = '/123';
+      const key = generateCacheKey(req);
+      expect(key).toBe('/api/orders/123');
     });
   });
 
@@ -77,7 +92,7 @@ describe('Cache Middleware', () => {
       const middleware = cacheMiddleware(300);
       await middleware(req, res, next);
       
-      expect(mockRedisClient.get).toHaveBeenCalledWith('/api/items');
+      expect(mockRedisClient.get).toHaveBeenCalledWith('/api/items/');
       expect(res.json).toHaveBeenCalledWith(cachedData);
       expect(next).not.toHaveBeenCalled();
     });
@@ -89,7 +104,7 @@ describe('Cache Middleware', () => {
       const middleware = cacheMiddleware(300);
       await middleware(req, res, next);
       
-      expect(mockRedisClient.get).toHaveBeenCalledWith('/api/items');
+      expect(mockRedisClient.get).toHaveBeenCalledWith('/api/items/');
       expect(next).toHaveBeenCalled();
       
       // Simulate response with valid data
@@ -100,7 +115,7 @@ describe('Cache Middleware', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       
       expect(mockRedisClient.setEx).toHaveBeenCalledWith(
-        '/api/items',
+        '/api/items/',
         300,
         JSON.stringify(responseData)
       );
@@ -183,7 +198,7 @@ describe('Cache Middleware', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       
       expect(mockRedisClient.setEx).toHaveBeenCalledWith(
-        '/api/items',
+        '/api/items/',
         300,
         JSON.stringify(responseData)
       );
@@ -224,7 +239,7 @@ describe('Cache Middleware', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       
       expect(mockRedisClient.setEx).toHaveBeenCalledWith(
-        '/api/items',
+        '/api/items/',
         300,
         JSON.stringify([])
       );
@@ -252,7 +267,7 @@ describe('Cache Middleware', () => {
 
   describe('invalidateCache', () => {
     it('should delete all keys matching the pattern using SCAN', async () => {
-      const keys = ['/api/items', '/api/items?page=1', '/api/items?page=2'];
+      const keys = ['/api/items/', '/api/items/?page=1', '/api/items/?page=2'];
       // Mock SCAN to return all keys in first iteration
       mockRedisClient.scan.mockResolvedValue({
         cursor: 0,
@@ -274,18 +289,18 @@ describe('Cache Middleware', () => {
       mockRedisClient.scan
         .mockResolvedValueOnce({
           cursor: 1,
-          keys: ['/api/items?page=1']
+          keys: ['/api/items/?page=1']
         })
         .mockResolvedValueOnce({
           cursor: 0,
-          keys: ['/api/items?page=2']
+          keys: ['/api/items/?page=2']
         });
       mockRedisClient.del.mockResolvedValue(2);
       
       await invalidateCache('/api/items*');
       
       expect(mockRedisClient.scan).toHaveBeenCalledTimes(2);
-      expect(mockRedisClient.del).toHaveBeenCalledWith(['/api/items?page=1', '/api/items?page=2']);
+      expect(mockRedisClient.del).toHaveBeenCalledWith(['/api/items/?page=1', '/api/items/?page=2']);
     });
 
     it('should handle no matching keys', async () => {
@@ -339,6 +354,40 @@ describe('Cache Middleware', () => {
       
       expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
         MATCH: '/api/orders*',
+        COUNT: 100
+      });
+    });
+  });
+
+  describe('invalidatePaginatedOrderCache', () => {
+    it('should invalidate paginated order caches', async () => {
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
+      
+      const { invalidatePaginatedOrderCache } = await import('../../middleware/cache.js');
+      await invalidatePaginatedOrderCache();
+      
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/orders/?*',
+        COUNT: 100
+      });
+    });
+  });
+
+  describe('invalidatePriorityOrderCache', () => {
+    it('should invalidate priority order caches', async () => {
+      mockRedisClient.scan.mockResolvedValue({
+        cursor: 0,
+        keys: []
+      });
+      
+      const { invalidatePriorityOrderCache } = await import('../../middleware/cache.js');
+      await invalidatePriorityOrderCache();
+      
+      expect(mockRedisClient.scan).toHaveBeenCalledWith(0, {
+        MATCH: '/api/orders/priority*',
         COUNT: 100
       });
     });

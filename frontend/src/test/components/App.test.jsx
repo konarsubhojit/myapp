@@ -28,6 +28,23 @@ vi.mock('../../services/api', () => ({
   getOrders: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('../../components/NavigationDrawer', () => ({
+  default: () => <div data-testid="navigation-drawer">Navigation Drawer</div>,
+  DRAWER_WIDTH: 240,
+}));
+
+vi.mock('../../components/CreateItem', () => ({
+  default: () => <div data-testid="create-item">Create Item</div>,
+}));
+
+vi.mock('../../components/BrowseItems', () => ({
+  default: () => <div data-testid="browse-items">Browse Items</div>,
+}));
+
+vi.mock('../../components/ManageDeletedItems', () => ({
+  default: () => <div data-testid="manage-deleted-items">Manage Deleted Items</div>,
+}));
+
 vi.mock('../../components/PriorityNotificationPanel', () => ({
   default: () => <div data-testid="priority-panel">Priority Panel</div>,
 }));
@@ -102,8 +119,8 @@ describe('App', () => {
     // Header should be visible immediately
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     
-    // Navigation tabs should be visible
-    expect(screen.getByRole('tablist', { name: 'Main navigation' })).toBeInTheDocument();
+    // Navigation drawer should be visible
+    expect(screen.getByTestId('navigation-drawer')).toBeInTheDocument();
     
     // Should not show blocking loading screen
     expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();

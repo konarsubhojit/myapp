@@ -70,13 +70,16 @@ function validateResponseForCaching(body) {
  * @returns {string} Cache key
  */
 export function generateCacheKey(req) {
-  const path = req.path;
+  // Use baseUrl + path to get the full path including mounted router base
+  // baseUrl contains the mount point (e.g., '/api/items')
+  // path contains the route path relative to the router (e.g., '/', '/:id')
+  const fullPath = req.baseUrl + req.path;
   const queryString = Object.keys(req.query)
     .sort()
     .map(key => `${key}=${req.query[key]}`)
     .join('&');
   
-  return queryString ? `${path}?${queryString}` : path;
+  return queryString ? `${fullPath}?${queryString}` : fullPath;
 }
 
 /**
@@ -297,7 +300,7 @@ export async function invalidateFeedbackCache() {
  * Invalidate only paginated order history caches
  */
 export async function invalidatePaginatedOrderCache() {
-  await invalidateCache('/api/orders?*');
+  await invalidateCache('/api/orders/?*');
 }
 
 /**
