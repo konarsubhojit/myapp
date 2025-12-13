@@ -104,6 +104,8 @@ function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
     const isInTimeRange = orderDate >= cutoffDate;
     
     // Apply status filter
+    // Note: Orders with null/undefined status are treated as 'completed' 
+    // for backward compatibility with existing data
     const matchesStatusFilter = statusFilter === 'all' || 
       order.status === 'completed' || 
       order.status === null || 
