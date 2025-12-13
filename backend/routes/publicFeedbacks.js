@@ -5,6 +5,7 @@ import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError, unauthorizedError } from '../utils/errorHandler.js';
+import { invalidateFeedbackCache } from '../middleware/cache.js';
 import {
   MIN_RATING,
   MAX_RATING,
@@ -131,6 +132,9 @@ router.post('/', asyncHandler(async (req, res) => {
     throw badRequestError(commentValidation.error);
   }
 
+  // Proactively invalidate cache BEFORE creating feedback to prevent race conditions
+  await invalidateFeedbackCache();
+
   const newFeedback = await Feedback.create({
     orderId: Number.parseInt(orderId, 10),
     rating: ratingValidation.parsedRating,
@@ -142,6 +146,9 @@ router.post('/', asyncHandler(async (req, res) => {
 
   // Mark token as used
   await FeedbackToken.markAsUsed(token);
+
+  // Invalidate feedback cache again after creating to ensure consistency
+  await invalidateFeedbackCache();
 
   logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
   res.status(201).json(newFeedback);

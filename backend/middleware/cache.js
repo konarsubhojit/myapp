@@ -41,11 +41,18 @@ function validateResponseForCaching(body) {
   
   // For paginated responses, validate structure
   if (body && typeof body === 'object' && 'pagination' in body) {
-    // Ensure items/orders array exists and pagination metadata is present
-    const dataKey = body.items !== undefined ? 'items' : body.orders !== undefined ? 'orders' : null;
+    // Ensure items/orders/feedbacks array exists and pagination metadata is present
+    const dataKey = body.items !== undefined ? 'items' : body.orders !== undefined ? 'orders' : body.feedbacks !== undefined ? 'feedbacks' : null;
     if (!dataKey || !Array.isArray(body[dataKey]) || !body.pagination) {
+      logger.debug('Paginated response validation failed', { 
+        hasDataKey: !!dataKey,
+        dataKey,
+        isArray: body[dataKey] ? Array.isArray(body[dataKey]) : false,
+        hasPagination: !!body.pagination 
+      });
       return false;
     }
+    logger.debug('Paginated response validated successfully', { dataKey, itemCount: body[dataKey].length });
   }
   
   // For array responses, ensure it's a valid array
@@ -277,6 +284,13 @@ export async function invalidateItemCache() {
 export async function invalidateOrderCache() {
   // Invalidate all order-related endpoints
   await invalidateCache('/api/orders*');
+}
+
+/**
+ * Invalidate all feedback-related caches
+ */
+export async function invalidateFeedbackCache() {
+  await invalidateCache('/api/feedbacks*');
 }
 
 /**
