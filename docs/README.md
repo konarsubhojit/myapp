@@ -9,10 +9,6 @@ This directory contains technical documentation for the Order Management System.
 - **[Customer Feedback App Documentation](./customer-feedback-app.md)** - Customer-facing feedback collection application
 - **[Backend Documentation](./backend.md)** - Backend API, database, and server architecture
 
-### Additional Documentation
-- [Complete Project Documentation](../PROJECT_DOCUMENTATION.md) - Full technical documentation
-- [Architecture Analysis](../ARCHITECTURE_ANALYSIS.md) - Architecture review and optimization recommendations
-
 ## Quick Links
 
 ### Frontend

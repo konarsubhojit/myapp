@@ -2,7 +2,7 @@
 
 A full-stack application for managing orders with React frontend and Node.js/PostgreSQL backend.
 
-> 📚 **For complete documentation**, see [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)
+> 📚 **For complete documentation**, see [Documentation Index](./docs/README.md)
 
 ## Quick Start
 
@@ -197,17 +197,10 @@ To enable error tracking with Rollbar:
 
 ## Documentation
 
-- [Complete Project Documentation](./PROJECT_DOCUMENTATION.md) - Full technical documentation
+- [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
 - [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, and database details
 - [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
 - [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
-- [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
-- [API Documentation](./PROJECT_DOCUMENTATION.md#api-documentation) - Detailed API reference
-- [Database Schema](./PROJECT_DOCUMENTATION.md#database-schema) - Database structure
-- [Development Guidelines](./PROJECT_DOCUMENTATION.md#development-guidelines) - Coding standards
-- [Deployment Guide](./PROJECT_DOCUMENTATION.md#deployment) - Deployment instructions
-- [Architecture Analysis](./ARCHITECTURE_ANALYSIS.md) - Comprehensive architecture review with optimization recommendations
-- [Optimization Summary](./OPTIMIZATION_SUMMARY.md) - Quick reference guide for improvements
 
 ## Development
 
@@ -233,7 +226,7 @@ cd backend && npm start
 ## Support
 
 For issues or questions:
-- Check [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)
+- Check [Documentation Index](./docs/README.md)
 - Search existing GitHub issues
 - Create new issue with details
 

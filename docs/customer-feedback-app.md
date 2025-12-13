@@ -629,7 +629,7 @@ https://feedback.example.com?token=<one-time-token>
 ## Additional Resources
 
 - [Main Frontend Documentation](./frontend.md)
-- [Backend API Documentation](../PROJECT_DOCUMENTATION.md#api-documentation)
+- [Backend API Documentation](./backend.md)
 - [Material-UI Documentation](https://mui.com/)
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
