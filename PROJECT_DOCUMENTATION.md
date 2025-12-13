@@ -571,6 +571,19 @@ The API uses Redis for caching to improve response times and reduce database loa
 
 ### Cache Strategy
 
+#### Versioned Cache Keys
+Cache keys now use a **global version prefix** format for efficient invalidation:
+```
+v{VERSION}:{METHOD}:{PATH}?{SORTED_QUERY}
+```
+
+Examples:
+- `v7:GET:/api/orders?page=1&limit=10`
+- `v7:GET:/api/items`
+- `v7:GET:/api/orders/123`
+
+This approach is optimized for **Vercel serverless** deployments where SCAN-based invalidation can be slow and resource-intensive.
+
 #### Cached Endpoints
 All GET endpoints are cached with appropriate TTLs:
 
@@ -585,10 +598,21 @@ All GET endpoints are cached with appropriate TTLs:
 | `GET /api/orders/:id` | 300s (5 min) | Single order details |
 
 #### Cache Invalidation
-Caches are automatically invalidated when data changes:
+Caches are automatically invalidated when data changes using a **global version bump**:
 
-- **Item mutations** (POST, PUT, DELETE, restore) → Invalidates all `/api/items*` caches
-- **Order mutations** (POST, PUT) → Invalidates all `/api/orders*` caches
+- **Item mutations** (POST, PUT, DELETE, restore) → Increments global cache version
+- **Order mutations** (POST, PUT) → Increments global cache version
+
+The global version is stored in Redis under the key `cache:v:global`. When any mutation occurs:
+1. The cache version is incremented using `INCR`
+2. Subsequent GET requests use the new version in their cache keys
+3. Old cached data naturally expires via TTL (no immediate deletion needed)
+
+This is **more efficient than SCAN-based invalidation** because:
+- Single `INCR` operation vs. iterating through all keys
+- O(1) time complexity vs. O(n) for pattern matching
+- No blocking operations on Redis
+- Better suited for Vercel serverless cold starts
 
 ### Setup
 
@@ -632,6 +656,13 @@ With Redis caching enabled:
 - **Cached requests**: Redis lookup (~5-20ms)
 - **Improvement**: 90-95% faster response times
 
+### Serverless Optimization
+
+The caching implementation is optimized for Vercel serverless:
+- **`getRedisIfReady()`**: Synchronous check for existing Redis connection
+- **In-memory version memoization**: Reduces Redis lookups for 3 seconds
+- **Graceful degradation**: Skips caching if Redis isn't ready (no blocking)
+
 ### Monitoring
 
 Check Redis connection status in application logs:
@@ -639,6 +670,12 @@ Check Redis connection status in application logs:
 [RedisClient] Connecting to Redis...
 [RedisClient] Redis connection successful
 [Server] Redis connection successful
+```
+
+Cache version logs:
+```
+[CacheMiddleware] Cache hit { key: 'v5:GET:/api/items/', version: 5 }
+[CacheMiddleware] Global cache version bumped { newVersion: 6 }
 ```
 
 If Redis is not configured:
@@ -653,6 +690,17 @@ The cache automatically handles:
 - **Reconnection**: Automatic retry with exponential backoff
 - **Memory management**: Redis TTL ensures old data is purged
 - **Race conditions**: Concurrent requests are handled safely
+- **Stampede protection**: Request coalescing prevents thundering herd
+
+#### Manual Cache Reset
+To manually reset the cache (e.g., for debugging):
+```javascript
+// In Redis CLI
+SET cache:v:global 1
+
+// Or flush the entire database (use with caution)
+FLUSHDB
+```
 
 ---
 
