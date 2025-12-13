@@ -25,7 +25,6 @@ interface NavigationDrawerProps {
   mobileOpen: boolean
   desktopOpen: boolean
   onMobileToggle: () => void
-  onDesktopToggle: () => void
 }
 
 function NavigationDrawer({ 
@@ -34,7 +33,6 @@ function NavigationDrawer({
   mobileOpen, 
   desktopOpen,
   onMobileToggle,
-  onDesktopToggle 
 }: NavigationDrawerProps): ReactElement {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
@@ -161,6 +159,10 @@ function NavigationDrawer({
           display: { xs: 'none', md: 'block' },
           width: desktopOpen ? DRAWER_WIDTH : 0,
           flexShrink: 0,
+          transition: (theme) => theme.transitions.create(['width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,

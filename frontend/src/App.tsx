@@ -162,7 +162,6 @@ function AppContent(): ReactElement {
         mobileOpen={mobileDrawerOpen}
         desktopOpen={desktopDrawerOpen}
         onMobileToggle={handleMobileDrawerToggle}
-        onDesktopToggle={handleDesktopDrawerToggle}
       />
 
       {/* Main Content Area */}
@@ -196,6 +195,7 @@ function AppContent(): ReactElement {
               <IconButton
                 color="inherit"
                 aria-label="toggle navigation drawer"
+                aria-expanded={isMdDown ? mobileDrawerOpen : desktopDrawerOpen}
                 edge="start"
                 onClick={isMdDown ? handleMobileDrawerToggle : handleDesktopDrawerToggle}
                 sx={{ 
