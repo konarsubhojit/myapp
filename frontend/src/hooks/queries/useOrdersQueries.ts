@@ -5,6 +5,7 @@ import type { Order, PaginatedOrdersResult } from '../../types';
 
 /**
  * Query hook for fetching all orders (non-paginated)
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useOrdersAll(
   options?: Omit<UseQueryOptions<Order[], Error>, 'queryKey' | 'queryFn'>
@@ -12,7 +13,6 @@ export function useOrdersAll(
   return useQuery({
     queryKey: queryKeys.ordersAll(),
     queryFn: api.getOrders,
-    staleTime: 2 * 60_000, // 2 minutes fresh
     ...options,
   });
 }
@@ -28,7 +28,6 @@ export function useOrdersPaginated(
   return useQuery({
     queryKey: queryKeys.ordersPaginated(params),
     queryFn: () => api.getOrdersPaginated(params),
-    staleTime: 2 * 60_000,
     placeholderData: (previousData) => previousData,
     ...options,
   });
@@ -36,6 +35,7 @@ export function useOrdersPaginated(
 
 /**
  * Query hook for fetching a single order by ID
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useOrder(
   id: number | string | undefined,
@@ -45,14 +45,13 @@ export function useOrder(
     queryKey: queryKeys.order(id ?? 0),
     queryFn: () => api.getOrder(id!),
     enabled: !!id, // Only fetch when id exists
-    staleTime: 2 * 60_000,
     ...options,
   });
 }
 
 /**
  * Query hook for fetching priority orders
- * Shorter stale time for more frequent updates
+ * Shorter stale time (10s) for more frequent updates
  */
 export function usePriorityOrdersQuery(
   options?: Omit<UseQueryOptions<Order[], Error>, 'queryKey' | 'queryFn'>

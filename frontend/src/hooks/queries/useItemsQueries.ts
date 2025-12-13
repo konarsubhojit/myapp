@@ -5,6 +5,7 @@ import type { Item, PaginatedResult } from '../../types';
 
 /**
  * Query hook for fetching all items (non-paginated)
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useItems(
   options?: Omit<UseQueryOptions<Item[], Error>, 'queryKey' | 'queryFn'>
@@ -12,7 +13,6 @@ export function useItems(
   return useQuery({
     queryKey: queryKeys.items(),
     queryFn: api.getItems,
-    staleTime: 2 * 60_000, // 2 minutes fresh
     ...options,
   });
 }
@@ -28,7 +28,6 @@ export function useItemsPaginated(
   return useQuery({
     queryKey: queryKeys.itemsPaginated(params),
     queryFn: () => api.getItemsPaginated(params),
-    staleTime: 2 * 60_000,
     placeholderData: (previousData) => previousData,
     ...options,
   });
@@ -45,7 +44,6 @@ export function useDeletedItemsQuery(
   return useQuery({
     queryKey: queryKeys.deletedItems(params),
     queryFn: () => api.getDeletedItems(params),
-    staleTime: 2 * 60_000,
     placeholderData: (previousData) => previousData,
     ...options,
   });

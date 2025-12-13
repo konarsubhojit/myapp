@@ -5,6 +5,7 @@ import type { Feedback, PaginatedFeedbacksResult, FeedbackStats } from '../../ty
 
 /**
  * Query hook for fetching all feedbacks (non-paginated)
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useFeedbacks(
   options?: Omit<UseQueryOptions<Feedback[], Error>, 'queryKey' | 'queryFn'>
@@ -12,7 +13,6 @@ export function useFeedbacks(
   return useQuery({
     queryKey: queryKeys.feedbacks(),
     queryFn: api.getFeedbacks,
-    staleTime: 2 * 60_000, // 2 minutes fresh
     ...options,
   });
 }
@@ -28,7 +28,6 @@ export function useFeedbacksPaginated(
   return useQuery({
     queryKey: queryKeys.feedbacksPaginated(params),
     queryFn: () => api.getFeedbacksPaginated(params),
-    staleTime: 2 * 60_000,
     placeholderData: (previousData) => previousData,
     ...options,
   });
@@ -36,6 +35,7 @@ export function useFeedbacksPaginated(
 
 /**
  * Query hook for fetching a single feedback by ID
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useFeedback(
   id: number | string | undefined,
@@ -45,13 +45,13 @@ export function useFeedback(
     queryKey: queryKeys.feedback(id ?? 0),
     queryFn: () => api.getFeedback(id!),
     enabled: !!id, // Only fetch when id exists
-    staleTime: 2 * 60_000,
     ...options,
   });
 }
 
 /**
  * Query hook for fetching feedback by order ID
+ * Uses default staleTime from queryClient (2 minutes)
  */
 export function useFeedbackByOrderId(
   orderId: number | string | undefined,
@@ -61,13 +61,13 @@ export function useFeedbackByOrderId(
     queryKey: queryKeys.feedbackByOrder(orderId ?? 0),
     queryFn: () => api.getFeedbackByOrderId(orderId!),
     enabled: !!orderId, // Only fetch when orderId exists
-    staleTime: 2 * 60_000,
     ...options,
   });
 }
 
 /**
  * Query hook for fetching feedback statistics
+ * Longer stale time (5 min) for stats that change less frequently
  */
 export function useFeedbackStats(
   options?: Omit<UseQueryOptions<FeedbackStats, Error>, 'queryKey' | 'queryFn'>
