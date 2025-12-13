@@ -40,6 +40,7 @@ describe('Cache Middleware', () => {
     
     res = {
       json: jest.fn().mockReturnThis(),
+      on: jest.fn(), // Mock for event listeners (finish, close)
     };
     
     next = jest.fn();

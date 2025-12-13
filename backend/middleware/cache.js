@@ -120,6 +120,9 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       return next();
     }
 
+    // Declare cacheKey outside try block for cleanup in catch
+    let cacheKey = null;
+
     try {
       const redis = await getRedisClient();
       
@@ -128,7 +131,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
         return next();
       }
 
-      const cacheKey = generateCacheKey(req);
+      cacheKey = generateCacheKey(req);
       
       // Try to get cached data
       const cachedData = await redis.get(cacheKey);
@@ -162,8 +165,26 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       // Store original res.json to intercept the response
       const originalJson = res.json.bind(res);
       
+      // Track if response was sent to cleanup pending requests
+      let responseSent = false;
+      let cleanedUp = false;
+      
+      // Cleanup function to ensure pending requests are notified (only once)
+      const cleanupPendingRequest = () => {
+        if (!cleanedUp && !responseSent && pendingRequests.has(cacheKey)) {
+          cleanedUp = true;
+          notifyPendingRequests(cacheKey, null);
+        }
+      };
+      
+      // Listen for response finish to cleanup if response was sent without res.json
+      res.on('finish', cleanupPendingRequest);
+      res.on('close', cleanupPendingRequest);
+      
       // Override res.json to cache the response
       res.json = function(body) {
+        responseSent = true;
+        
         // Validate response before caching to prevent caching invalid/empty data
         const shouldCache = validateResponseForCaching(body);
         
@@ -192,6 +213,10 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       next();
     } catch (error) {
       logger.error('Cache middleware error', error);
+      // Cleanup pending requests on error
+      if (pendingRequests.has(cacheKey)) {
+        notifyPendingRequests(cacheKey, null);
+      }
       // Continue without caching on error
       next();
     }
