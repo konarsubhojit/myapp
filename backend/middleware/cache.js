@@ -11,10 +11,18 @@ export const CACHE_VERSION_KEY = 'cache:v:global';
 
 // In-memory memoization for version lookup to reduce Redis calls in burst traffic
 // Note: Node.js is single-threaded, so concurrent requests are handled sequentially
-// in the event loop, making this safe for per-instance caching in serverless
+// in the event loop, making this safe for per-instance caching in serverless.
+//
+// IMPORTANT: In multi-instance serverless deployments (e.g., Vercel), each instance has its
+// own in-memory version cache. During the memoization window, different instances may use
+// different cache versions. This can result in stale data being served after cache invalidation.
+// This is a deliberate performance vs. consistency trade-off to reduce Redis GET calls.
+// Reduce VERSION_MEMO_TTL_MS for stronger consistency or set to 0 to disable memoization.
 let localVersion = null;
 let localVersionFetchedAt = 0;
-const VERSION_MEMO_TTL_MS = 3000; // 3 seconds memoization
+// Memoization TTL for cache version (in ms). Reduce this to minimize stale data risk.
+// Trade-off: Lower values increase Redis load but improve consistency.
+export const VERSION_MEMO_TTL_MS = 200; // 200ms memoization (minimizes staleness window)
 
 // In-memory locks for preventing cache stampede
 // Maps cache key to a list of pending resolvers
@@ -79,8 +87,9 @@ function validateResponseForCaching(body) {
  * This reduces Redis lookups in burst traffic on warm lambdas
  * @param {Object} redis - Redis client
  * @returns {Promise<number>} Current version number (defaults to 1 if not set)
+ * @exported for testing purposes
  */
-async function getGlobalCacheVersion(redis) {
+export async function getGlobalCacheVersion(redis) {
   const now = Date.now();
   
   // Return memoized version if still valid
@@ -417,20 +426,24 @@ export async function invalidateFeedbackCache() {
 }
 
 /**
- * Invalidate only paginated order history caches by bumping global version
- * Note: With global versioning, this invalidates all caches, not just paginated orders
+ * Invalidate paginated order history caches by bumping global version
+ * @deprecated Use bumpGlobalCacheVersion() directly. With global versioning,
+ * this function invalidates ALL caches, not just paginated orders.
+ * Kept for backward compatibility.
  */
 export async function invalidatePaginatedOrderCache() {
-  logger.debug('Invalidating paginated order cache via version bump');
+  logger.debug('Invalidating all caches via version bump (called from invalidatePaginatedOrderCache)');
   await bumpGlobalCacheVersion();
 }
 
 /**
- * Invalidate only priority orders cache by bumping global version
- * Note: With global versioning, this invalidates all caches, not just priority orders
+ * Invalidate priority orders cache by bumping global version
+ * @deprecated Use bumpGlobalCacheVersion() directly. With global versioning,
+ * this function invalidates ALL caches, not just priority orders.
+ * Kept for backward compatibility.
  */
 export async function invalidatePriorityOrderCache() {
-  logger.debug('Invalidating priority order cache via version bump');
+  logger.debug('Invalidating all caches via version bump (called from invalidatePriorityOrderCache)');
   await bumpGlobalCacheVersion();
 }
 

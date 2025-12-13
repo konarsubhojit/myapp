@@ -370,9 +370,11 @@ For Vercel serverless environments:
 
 2. **In-memory version memoization**: Reduces Redis lookups
    ```javascript
-   const VERSION_MEMO_TTL_MS = 3000; // Cache version for 3 seconds
+   const VERSION_MEMO_TTL_MS = 200; // Cache version for 200ms
    let localVersion = null;
    ```
+
+   > **Note:** In serverless environments (such as Vercel), each instance has its own in-memory version cache. During the `VERSION_MEMO_TTL_MS` window (e.g., 200ms), different instances may use different cache versions. This can result in brief stale data being served after a cache invalidation, as some instances may not immediately pick up the new version. This is a deliberate performance vs. consistency trade-off to reduce Redis GET calls. Adjust `VERSION_MEMO_TTL_MS` based on your application's consistency requirements (set to 0 for strong consistency).
 
 3. **Graceful degradation**: App continues without caching if Redis is slow/unavailable
 
