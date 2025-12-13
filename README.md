@@ -198,6 +198,7 @@ To enable error tracking with Rollbar:
 ## Documentation
 
 - [Complete Project Documentation](./PROJECT_DOCUMENTATION.md) - Full technical documentation
+- [Backend Technical Documentation](./docs/backend.md) - **NEW** ⭐ Backend architecture, request lifecycle, auth, caching, and database details
 - [API Documentation](./PROJECT_DOCUMENTATION.md#api-documentation) - Detailed API reference
 - [Database Schema](./PROJECT_DOCUMENTATION.md#database-schema) - Database structure
 - [Development Guidelines](./PROJECT_DOCUMENTATION.md#development-guidelines) - Coding standards
