@@ -173,7 +173,10 @@ function NavigationDrawer({ currentRoute, onNavigate }: NavigationDrawerProps): 
             borderRight: '1px solid',
             borderColor: 'divider',
             top: { xs: APPBAR_HEIGHT_MOBILE, sm: APPBAR_HEIGHT_DESKTOP },
-            height: `calc(100% - ${APPBAR_HEIGHT_DESKTOP}px)`,
+            height: { 
+              xs: `calc(100% - ${APPBAR_HEIGHT_MOBILE}px)`,
+              sm: `calc(100% - ${APPBAR_HEIGHT_DESKTOP}px)`
+            },
           },
         }}
         open
