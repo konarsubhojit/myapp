@@ -32,10 +32,6 @@ vi.mock('../../components/PriorityNotificationPanel', () => ({
   default: () => <div data-testid="priority-panel">Priority Panel</div>,
 }));
 
-vi.mock('../../components/PriorityDashboard', () => ({
-  default: () => <div>Priority Dashboard</div>,
-}));
-
 vi.mock('../../components/ItemPanel', () => ({
   default: () => <div data-testid="item-panel">Item Panel</div>,
 }));
