@@ -28,6 +28,7 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 // Mock Redis client to return null (disable caching in tests)
 jest.unstable_mockModule('../../db/redisClient', () => ({
   getRedisClient: jest.fn().mockResolvedValue(null),
+  getRedisIfReady: jest.fn().mockReturnValue(null),
 }));
 
 const { default: orderRoutes } = await import('../../routes/orders.js');

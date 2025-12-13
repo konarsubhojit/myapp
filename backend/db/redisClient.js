@@ -105,3 +105,16 @@ export async function closeRedisClient() {
 export function isRedisConnected() {
   return !!(redisClient && redisClient.isOpen);
 }
+
+/**
+ * Get Redis client if it's already connected and ready (synchronous check)
+ * This is useful for serverless environments to avoid connection overhead per request
+ * @returns {Object|null} Redis client if ready, null otherwise
+ */
+export function getRedisIfReady() {
+  // Return the redis client only if it exists and is open
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
+  return null;
+}
