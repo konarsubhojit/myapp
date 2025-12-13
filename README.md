@@ -137,7 +137,7 @@ PORT=5000
 ```env
 VITE_API_URL=http://localhost:5000/api
 VITE_GOOGLE_CLIENT_ID=...
-VITE_ROLLBAR_ACCESS_TOKEN=... # Optional: For error tracking
+NEXT_PUBLIC_ROLLBAR_MYAPP_UI_CLIENT_TOKEN_1765636822=... # Optional: For error tracking
 ```
 
 ### Google OAuth Setup
@@ -187,7 +187,7 @@ To enable error tracking with Rollbar:
    - Copy the `post_client_item` token (for browser/client-side errors)
 
 3. **Configure Environment Variable**:
-   - Add the token to `frontend/.env` as `VITE_ROLLBAR_ACCESS_TOKEN`
+   - Add the token to `frontend/.env` as `NEXT_PUBLIC_ROLLBAR_MYAPP_UI_CLIENT_TOKEN_1765636822`
    - If not set, Rollbar will be disabled (no errors will be sent)
 
 4. **Error Boundary**:
