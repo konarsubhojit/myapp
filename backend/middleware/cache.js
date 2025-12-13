@@ -6,6 +6,13 @@ const logger = createLogger('CacheMiddleware');
 // Default cache TTL (Time To Live) in seconds
 const DEFAULT_TTL = 300; // 5 minutes
 
+// In-memory locks for preventing cache stampede
+// Maps cache key to a list of pending resolvers
+const pendingRequests = new Map();
+
+// Lock timeout to prevent deadlocks (in milliseconds)
+const LOCK_TIMEOUT = 30000; // 30 seconds
+
 /**
  * Validate response data before caching to prevent caching invalid/empty data
  * @param {*} body - Response body to validate
@@ -66,7 +73,43 @@ export function generateCacheKey(req) {
 }
 
 /**
- * Cache middleware for GET requests
+ * Wait for a pending cache request to complete
+ * Returns the cached data if available, null if timeout or error
+ */
+async function waitForPendingRequest(cacheKey, redis) {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      logger.debug('Lock wait timeout', { key: cacheKey });
+      resolve(null);
+    }, LOCK_TIMEOUT);
+    
+    if (!pendingRequests.has(cacheKey)) {
+      clearTimeout(timeout);
+      resolve(null);
+      return;
+    }
+    
+    pendingRequests.get(cacheKey).push((data) => {
+      clearTimeout(timeout);
+      resolve(data);
+    });
+  });
+}
+
+/**
+ * Notify all waiting requests that cache has been populated
+ */
+function notifyPendingRequests(cacheKey, data) {
+  const waiters = pendingRequests.get(cacheKey);
+  if (waiters) {
+    pendingRequests.delete(cacheKey);
+    waiters.forEach(resolve => resolve(data));
+  }
+}
+
+/**
+ * Cache middleware for GET requests with stampede protection
+ * Uses request coalescing to prevent multiple identical requests from hitting the database
  * @param {number} ttl - Time to live in seconds (default: 300)
  * @returns {Function} Express middleware
  */
@@ -77,6 +120,9 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       return next();
     }
 
+    // Declare cacheKey outside try block for cleanup in catch
+    let cacheKey = null;
+
     try {
       const redis = await getRedisClient();
       
@@ -85,7 +131,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
         return next();
       }
 
-      const cacheKey = generateCacheKey(req);
+      cacheKey = generateCacheKey(req);
       
       // Try to get cached data
       const cachedData = await redis.get(cacheKey);
@@ -98,11 +144,47 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
 
       logger.debug('Cache miss', { key: cacheKey });
       
+      // Check if there's already a pending request for this key (stampede protection)
+      if (pendingRequests.has(cacheKey)) {
+        logger.debug('Request coalescing - waiting for pending request', { key: cacheKey });
+        const coalescedData = await waitForPendingRequest(cacheKey, redis);
+        if (coalescedData) {
+          logger.debug('Returning coalesced data', { key: cacheKey });
+          return res.json(coalescedData);
+        }
+        // If wait failed, try cache again or fall through to fetch
+        const retryData = await redis.get(cacheKey);
+        if (retryData) {
+          return res.json(JSON.parse(retryData));
+        }
+      }
+      
+      // Register this request as the one that will populate the cache
+      pendingRequests.set(cacheKey, []);
+      
       // Store original res.json to intercept the response
       const originalJson = res.json.bind(res);
       
+      // Track if response was sent to cleanup pending requests
+      let responseSent = false;
+      let cleanedUp = false;
+      
+      // Cleanup function to ensure pending requests are notified (only once)
+      const cleanupPendingRequest = () => {
+        if (!cleanedUp && !responseSent && pendingRequests.has(cacheKey)) {
+          cleanedUp = true;
+          notifyPendingRequests(cacheKey, null);
+        }
+      };
+      
+      // Listen for response finish to cleanup if response was sent without res.json
+      res.on('finish', cleanupPendingRequest);
+      res.on('close', cleanupPendingRequest);
+      
       // Override res.json to cache the response
       res.json = function(body) {
+        responseSent = true;
+        
         // Validate response before caching to prevent caching invalid/empty data
         const shouldCache = validateResponseForCaching(body);
         
@@ -115,8 +197,13 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
             .catch(err => {
               logger.error('Failed to cache response', { key: cacheKey, error: err.message });
             });
+          
+          // Notify waiting requests with the cached data
+          notifyPendingRequests(cacheKey, body);
         } else {
           logger.debug('Response not cached due to validation failure', { key: cacheKey });
+          // Still notify pending requests to unblock them (they'll re-fetch)
+          notifyPendingRequests(cacheKey, null);
         }
         
         // Call original res.json
@@ -126,6 +213,10 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       next();
     } catch (error) {
       logger.error('Cache middleware error', error);
+      // Cleanup pending requests on error
+      if (pendingRequests.has(cacheKey)) {
+        notifyPendingRequests(cacheKey, null);
+      }
       // Continue without caching on error
       next();
     }

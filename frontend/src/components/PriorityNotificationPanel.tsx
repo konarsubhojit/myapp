@@ -17,9 +17,11 @@ import WarningIcon from '@mui/icons-material/Warning';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, OrderWithPriority } from '../hooks';
 import { useNotification } from '../contexts/NotificationContext';
+import type { OrderId } from '../types';
 
 interface PriorityNotificationPanelProps {
   onNavigateToPriority: () => void;
+  onViewOrder: (orderId: OrderId) => void;
 }
 
 // Sub-component: Notification Item
@@ -73,7 +75,7 @@ function NotificationItem({ order, isCritical, onClick }: NotificationItemProps)
   );
 }
 
-function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificationPanelProps) {
+function PriorityNotificationPanel({ onNavigateToPriority, onViewOrder }: PriorityNotificationPanelProps) {
   const { showWarning } = useNotification();
   const [open, setOpen] = useState(false);
   const [hasShownLoginNotification, setHasShownLoginNotification] = useState(false);
@@ -110,9 +112,9 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
     setOpen(!open);
   };
 
-  const handleOrderClick = () => {
+  const handleOrderClick = (orderId: OrderId) => {
     setOpen(false);
-    onNavigateToPriority();
+    onViewOrder(orderId);
   };
 
   const handleViewAll = () => {
@@ -212,7 +214,7 @@ function PriorityNotificationPanel({ onNavigateToPriority }: PriorityNotificatio
                       <NotificationItem
                         order={order}
                         isCritical={isCritical}
-                        onClick={handleOrderClick}
+                        onClick={() => handleOrderClick(order._id)}
                       />
                     </ListItem>
                   </Box>

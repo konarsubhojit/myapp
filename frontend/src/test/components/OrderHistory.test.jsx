@@ -9,10 +9,10 @@ import { useOrderFilters } from '../../hooks/useOrderFilters';
 vi.mock('../../contexts/CurrencyContext');
 vi.mock('../../hooks/useOrderPagination');
 vi.mock('../../hooks/useOrderFilters');
-vi.mock('../../components/OrderDetails', () => ({
-  default: ({ onClose }) => (
-    <div data-testid="order-details-dialog">
-      <button onClick={onClose}>Close</button>
+vi.mock('../../components/OrderDetailsPage', () => ({
+  default: ({ onBack }) => (
+    <div data-testid="order-details-page">
+      <button onClick={onBack}>Back</button>
     </div>
   ),
 }));
@@ -131,21 +131,21 @@ describe('OrderHistory', () => {
     const orderRow = screen.getByText('ORD-001').closest('tr');
     await user.click(orderRow);
     
-    expect(screen.getByTestId('order-details-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('order-details-page')).toBeInTheDocument();
   });
 
   it('should close order details dialog', async () => {
     const user = userEvent.setup();
     render(<OrderHistory onDuplicateOrder={mockOnDuplicateOrder} />);
     
-    // Open dialog
+    // Open order details
     const orderRow = screen.getByText('ORD-001').closest('tr');
     await user.click(orderRow);
     
-    // Close dialog
-    await user.click(screen.getByText('Close'));
+    // Go back
+    await user.click(screen.getByText('Back'));
     
-    expect(screen.queryByTestId('order-details-dialog')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('order-details-page')).not.toBeInTheDocument();
   });
 
   it('should render table structure', () => {
