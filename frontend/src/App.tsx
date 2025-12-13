@@ -8,8 +8,10 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Avatar from '@mui/material/Avatar'
 import Chip from '@mui/material/Chip'
 import Tooltip from '@mui/material/Tooltip'
+import IconButton from '@mui/material/IconButton'
 import LogoutIcon from '@mui/icons-material/Logout'
 import PreviewIcon from '@mui/icons-material/Preview'
+import MenuIcon from '@mui/icons-material/Menu'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import './App.css'
@@ -65,8 +67,11 @@ function AppContent(): ReactElement {
   const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null)
   const [selectedOrderIdFromPriority, setSelectedOrderIdFromPriority] = useState<OrderId | null>(null)
   const [copiedItem, setCopiedItem] = useState<Item | null>(null)
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false)
+  const [desktopDrawerOpen, setDesktopDrawerOpen] = useState<boolean>(true)
   const muiTheme = useTheme()
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
+  const isMdDown = useMediaQuery(muiTheme.breakpoints.down('md'))
 
   const fetchItems = useCallback(async (): Promise<void> => {
     try {
@@ -118,6 +123,14 @@ function AppContent(): ReactElement {
     }
   }, [])
 
+  const handleMobileDrawerToggle = useCallback((): void => {
+    setMobileDrawerOpen((prev) => !prev)
+  }, [])
+
+  const handleDesktopDrawerToggle = useCallback((): void => {
+    setDesktopDrawerOpen((prev) => !prev)
+  }, [])
+
   // Fetch initial data when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -143,15 +156,30 @@ function AppContent(): ReactElement {
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Navigation Drawer */}
-      <NavigationDrawer currentRoute={currentRoute} onNavigate={handleNavigate} />
+      <NavigationDrawer 
+        currentRoute={currentRoute} 
+        onNavigate={handleNavigate}
+        mobileOpen={mobileDrawerOpen}
+        desktopOpen={desktopDrawerOpen}
+        onMobileToggle={handleMobileDrawerToggle}
+      />
 
       {/* Main Content Area */}
       <Box 
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          width: { 
+            xs: '100%', 
+            md: desktopDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%' 
+          },
           minHeight: '100vh',
+          transition: (theme) => theme.transitions.create(['width'], {
+            easing: theme.transitions.easing.sharp,
+            duration: desktopDrawerOpen 
+              ? theme.transitions.duration.enteringScreen 
+              : theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         {/* Header */}
@@ -165,33 +193,50 @@ function AppContent(): ReactElement {
           }}
         >
           <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
-            <Tooltip title={`Version ${APP_VERSION}`} arrow>
-              <Typography 
-                variant="h6" 
-                component="h1" 
+            <Box display="flex" alignItems="center" gap={1}>
+              <IconButton
+                color="inherit"
+                aria-label="toggle navigation drawer"
+                aria-expanded={isMdDown ? mobileDrawerOpen : desktopDrawerOpen}
+                edge="start"
+                onClick={isMdDown ? handleMobileDrawerToggle : handleDesktopDrawerToggle}
                 sx={{ 
-                  fontWeight: 700,
-                  letterSpacing: '0.02em',
-                  fontSize: { xs: '1.1rem', sm: '1.5rem' },
-                  flexShrink: 1,
-                  minWidth: 0,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
                   color: '#5568d3',
-                  background: 'linear-gradient(135deg, #5568d3 0%, #667eea 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  cursor: 'default',
-                  '@supports not (-webkit-background-clip: text)': {
-                    color: '#5568d3',
-                  },
+                  '&:hover': {
+                    bgcolor: '#f0f4ff',
+                  }
                 }}
               >
-                {isMobile ? 'OMS' : 'Order Management System'}
-              </Typography>
-            </Tooltip>
+                <MenuIcon />
+              </IconButton>
+              <Tooltip title={`Version ${APP_VERSION}`} arrow>
+                <Typography 
+                  variant="h6" 
+                  component="h1" 
+                  sx={{ 
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    fontSize: { xs: '1.1rem', sm: '1.5rem' },
+                    flexShrink: 1,
+                    minWidth: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    color: '#5568d3',
+                    background: 'linear-gradient(135deg, #5568d3 0%, #667eea 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    cursor: 'default',
+                    '@supports not (-webkit-background-clip: text)': {
+                      color: '#5568d3',
+                    },
+                  }}
+                >
+                  {isMobile ? 'OMS' : 'Order Management System'}
+                </Typography>
+              </Tooltip>
+            </Box>
             <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
               {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentRoute(NAVIGATION_ROUTES.ORDER_HISTORY)} onViewOrder={handleViewOrderFromPriority} />}
               {guestMode && (
