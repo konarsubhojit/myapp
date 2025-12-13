@@ -16,6 +16,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import './App.css'
 import NavigationDrawer, { DRAWER_WIDTH } from './components/NavigationDrawer'
+import TopNavigationBar from './components/TopNavigationBar'
 import CreateItem from './components/CreateItem'
 import BrowseItems from './components/BrowseItems'
 import ManageDeletedItems from './components/ManageDeletedItems'
@@ -68,7 +69,6 @@ function AppContent(): ReactElement {
   const [selectedOrderIdFromPriority, setSelectedOrderIdFromPriority] = useState<OrderId | null>(null)
   const [copiedItem, setCopiedItem] = useState<Item | null>(null)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false)
-  const [desktopDrawerOpen, setDesktopDrawerOpen] = useState<boolean>(true)
   const muiTheme = useTheme()
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
   const isMdDown = useMediaQuery(muiTheme.breakpoints.down('md'))
@@ -127,10 +127,6 @@ function AppContent(): ReactElement {
     setMobileDrawerOpen((prev) => !prev)
   }, [])
 
-  const handleDesktopDrawerToggle = useCallback((): void => {
-    setDesktopDrawerOpen((prev) => !prev)
-  }, [])
-
   // Fetch initial data when authenticated
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -155,31 +151,24 @@ function AppContent(): ReactElement {
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Navigation Drawer */}
-      <NavigationDrawer 
-        currentRoute={currentRoute} 
-        onNavigate={handleNavigate}
-        mobileOpen={mobileDrawerOpen}
-        desktopOpen={desktopDrawerOpen}
-        onMobileToggle={handleMobileDrawerToggle}
-      />
+      {/* Navigation Drawer - Only for Mobile */}
+      {isMdDown && (
+        <NavigationDrawer 
+          currentRoute={currentRoute} 
+          onNavigate={handleNavigate}
+          mobileOpen={mobileDrawerOpen}
+          desktopOpen={false}
+          onMobileToggle={handleMobileDrawerToggle}
+        />
+      )}
 
       {/* Main Content Area */}
       <Box 
         component="main" 
         sx={{ 
           flexGrow: 1, 
-          width: { 
-            xs: '100%', 
-            md: desktopDrawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : '100%' 
-          },
+          width: '100%',
           minHeight: '100vh',
-          transition: (theme) => theme.transitions.create(['width'], {
-            easing: theme.transitions.easing.sharp,
-            duration: desktopDrawerOpen 
-              ? theme.transitions.duration.enteringScreen 
-              : theme.transitions.duration.leavingScreen,
-          }),
         }}
       >
         {/* Header */}
@@ -192,23 +181,29 @@ function AppContent(): ReactElement {
             borderColor: 'divider',
           }}
         >
-          <Toolbar sx={{ justifyContent: 'space-between', gap: 1, minHeight: { xs: 56, sm: 64 } }}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <IconButton
-                color="inherit"
-                aria-label="toggle navigation drawer"
-                aria-expanded={isMdDown ? mobileDrawerOpen : desktopDrawerOpen}
-                edge="start"
-                onClick={isMdDown ? handleMobileDrawerToggle : handleDesktopDrawerToggle}
-                sx={{ 
-                  color: '#5568d3',
-                  '&:hover': {
-                    bgcolor: '#f0f4ff',
-                  }
-                }}
-              >
-                <MenuIcon />
-              </IconButton>
+          <Toolbar sx={{ justifyContent: 'space-between', gap: 2, minHeight: { xs: 56, sm: 64 } }}>
+            {/* Left Section: Branding and Navigation */}
+            <Box display="flex" alignItems="center" gap={2}>
+              {/* Mobile Menu Toggle */}
+              {isMdDown && (
+                <IconButton
+                  color="inherit"
+                  aria-label="toggle navigation drawer"
+                  aria-expanded={mobileDrawerOpen}
+                  edge="start"
+                  onClick={handleMobileDrawerToggle}
+                  sx={{ 
+                    color: '#5568d3',
+                    '&:hover': {
+                      bgcolor: '#f0f4ff',
+                    }
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+              )}
+              
+              {/* Branding */}
               <Tooltip title={`Version ${APP_VERSION}`} arrow>
                 <Typography 
                   variant="h6" 
@@ -216,12 +211,8 @@ function AppContent(): ReactElement {
                   sx={{ 
                     fontWeight: 700,
                     letterSpacing: '0.02em',
-                    fontSize: { xs: '1.1rem', sm: '1.5rem' },
-                    flexShrink: 1,
-                    minWidth: 0,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                    flexShrink: 0,
                     color: '#5568d3',
                     background: 'linear-gradient(135deg, #5568d3 0%, #667eea 100%)',
                     WebkitBackgroundClip: 'text',
@@ -233,10 +224,20 @@ function AppContent(): ReactElement {
                     },
                   }}
                 >
-                  {isMobile ? 'OMS' : 'Order Management System'}
+                  {isMobile ? 'Kiyon' : 'Kiyon Store'}
                 </Typography>
               </Tooltip>
+
+              {/* Desktop Navigation */}
+              {!isMdDown && (
+                <TopNavigationBar 
+                  currentRoute={currentRoute}
+                  onNavigate={handleNavigate}
+                />
+              )}
             </Box>
+
+            {/* Right Section: User Info and Actions */}
             <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
               {!guestMode && <PriorityNotificationPanel onNavigateToPriority={() => setCurrentRoute(NAVIGATION_ROUTES.ORDER_HISTORY)} onViewOrder={handleViewOrderFromPriority} />}
               {guestMode && (
@@ -271,26 +272,19 @@ function AppContent(): ReactElement {
                   {user?.name || user?.email}
                 </Typography>
               )}
-              <Button
-                variant="outlined"
-                size="small"
+              <IconButton
                 onClick={logout}
-                startIcon={isMobile ? undefined : <LogoutIcon />}
+                size="small"
                 sx={{ 
-                  color: '#5568d3', 
-                  borderColor: '#cbd5e1',
-                  minWidth: isMobile ? 40 : 'auto',
-                  px: isMobile ? 1 : 2,
-                  fontWeight: 500,
+                  color: '#5568d3',
                   '&:hover': {
-                    borderColor: '#5568d3',
                     bgcolor: '#f0f4ff',
                   }
                 }}
                 aria-label="Sign out"
               >
-                {isMobile ? <LogoutIcon fontSize="small" /> : (guestMode ? 'Exit' : 'Sign Out')}
-              </Button>
+                <LogoutIcon />
+              </IconButton>
             </Box>
           </Toolbar>
         </AppBar>

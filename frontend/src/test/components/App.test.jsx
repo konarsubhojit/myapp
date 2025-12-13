@@ -33,6 +33,10 @@ vi.mock('../../components/NavigationDrawer', () => ({
   DRAWER_WIDTH: 240,
 }));
 
+vi.mock('../../components/TopNavigationBar', () => ({
+  default: () => <div data-testid="top-navigation-bar">Top Navigation Bar</div>,
+}));
+
 vi.mock('../../components/CreateItem', () => ({
   default: () => <div data-testid="create-item">Create Item</div>,
 }));
@@ -119,8 +123,8 @@ describe('App', () => {
     // Header should be visible immediately
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
     
-    // Navigation drawer should be visible
-    expect(screen.getByTestId('navigation-drawer')).toBeInTheDocument();
+    // Top navigation bar should be visible for desktop
+    expect(screen.getByTestId('top-navigation-bar')).toBeInTheDocument();
     
     // Should not show blocking loading screen
     expect(screen.queryByText('Loading your data...')).not.toBeInTheDocument();
