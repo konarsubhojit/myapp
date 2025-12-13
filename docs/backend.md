@@ -151,54 +151,68 @@ sequenceDiagram
 
 ## Cache Flow
 
-### Redis Caching with Stampede Prevention
+### Redis Caching with Versioned Keys & Stampede Prevention
 
-The backend uses **Redis** for caching GET requests with built-in **request coalescing** to prevent cache stampedes (multiple requests triggering duplicate DB queries).
+The backend uses **Redis** for caching GET requests with **global versioned cache keys** for efficient invalidation in serverless environments (Vercel). It also includes **request coalescing** to prevent cache stampedes (multiple requests triggering duplicate DB queries).
 
 ```mermaid
 flowchart TD
     A[GET Request] --> B{Redis available?}
     B -->|No| Z[Skip cache - proceed to DB]
-    B -->|Yes| C[Generate cache key]
-    C --> D{Cache hit?}
-    D -->|Yes| E[Return cached data]
-    D -->|No| F{Pending request for key?}
+    B -->|Yes| C[Get global cache version]
+    C --> D[Generate versioned cache key]
+    D --> E{Cache hit?}
+    E -->|Yes| F[Return cached data]
+    E -->|No| G{Pending request for key?}
     
-    F -->|Yes - Stampede detected| G[Wait for pending request]
-    G --> H{Pending request completed?}
-    H -->|Yes| I[Return coalesced data]
-    H -->|Timeout| J[Re-check cache or fetch from DB]
+    G -->|Yes - Stampede detected| H[Wait for pending request]
+    H --> I{Pending request completed?}
+    I -->|Yes| J[Return coalesced data]
+    I -->|Timeout| K[Re-check cache or fetch from DB]
     
-    F -->|No| K[Register as pending request]
-    K --> L[Proceed to route handler]
-    L --> M[Execute DB query]
-    M --> N[Validate response]
-    N --> O{Valid for caching?}
-    O -->|Yes| P[Cache response async]
-    O -->|No| Q[Skip caching]
-    P --> R[Notify waiting requests]
-    Q --> R
-    R --> S[Return response]
+    G -->|No| L[Register as pending request]
+    L --> M[Proceed to route handler]
+    M --> N[Execute DB query]
+    N --> O[Validate response]
+    O --> P{Valid for caching?}
+    P -->|Yes| Q[Cache response async]
+    P -->|No| R[Skip caching]
+    Q --> S[Notify waiting requests]
+    R --> S
+    S --> T[Return response]
     
-    Z --> L
-    E --> T[Client]
-    I --> T
-    S --> T
+    Z --> M
+    F --> U[Client]
+    J --> U
+    T --> U
 ```
 
 ### Cache Key Format
 
-Cache keys are generated from the **full request path + sorted query parameters**:
+Cache keys are **versioned** and include the **HTTP method** for efficient invalidation in serverless environments:
+
+**Format:** `v{VERSION}:{METHOD}:{FULL_PATH}?{SORTED_QUERY}`
 
 ```javascript
-// Example cache keys
-GET /api/items                         → /api/items
-GET /api/items?page=1&limit=10        → /api/items?limit=10&page=1
-GET /api/orders/priority               → /api/orders/priority
-GET /api/feedbacks?page=2&limit=20    → /api/feedbacks?limit=20&page=2
+// Example versioned cache keys (assuming version = 5)
+GET /api/items                         → v5:GET:/api/items
+GET /api/items?page=1&limit=10        → v5:GET:/api/items?limit=10&page=1
+GET /api/orders/priority               → v5:GET:/api/orders/priority
+GET /api/feedbacks?page=2&limit=20    → v5:GET:/api/feedbacks?limit=20&page=2
 ```
 
-**Implementation:** `backend/middleware/cache.js:72-83`
+**Key Components:**
+- **Version prefix** (`v5`): Global cache version stored in Redis key `cache:v:global`
+- **HTTP method** (`GET`): Ensures different methods don't collide
+- **Full path**: baseUrl + path from Express router
+- **Sorted query params**: Ensures consistent keys regardless of param order
+
+**Why versioned keys?**
+- **O(1) invalidation**: Bump version number to invalidate all caches (no need to scan/delete keys)
+- **Serverless-friendly**: Avoids SCAN operations which are slow in serverless environments
+- **Multi-instance safe**: All instances see version changes via Redis
+
+**Implementation:** `backend/middleware/cache.js:176-196`
 
 ### Cache TTLs (Time-To-Live)
 
@@ -216,22 +230,41 @@ Different endpoints have different cache durations based on data volatility:
 
 ### Cache Invalidation
 
-Cache is invalidated **immediately after** data modifications:
+Cache is invalidated **immediately after** data modifications using **global version bumping**:
 
 ```javascript
-// Items
-invalidateItemCache()      → Clears /api/items*
+// All invalidation functions now use version bumping (O(1) operation)
+invalidateItemCache()      → Bumps global cache version
+invalidateOrderCache()     → Bumps global cache version
+invalidateFeedbackCache()  → Bumps global cache version
 
-// Orders
-invalidateOrderCache()     → Clears /api/orders*
-
-// Feedbacks
-invalidateFeedbackCache()  → Clears /api/feedbacks*
+// Direct version bump (recommended for new code)
+bumpGlobalCacheVersion()   → Increments Redis key 'cache:v:global'
 ```
 
-**Invalidation Strategy:** Uses `SCAN` instead of `KEYS` for production safety (non-blocking)
+**How it works:**
+1. All cache keys include the current version number: `v5:GET:/api/items`
+2. When data changes, `bumpGlobalCacheVersion()` increments the version: `5 → 6`
+3. New requests use the new version: `v6:GET:/api/items` (cache miss, fresh data fetched)
+4. Old cached entries (`v5:*`) remain in Redis but are never accessed (expire via TTL)
 
-**Implementation:** `backend/middleware/cache.js:239-274`
+**Benefits:**
+- **O(1) invalidation**: Single Redis `INCR` operation vs scanning/deleting thousands of keys
+- **Serverless-optimized**: No blocking SCAN operations
+- **Atomic**: All caches invalidated instantly
+- **Multi-instance safe**: Version changes visible to all serverless instances
+
+**Version Memoization:**
+- Each serverless instance caches the version number in memory for **200ms**
+- Reduces Redis GET calls during burst traffic
+- Trade-off: Up to 200ms staleness window after invalidation across instances
+- Configurable via `VERSION_MEMO_TTL_MS` (set to 0 to disable)
+
+**Legacy SCAN-based invalidation:**
+- `invalidateCache(pattern)` still available but **deprecated**
+- Use `bumpGlobalCacheVersion()` for new code
+
+**Implementation:** `backend/middleware/cache.js:10-158, 402-448`
 
 ### Request Coalescing (Stampede Prevention)
 
@@ -242,7 +275,9 @@ When multiple identical requests arrive simultaneously:
 3. **On completion**: First request caches data and notifies all waiting requests
 4. **Result**: Only 1 DB query instead of N queries
 
-**Implementation:** `backend/middleware/cache.js:9-118`
+**Note:** Coalescing uses the full versioned cache key, so requests during a version transition may not coalesce (acceptable trade-off for freshness).
+
+**Implementation:** `backend/middleware/cache.js:28-231, 240-359`
 
 ---
 
@@ -468,24 +503,36 @@ psql $NEON_DATABASE_URL -f backend/db/migrations/001_init_schema.sql
 - **Auto-reconnect**: Exponential backoff (50ms, 100ms, 200ms, ...)
 - **Max retries**: 10 attempts before giving up
 - **Connection pooling**: Reuses existing connection if available
+- **Serverless optimization**: `getRedisIfReady()` provides synchronous access to already-connected client
+
+**Key Functions:**
+- `getRedisClient()`: Async function to get or create Redis connection
+- `getRedisIfReady()`: Synchronous check for ready Redis client (serverless-optimized)
+- `closeRedisClient()`: Gracefully close connection
+- `isRedisConnected()`: Check if Redis is connected
 
 **Environment Variable:**
 - `REDIS_URL` (optional): Redis connection string (e.g., `redis://localhost:6379`)
 
 **If Redis is not configured:** All cache operations become no-ops (app runs without caching).
 
+**Serverless Optimization:**
+The `getRedisIfReady()` function allows cache middleware to check for an existing connection without the overhead of async connection establishment, improving cold start performance in serverless environments.
+
 ### Cache Middleware: `backend/middleware/cache.js`
 
 See [Cache Flow](#cache-flow) section for detailed explanation.
 
 **Key Functions:**
-- `cacheMiddleware(ttl)`: Express middleware for caching GET requests
-- `generateCacheKey(req)`: Generate cache key from request
-- `invalidateCache(pattern)`: Invalidate cache by pattern (uses SCAN)
-- `invalidateItemCache()`: Invalidate all `/api/items*` cache
-- `invalidateOrderCache()`: Invalidate all `/api/orders*` cache
-- `invalidateFeedbackCache()`: Invalidate all `/api/feedbacks*` cache
-- `clearAllCache()`: Flush entire Redis database
+- `cacheMiddleware(ttl)`: Express middleware for caching GET requests with versioned keys
+- `generateCacheKey(req, version)`: Generate versioned cache key from request
+- `getGlobalCacheVersion(redis)`: Get current cache version with in-memory memoization
+- `bumpGlobalCacheVersion()`: Increment cache version for O(1) invalidation (recommended)
+- `invalidateItemCache()`: Invalidate item caches via version bump
+- `invalidateOrderCache()`: Invalidate order caches via version bump
+- `invalidateFeedbackCache()`: Invalidate feedback caches via version bump
+- `invalidateCache(pattern)`: Legacy SCAN-based invalidation (deprecated)
+- `clearAllCache()`: Flush entire Redis database and reset version
 
 **Response Validation:**
 
@@ -494,6 +541,13 @@ The cache middleware validates responses before caching to prevent caching error
 - Skips error responses (e.g., `{ error: "..." }`)
 - Validates paginated responses have `items` array and `pagination` metadata
 - Skips responses that fail validation
+
+**Versioned Cache Architecture:**
+- All cache keys include global version: `v{VERSION}:{METHOD}:{PATH}`
+- Version stored in Redis key `cache:v:global` (default: 1)
+- Version memoized in memory for 200ms to reduce Redis calls
+- Invalidation via version bump (O(1)) instead of key scanning (O(N))
+- Old versioned keys expire naturally via TTL
 
 **See also:** [`docs/DATABASE_AND_CACHE_OPTIMIZATION.md`](./DATABASE_AND_CACHE_OPTIMIZATION.md) for optimization details.
 
@@ -774,11 +828,12 @@ For deeper technical details, see:
 1. **Fail Fast**: Database connection errors terminate app startup
 2. **Graceful Degradation**: Redis failures don't crash the app
 3. **Security First**: Auth disabled in production is blocked
-4. **Caching Strategy**: Long TTLs for static data, short/no cache for dynamic data
-5. **N+1 Prevention**: Batched queries using `inArray` for related data
-6. **Retry Logic**: Transient database errors automatically retried (3 attempts)
-7. **Structured Logging**: All logs include context and metadata
-8. **Error Transparency**: Development shows full errors, production hides internals
+4. **Serverless-First Caching**: Global versioned cache keys for O(1) invalidation
+5. **Caching Strategy**: Long TTLs for static data, short/no cache for dynamic data
+6. **N+1 Prevention**: Batched queries using `inArray` for related data
+7. **Retry Logic**: Transient database errors automatically retried (3 attempts)
+8. **Structured Logging**: All logs include context and metadata
+9. **Error Transparency**: Development shows full errors, production hides internals
 
 ---
 
@@ -786,13 +841,16 @@ For deeper technical details, see:
 
 - **Connection Pooling**: Neon HTTP uses connection pooling automatically
 - **Index Coverage**: 13 indexes covering all common query patterns
+- **Versioned Cache Keys**: O(1) cache invalidation via version bump (no SCAN operations)
 - **Cache Stampede Prevention**: Request coalescing prevents duplicate DB queries
+- **Version Memoization**: 200ms in-memory cache reduces Redis calls during burst traffic
 - **Response Validation**: Prevents caching invalid/empty data
+- **Serverless-Optimized Redis**: `getRedisIfReady()` reduces cold start overhead
 - **Lazy Redis Connection**: Only connects when first request arrives
 - **Async Cache Operations**: Cache writes don't block response to client
 
 ---
 
 **Version**: 1.0.0  
-**Last Updated**: 2024-12-13  
+**Last Updated**: 2024-12-13 (Updated for versioned cache keys)  
 **Maintained by**: Order Management Team
