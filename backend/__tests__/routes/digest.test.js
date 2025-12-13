@@ -41,24 +41,24 @@ describe('Digest Routes', () => {
 
   describe('POST /api/internal/digest/run', () => {
     describe('Authentication', () => {
-      it('should reject requests without X-DIGEST-SECRET header', async () => {
+      it('should reject requests without any authentication', async () => {
         const response = await request(app)
           .post('/api/internal/digest/run');
 
         expect(response.status).toBe(401);
-        expect(response.body.message).toContain('Invalid or missing X-DIGEST-SECRET');
+        expect(response.body.message).toContain('Invalid or missing authentication');
       });
 
-      it('should reject requests with incorrect secret', async () => {
+      it('should reject requests with incorrect X-DIGEST-SECRET', async () => {
         const response = await request(app)
           .post('/api/internal/digest/run')
           .set('X-DIGEST-SECRET', 'wrong-secret');
 
         expect(response.status).toBe(401);
-        expect(response.body.message).toContain('Invalid or missing X-DIGEST-SECRET');
+        expect(response.body.message).toContain('Invalid or missing authentication');
       });
 
-      it('should accept requests with correct secret', async () => {
+      it('should accept requests with correct X-DIGEST-SECRET', async () => {
         runDailyDigest.mockResolvedValue({ status: 'sent', digestDate: '2024-12-15' });
 
         const response = await request(app)
@@ -68,8 +68,22 @@ describe('Digest Routes', () => {
         expect(response.status).toBe(200);
       });
 
-      it('should return 500 when DIGEST_JOB_SECRET is not configured', async () => {
+      it('should accept requests with Vercel CRON_SECRET authorization', async () => {
+        process.env.CRON_SECRET = 'vercel-cron-secret';
         delete process.env.DIGEST_JOB_SECRET;
+        
+        runDailyDigest.mockResolvedValue({ status: 'sent', digestDate: '2024-12-15' });
+
+        const response = await request(app)
+          .post('/api/internal/digest/run')
+          .set('Authorization', 'Bearer vercel-cron-secret');
+
+        expect(response.status).toBe(200);
+      });
+
+      it('should return 500 when no secrets are configured', async () => {
+        delete process.env.DIGEST_JOB_SECRET;
+        delete process.env.CRON_SECRET;
 
         const response = await request(app)
           .post('/api/internal/digest/run')

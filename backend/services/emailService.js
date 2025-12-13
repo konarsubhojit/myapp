@@ -4,6 +4,23 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('EmailService');
 
 /**
+ * Strip HTML tags from a string iteratively to handle nested/partial tags
+ * This is safe for internal email content stripping (not for sanitizing user input)
+ * @param {string} html - HTML string to strip
+ * @returns {string} Plain text without HTML tags
+ */
+function stripHtmlTags(html) {
+  let result = html;
+  let previous;
+  // Iteratively strip tags to handle any nested or partial tags
+  do {
+    previous = result;
+    result = result.replace(/<[^>]*>/g, '');
+  } while (result !== previous);
+  return result;
+}
+
+/**
  * Get the email transporter
  * Falls back to a mock transporter in test environment
  * @returns {Object} Nodemailer transporter
@@ -55,12 +72,17 @@ export async function sendEmail({ to, subject, html, text }) {
 
   const fromAddress = process.env.SMTP_FROM || 'noreply@order-management.local';
   
+  // Strip HTML tags for plain text version. This is safe because:
+  // 1. The HTML content is generated internally by buildDigestEmailHtml, not from user input
+  // 2. The plain text is only used as a fallback for email clients, not rendered as HTML
+  const plainText = text || stripHtmlTags(html);
+  
   const mailOptions = {
     from: fromAddress,
     to: Array.isArray(to) ? to.join(', ') : to,
     subject,
     html,
-    text: text || html.replace(/<[^>]*>/g, '') // Strip HTML tags for text version
+    text: plainText
   };
 
   try {

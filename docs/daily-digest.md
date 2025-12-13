@@ -109,14 +109,32 @@ To automatically trigger the digest at 09:00 IST (03:30 UTC) daily, add the foll
 }
 ```
 
-**Important**: Make sure to set the `DIGEST_JOB_SECRET` environment variable in your Vercel project settings, and configure the cron to include the `X-DIGEST-SECRET` header.
+**Note about Vercel Cron**: Vercel's built-in cron does not support custom headers. To use Vercel Cron, you have two options:
 
-### Manual Cron Trigger
+1. **Use Vercel's automatic CRON_SECRET**: Vercel automatically sets a `CRON_SECRET` environment variable and includes an `Authorization: Bearer <CRON_SECRET>` header. You can modify the digest route to validate this instead.
+
+2. **Use an external cron service** (recommended for production): External services like cron-job.org, Upstash, or AWS EventBridge can include custom headers.
+
+### External Cron Service (Recommended)
 
 If using an external cron service, configure it to:
 1. Send a POST request to `https://your-domain.com/api/internal/digest/run`
 2. Include the header: `X-DIGEST-SECRET: your-secret`
 3. Schedule at 09:00 IST (03:30 UTC): `30 3 * * *`
+
+### Adapting for Vercel Cron
+
+To use Vercel's native cron, modify `backend/routes/digest.js` to also accept Vercel's `Authorization` header:
+
+```javascript
+// Check for Vercel CRON_SECRET as an alternative
+const vercelCronSecret = req.headers['authorization'];
+const expectedVercelSecret = process.env.CRON_SECRET;
+
+if (expectedVercelSecret && vercelCronSecret === `Bearer ${expectedVercelSecret}`) {
+  return next(); // Valid Vercel cron request
+}
+```
 
 ## Seeding Recipients
 

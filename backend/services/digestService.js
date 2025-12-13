@@ -45,7 +45,7 @@ export async function upsertDigestRun(digestDate, status, error = null) {
   const existing = await getDigestRunForDate(digestDate);
   
   if (existing) {
-    const updateData = { status, updatedAt: new Date() };
+    const updateData = { status };
     if (status === 'sent') {
       updateData.sentAt = new Date();
     }

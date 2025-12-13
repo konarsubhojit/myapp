@@ -10,29 +10,43 @@ const logger = createLogger('DigestRoute');
 /**
  * Middleware to verify digest job secret
  * Protects the internal digest endpoint from unauthorized access
+ * Supports both X-DIGEST-SECRET header and Vercel's CRON_SECRET authorization
  */
 function verifyDigestSecret(req, res, next) {
   const providedSecret = req.headers['x-digest-secret'];
   const expectedSecret = process.env.DIGEST_JOB_SECRET;
+  
+  // Also check for Vercel Cron's authorization header
+  const authHeader = req.headers['authorization'];
+  const vercelCronSecret = process.env.CRON_SECRET;
 
-  if (!expectedSecret) {
-    logger.error('DIGEST_JOB_SECRET environment variable is not set');
+  // Check X-DIGEST-SECRET first
+  if (expectedSecret && providedSecret === expectedSecret) {
+    return next();
+  }
+  
+  // Check Vercel's CRON_SECRET authorization
+  if (vercelCronSecret && authHeader === `Bearer ${vercelCronSecret}`) {
+    logger.debug('Verified via Vercel CRON_SECRET');
+    return next();
+  }
+
+  // Neither authentication method worked
+  if (!expectedSecret && !vercelCronSecret) {
+    logger.error('Neither DIGEST_JOB_SECRET nor CRON_SECRET environment variable is set');
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       message: 'Server configuration error'
     });
   }
 
-  if (!providedSecret || providedSecret !== expectedSecret) {
-    logger.warn('Invalid or missing digest secret', { 
-      hasSecret: !!providedSecret,
-      ip: req.ip 
-    });
-    return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-      message: 'Invalid or missing X-DIGEST-SECRET header'
-    });
-  }
-
-  next();
+  logger.warn('Invalid or missing digest secret', { 
+    hasXDigestSecret: !!providedSecret,
+    hasAuthHeader: !!authHeader,
+    ip: req.ip 
+  });
+  return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+    message: 'Invalid or missing authentication'
+  });
 }
 
 /**
