@@ -100,7 +100,7 @@ function validatePaginatedResponse(result, source) {
   }
 }
 
-router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   // Log request details for debugging (metadata only to avoid exposing sensitive data)
@@ -147,7 +147,7 @@ router.get('/', cacheMiddleware(300), asyncHandler(async (req, res) => {
   }
 }));
 
-router.get('/deleted', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/deleted', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const { page, limit, search } = parsePaginationParams(req.query);
   
   const result = await Item.findDeletedPaginated({ page, limit, search });
