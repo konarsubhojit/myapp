@@ -5,6 +5,7 @@ import FeedbackToken from '../models/FeedbackToken.js';
 import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError, unauthorizedError } from '../utils/errorHandler.js';
+import { invalidateFeedbackCache } from '../middleware/cache.js';
 import {
   MIN_RATING,
   MAX_RATING,
@@ -142,6 +143,9 @@ router.post('/', asyncHandler(async (req, res) => {
 
   // Mark token as used
   await FeedbackToken.markAsUsed(token);
+
+  // Invalidate feedback cache after creating to ensure consistency
+  await invalidateFeedbackCache();
 
   logger.info('Public feedback created', { feedbackId: newFeedback._id, orderId: orderId, tokenUsed: token });
   res.status(201).json(newFeedback);

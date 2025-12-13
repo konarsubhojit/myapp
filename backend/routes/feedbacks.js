@@ -6,6 +6,7 @@ import Order from '../models/Order.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
 import { parsePaginationParams } from '../utils/pagination.js';
+import { cacheMiddleware, invalidateFeedbackCache } from '../middleware/cache.js';
 import {
   MIN_RATING,
   MAX_RATING,
@@ -83,7 +84,7 @@ router.post('/generate-token/:orderId', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/feedbacks - Get all feedbacks with optional pagination
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   if (req.query.page || req.query.limit) {
@@ -96,7 +97,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/feedbacks/order/:orderId - Get feedback for a specific order
-router.get('/order/:orderId', asyncHandler(async (req, res) => {
+router.get('/order/:orderId', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const feedback = await Feedback.findByOrderId(req.params.orderId);
   if (!feedback) {
     throw notFoundError('Feedback for this order');
@@ -105,13 +106,13 @@ router.get('/order/:orderId', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/feedbacks/stats - Get feedback statistics
-router.get('/stats', asyncHandler(async (req, res) => {
+router.get('/stats', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const stats = await Feedback.getAverageRatings();
   res.json(stats);
 }));
 
 // GET /api/feedbacks/:id - Get a specific feedback
-router.get('/:id', asyncHandler(async (req, res) => {
+router.get('/:id', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const feedback = await Feedback.findById(req.params.id);
   if (!feedback) {
     throw notFoundError('Feedback');
@@ -177,6 +178,9 @@ router.post('/', asyncHandler(async (req, res) => {
     isPublic: isPublic !== undefined ? Boolean(isPublic) : true
   });
 
+  // Invalidate feedback cache after creating to ensure consistency
+  await invalidateFeedbackCache();
+
   logger.info('Feedback created', { feedbackId: newFeedback._id, orderId: orderId });
   res.status(201).json(newFeedback);
 }));
@@ -232,10 +236,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
   if (responseText !== undefined) updateData.responseText = responseText;
 
+  // Proactively invalidate cache BEFORE updating to prevent race conditions
+  await invalidateFeedbackCache();
+
   const updatedFeedback = await Feedback.findByIdAndUpdate(req.params.id, updateData);
   if (!updatedFeedback) {
     throw notFoundError('Feedback');
   }
+
+  // Invalidate feedback cache again after updating to ensure consistency
+  await invalidateFeedbackCache();
 
   logger.info('Feedback updated', { feedbackId: req.params.id });
   res.json(updatedFeedback);

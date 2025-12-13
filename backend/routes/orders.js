@@ -295,19 +295,19 @@ async function processUpdateOrderItems(items) {
   return buildOrderItemsList(items);
 }
 
-router.get('/priority', cacheMiddleware(60), asyncHandler(async (req, res) => {
+router.get('/priority', cacheMiddleware(300), asyncHandler(async (req, res) => {
   const priorityOrders = await Order.findPriorityOrders();
   res.json(priorityOrders);
 }));
 
 // Get all orders without pagination - this is the source of truth
-router.get('/all', cacheMiddleware(60), asyncHandler(async (req, res) => {
+router.get('/all', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const orders = await Order.find();
   res.json(orders);
 }));
 
 // Get orders with pagination - uses cached all orders internally
-router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   // Always use pagination - fetch all orders first (will be cached)
@@ -412,7 +412,7 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(newOrder);
 }));
 
-router.get('/:id', cacheMiddleware(300), asyncHandler(async (req, res) => {
+router.get('/:id', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) {
     throw notFoundError('Order');
