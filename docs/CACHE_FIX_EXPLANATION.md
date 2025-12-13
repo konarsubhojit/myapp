@@ -199,7 +199,45 @@ This change is **backwards compatible**:
 1. **Monitor Cache Hit Rates**: Track cache effectiveness with the new pattern
 2. **Consider Cache TTL Adjustments**: May be able to increase TTL with more reliable caching
 3. **Profile Database Performance**: Confirm query optimization benefits in production
-4. **Implement Selective Cache Invalidation**: Use granular invalidation functions when appropriate
+4. ~~**Implement Selective Cache Invalidation**: Use granular invalidation functions when appropriate~~ ✅ **Completed** - Now using global versioned cache keys
+
+## Recent Improvements: Global Versioned Cache Keys
+
+The cache invalidation system has been upgraded from SCAN-based pattern matching to a **global versioned cache key** approach:
+
+### Before (SCAN-based)
+```javascript
+async function invalidateCache(pattern) {
+  // O(n) - iterates through all keys in Redis
+  do {
+    const result = await redis.scan(cursor, { MATCH: pattern });
+    // ...
+  } while (cursor !== 0);
+  await redis.del(keys);
+}
+```
+
+### After (Version-based)
+```javascript
+async function bumpGlobalCacheVersion() {
+  // O(1) - single atomic operation
+  const newVersion = await redis.incr('cache:v:global');
+  return newVersion;
+}
+```
+
+### Benefits
+1. **O(1) Invalidation**: Single `INCR` operation vs iterating through all keys
+2. **Serverless-Optimized**: Works well with Vercel cold starts
+3. **No Blocking**: Doesn't block Redis with pattern scanning
+4. **Automatic Cleanup**: Old cached data expires via TTL
+
+### Cache Key Format
+```
+v{VERSION}:{METHOD}:{PATH}?{SORTED_QUERY}
+```
+
+Example: `v7:GET:/api/orders?page=1&limit=10`
 
 ## Conclusion
 

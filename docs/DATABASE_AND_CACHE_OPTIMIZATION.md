@@ -306,10 +306,75 @@ Route-specific TTLs:
 - Non-recoverable errors
 
 ### Cache Invalidation Strategy
-1. **Always** invalidate cache proactively (before operation)
-2. **Always** invalidate cache after operation for consistency
-3. **Always** use `await` for cache invalidation to ensure it completes
-4. **Consider** using more specific cache keys to minimize invalidation scope
+
+#### Global Version-Based Invalidation (Recommended)
+
+The current implementation uses **global versioned cache keys** instead of SCAN-based pattern invalidation:
+
+**Cache Key Format:**
+```
+v{VERSION}:{METHOD}:{PATH}?{SORTED_QUERY}
+```
+
+**How it works:**
+1. A global version is stored in Redis under `cache:v:global`
+2. All cache keys include this version as a prefix
+3. When data changes, the version is incremented using `INCR`
+4. New requests use the new version, effectively invalidating old cache entries
+5. Old cached data naturally expires via TTL
+
+**Benefits over SCAN-based invalidation:**
+- **O(1) complexity**: Single `INCR` operation vs O(n) pattern matching
+- **No blocking**: Doesn't block Redis with SCAN iterations
+- **Serverless-friendly**: Works well with Vercel cold starts
+- **Atomic**: Version increment is atomic and consistent
+
+**Implementation:**
+```javascript
+// Bump version to invalidate all caches
+export async function bumpGlobalCacheVersion() {
+  const redis = getRedisIfReady();
+  if (!redis) return null;
+  
+  const newVersion = await redis.incr(CACHE_VERSION_KEY);
+  return newVersion;
+}
+
+// All invalidation functions now use version bump
+export async function invalidateItemCache() {
+  await bumpGlobalCacheVersion();
+}
+
+export async function invalidateOrderCache() {
+  await bumpGlobalCacheVersion();
+}
+```
+
+#### Legacy SCAN-Based Invalidation (Deprecated)
+
+The `invalidateCache(pattern)` function still exists but is deprecated:
+- Uses Redis SCAN to find matching keys
+- O(n) complexity where n = total keys in Redis
+- Can cause performance issues in production
+- Only use for debugging or special cases
+
+### Serverless Optimization
+
+For Vercel serverless environments:
+
+1. **Use `getRedisIfReady()`**: Synchronous check for existing connection
+   ```javascript
+   const redis = getRedisIfReady(); // Returns null if not connected
+   if (!redis) return next(); // Skip caching, proceed without blocking
+   ```
+
+2. **In-memory version memoization**: Reduces Redis lookups
+   ```javascript
+   const VERSION_MEMO_TTL_MS = 3000; // Cache version for 3 seconds
+   let localVersion = null;
+   ```
+
+3. **Graceful degradation**: App continues without caching if Redis is slow/unavailable
 
 ### Monitoring
 Monitor these metrics in production:
@@ -317,6 +382,16 @@ Monitor these metrics in production:
 - Retry success rate
 - Cache hit/miss rate
 - Invalid response prevention rate
+- Cache version increments per minute
+
+### Cache Debug Logs
+Enable debug logging to see cache behavior:
+```
+[CacheMiddleware] Cache hit { key: 'v5:GET:/api/items/', version: 5 }
+[CacheMiddleware] Cache miss { key: 'v5:GET:/api/orders', version: 5 }
+[CacheMiddleware] Global cache version bumped { newVersion: 6 }
+[CacheMiddleware] Using memoized cache version { version: 6 }
+```
 
 ## Troubleshooting
 
