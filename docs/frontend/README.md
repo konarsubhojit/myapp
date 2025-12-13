@@ -19,7 +19,8 @@ The frontend is a **React 19** single-page application built with **Vite** and *
 - **Framework**: React 19 with TypeScript
 - **Build Tool**: Vite (fast HMR and optimized builds)
 - **UI Library**: Material-UI (MUI) v6
-- **State Management**: React Context API
+- **State Management**: React Context API + TanStack Query (React Query v5)
+- **Caching**: TanStack Query for client-side data caching
 - **Routing**: State-based navigation (no React Router)
 - **HTTP Client**: Native Fetch API with auth wrapper
 - **Authentication**: Google OAuth (@react-oauth/google)
@@ -30,10 +31,11 @@ The frontend is a **React 19** single-page application built with **Vite** and *
 ### Architecture Principles
 1. **Component-Based**: Modular, reusable components
 2. **Context-Based State**: Global state via React Context (Auth, Currency, Notifications)
-3. **Custom Hooks**: Business logic encapsulation
-4. **Service Layer**: API abstraction with centralized auth
-5. **Guest Mode**: View-only mode without backend calls
-6. **Responsive Design**: Mobile-first with Material-UI breakpoints
+3. **Client-Side Caching**: TanStack Query for smart data fetching and caching
+4. **Custom Hooks**: Business logic encapsulation (both traditional and Query hooks)
+5. **Service Layer**: API abstraction with centralized auth
+6. **Guest Mode**: View-only mode without backend calls
+7. **Responsive Design**: Mobile-first with Material-UI breakpoints
 
 ---
 
@@ -136,21 +138,78 @@ interface NotificationContextType {
 
 ### Custom Hooks
 
-The application uses custom hooks to encapsulate business logic:
+The application uses custom hooks to encapsulate business logic, with two types: **TanStack Query hooks** for data fetching/caching and **traditional hooks** for UI logic.
 
+#### TanStack Query Hooks (Data Fetching & Caching)
+
+**Query Hooks** (Read Operations):
 | Hook | Purpose |
 |------|---------|
-| `useItemsData` | Fetch and manage items with pagination |
-| `useDeletedItems` | Manage soft-deleted items |
+| `useItems` | Fetch all items (non-paginated, cached) |
+| `useItemsPaginated` | Fetch paginated items with search |
+| `useDeletedItemsQuery` | Fetch soft-deleted items with pagination |
+| `useOrdersAll` | Fetch all orders (cached) |
+| `useOrdersPaginated` | Fetch paginated orders with filters |
+| `useOrder` | Fetch single order details |
+| `usePriorityOrdersQuery` | Fetch urgent orders for notifications |
+| `useFeedbacks` | Fetch all feedbacks |
+| `useFeedbacksPaginated` | Fetch paginated feedbacks |
+| `useFeedback` | Fetch single feedback |
+| `useFeedbackByOrderId` | Fetch feedback by order ID |
+| `useFeedbackStats` | Fetch feedback statistics |
+| `useSalesAnalyticsQuery` | Fetch sales analytics data |
+
+**Mutation Hooks** (Write Operations):
+| Hook | Purpose |
+|------|---------|
+| `useCreateItem` | Create new item, invalidates cache |
+| `useUpdateItem` | Update item, invalidates cache |
+| `useDeleteItem` | Soft delete item, invalidates cache |
+| `useRestoreItem` | Restore soft-deleted item, invalidates cache |
+| `usePermanentlyDeleteItem` | Permanently delete item |
+| `useCreateOrder` | Create new order, invalidates cache |
+| `useUpdateOrder` | Update order, invalidates cache |
+| `useCreateFeedback` | Create feedback, invalidates cache |
+| `useUpdateFeedback` | Update feedback, invalidates cache |
+| `useGenerateFeedbackToken` | Generate feedback token |
+
+#### Traditional Hooks (UI Logic & Legacy)
+| Hook | Purpose |
+|------|---------|
+| `useItemsData` | Legacy: Fetch and manage items with pagination |
+| `useDeletedItems` | Legacy: Manage soft-deleted items |
 | `useItemForm` | Item creation/editing form logic |
 | `useImageProcessing` | Image upload and compression |
-| `useOrderDetails` | Fetch and manage order details |
-| `useOrderPagination` | Order list pagination |
+| `useOrderDetails` | Legacy: Fetch and manage order details |
+| `useOrderPagination` | Legacy: Order list pagination |
 | `useOrderFilters` | Order filtering and search |
-| `usePriorityOrders` | Fetch urgent orders for notifications |
-| `useSalesAnalytics` | Sales report data fetching and calculations |
+| `usePriorityOrders` | Legacy: Fetch urgent orders for notifications |
+| `useSalesAnalytics` | Legacy: Sales report data fetching |
+| `useSalesAnalyticsOptimized` | Optimized sales analytics |
 | `useInfiniteScroll` | Infinite scroll implementation |
 | `useUrlSync` | Sync state with URL query parameters |
+
+**Note**: The app is transitioning from traditional hooks to TanStack Query hooks for better caching and performance. Both are currently maintained for backward compatibility.
+
+### Query Client Configuration
+
+#### queryClient.ts
+Singleton QueryClient with centralized caching configuration:
+```typescript
+{
+  staleTime: 2 * 60_000,      // 2 minutes fresh
+  gcTime: 15 * 60_000,        // Keep in cache for 15 minutes
+  retry: 1,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+}
+```
+
+#### queryKeys.ts
+Centralized query key factory for stable, consistent caching:
+- Ensures proper cache invalidation
+- Type-safe query keys
+- Hierarchical key structure (e.g., `['items', 'page', params]`)
 
 ### Services
 
@@ -426,24 +485,28 @@ npm run typecheck
 graph TD
     A[Browser loads app] --> B[main.tsx]
     B --> C[Render ErrorBoundary]
-    C --> D[Render GoogleOAuthProvider]
-    D --> E[Render ThemeProvider + CssBaseline]
-    E --> F[Render NotificationProvider]
-    F --> G[Render App component]
-    G --> H[Render AuthProvider]
-    H --> I[Render CurrencyProvider]
-    I --> J[Render AppContent]
-    J --> K{AuthContext: isAuthenticated?}
-    K -->|No| L[Render Login]
-    K -->|Yes| M[Render Main App]
-    M --> N[Render AppBar with Navigation]
-    M --> O[Render Current Route Component]
+    C --> D[Render QueryClientProvider]
+    D --> E[Render GoogleOAuthProvider]
+    E --> F[Render ThemeProvider + CssBaseline]
+    F --> G[Render NotificationProvider]
+    G --> H[Render App component]
+    H --> I[Render AuthProvider]
+    I --> J[Render CurrencyProvider]
+    J --> K[Render AppContent]
+    K --> L{AuthContext: isAuthenticated?}
+    L -->|No| M[Render Login]
+    L -->|Yes| N[Render Main App]
+    N --> O[Render AppBar with Navigation]
+    N --> P[Render Current Route Component]
+    N --> Q[TanStack Query fetches & caches data]
     
-    L --> P{User Action}
-    P -->|Google Login| Q[OAuth Flow]
-    P -->|Guest Mode| R[Enable Guest Mode]
-    Q --> M
-    R --> M
+    M --> R{User Action}
+    R -->|Google Login| S[OAuth Flow]
+    R -->|Guest Mode| T[Enable Guest Mode]
+    S --> N
+    T --> N
+    
+    D --> U[ReactQueryDevtools - Development only]
 ```
 
 ### Authentication Flow
@@ -480,12 +543,14 @@ sequenceDiagram
     Login->>User: Show App (guest mode, read-only)
 ```
 
-### Create Order Flow
+### Create Order Flow (with TanStack Query)
 
 ```mermaid
 sequenceDiagram
     participant User
     participant OrderForm
+    participant useCreateOrder
+    participant QueryClient
     participant API
     participant Backend
     participant DB
@@ -497,18 +562,24 @@ sequenceDiagram
     User->>OrderForm: Click "Create Order"
     
     OrderForm->>OrderForm: Validate form data
-    OrderForm->>API: createOrder(orderData)
+    OrderForm->>useCreateOrder: mutate(orderData)
+    useCreateOrder->>API: createOrder(orderData)
     API->>API: getAuthHeaders() - add Bearer token
     API->>Backend: POST /api/orders
     Backend->>Backend: Verify JWT token
     Backend->>DB: INSERT order + order_items
     DB->>Backend: Return created order
     Backend->>API: 201 Created { order }
-    API->>OrderForm: Return order
+    API->>useCreateOrder: Return order
+    useCreateOrder->>QueryClient: invalidateQueries(['orders'])
+    useCreateOrder->>QueryClient: invalidateQueries(['analytics'])
+    QueryClient->>QueryClient: Mark cached data as stale
+    useCreateOrder->>OrderForm: onSuccess callback
     OrderForm->>OrderForm: Show success notification
     OrderForm->>OrderForm: Clear form
-    OrderForm->>OrderForm: Increment orderHistoryKey (trigger refresh)
     OrderForm->>User: Show success message
+    
+    Note over QueryClient: Next query fetch will get fresh data
 ```
 
 ### Order History with Pagination
@@ -683,17 +754,82 @@ graph LR
     M --> O[UI state]
     M --> P[Pagination]
     
-    B -->|API Data| Q[Custom Hook]
-    Q --> R[Fetch from API]
-    R --> S[Update local state]
-    S --> T[Re-render component]
+    B -->|API Data - Query| Q[TanStack Query Hook]
+    Q --> R[Check cache]
+    R -->|Fresh| S[Return cached data]
+    R -->|Stale| T[Fetch from API]
+    T --> U[Update cache]
+    U --> V[Re-render component]
+    
+    B -->|API Data - Mutation| W[TanStack Mutation Hook]
+    W --> X[Call API]
+    X --> Y[Invalidate cache]
+    Y --> Z[Re-fetch affected queries]
+```
+
+### TanStack Query Data Caching Flow
+
+```mermaid
+sequenceDiagram
+    participant Component
+    participant useItemsQuery
+    participant QueryClient
+    participant Cache
+    participant API
+    participant Backend
+
+    Component->>useItemsQuery: Call hook
+    useItemsQuery->>QueryClient: Request data for key ['items']
+    QueryClient->>Cache: Check cache
+    
+    alt Cache Hit & Fresh (< 2 min)
+        Cache->>QueryClient: Return cached data
+        QueryClient->>useItemsQuery: Return cached data
+        useItemsQuery->>Component: Render with cached data
+    else Cache Hit & Stale (> 2 min)
+        Cache->>QueryClient: Return stale data
+        QueryClient->>useItemsQuery: Return stale data (loading: false)
+        useItemsQuery->>Component: Render with stale data
+        QueryClient->>API: Background fetch
+        API->>Backend: GET /api/items
+        Backend->>API: Return fresh data
+        API->>QueryClient: Update cache
+        QueryClient->>useItemsQuery: Return fresh data
+        useItemsQuery->>Component: Re-render with fresh data
+    else Cache Miss
+        QueryClient->>useItemsQuery: Return loading state
+        useItemsQuery->>Component: Render loading indicator
+        QueryClient->>API: Fetch data
+        API->>Backend: GET /api/items
+        Backend->>API: Return data
+        API->>QueryClient: Store in cache
+        QueryClient->>useItemsQuery: Return data
+        useItemsQuery->>Component: Render with data
+    end
+    
+    Note over Cache: Data kept for 15 minutes (gcTime)
+    Note over Cache: Fresh for 2 minutes (staleTime)
 ```
 
 ---
 
 ## Key Features
 
-### 1. Guest Mode
+### 1. TanStack Query Client-Side Caching
+- **Purpose**: Reduce API calls, improve performance, provide instant UI feedback
+- **Benefits**:
+  - **Instant Loading**: Show cached data immediately while fetching fresh data in background
+  - **Smart Caching**: Data stays fresh for 2 minutes, cached for 15 minutes
+  - **Auto-Invalidation**: Mutations automatically invalidate related caches
+  - **Optimistic Updates**: UI updates instantly before API confirmation
+  - **Background Refetch**: Auto-refetch on window focus and reconnect
+- **Implementation**:
+  - Query hooks for read operations (`useItems`, `useOrdersPaginated`, etc.)
+  - Mutation hooks for write operations (`useCreateOrder`, `useUpdateItem`, etc.)
+  - Centralized query key factory for consistent cache keys
+  - DevTools available in development for cache inspection
+
+### 2. Guest Mode
 - **Purpose**: View UI without authentication or API calls
 - **Use Cases**: Screenshots, demos, UI testing
 - **Implementation**: 
@@ -702,7 +838,7 @@ graph LR
   - `api.ts` checks guest mode and returns mock empty data
   - All API calls are intercepted
 
-### 2. State-Based Navigation
+### 3. State-Based Navigation
 - **Why**: Vercel compatibility, simpler than React Router
 - **How**: 
   - `currentRoute` state in App.tsx
@@ -710,23 +846,24 @@ graph LR
   - App.tsx conditionally renders components
 - **Benefits**: No routing configuration, full control
 
-### 3. Priority Notifications
+### 4. Priority Notifications
 - **Purpose**: Alert users to urgent orders
 - **Criteria**: Priority ≥ 3 OR delivery within 3 days
 - **UI**: Bell icon with badge count in header
 - **Features**: Auto-refresh, view order details
+- **Caching**: Uses `usePriorityOrdersQuery` with auto-refetch
 
-### 4. Multi-Currency Support
+### 5. Multi-Currency Support
 - **Currencies**: USD, EUR, GBP, INR
 - **Storage**: localStorage persistence
 - **Formatting**: Automatic price formatting with symbols
 
-### 5. Image Upload Optimization
+### 6. Image Upload Optimization
 - **Compression**: Browser-side compression before upload
 - **Storage**: Vercel Blob Storage
 - **Soft Delete**: Images retained for soft-deleted items
 
-### 6. Responsive Design
+### 7. Responsive Design
 - **Breakpoints**: xs, sm, md, lg, xl (Material-UI)
 - **Mobile**: Side drawer navigation
 - **Desktop**: Top navigation tabs
@@ -745,26 +882,39 @@ graph LR
 ### State Management
 - Use Context for global state (Auth, Currency, Notifications)
 - Use local state for component-specific data
-- Use custom hooks to encapsulate data fetching
+- Use TanStack Query for server state (API data)
+- Use custom hooks to encapsulate data fetching logic
 - Avoid prop drilling with Context
 
 ### API Integration
 - Centralize API calls in `services/api.ts`
 - Use auth token injection via `setAccessTokenGetter()`
-- Handle errors consistently
+- Prefer TanStack Query hooks over direct API calls
+- Use query hooks for reads, mutation hooks for writes
+- Handle errors consistently with mutation `onError` callbacks
 - Show user-friendly notifications
 
+### Data Fetching with TanStack Query
+- **Read Operations**: Use query hooks (`useItems`, `useOrders`, etc.)
+- **Write Operations**: Use mutation hooks (`useCreateItem`, `useUpdateOrder`, etc.)
+- **Cache Keys**: Use centralized `queryKeys` factory for consistency
+- **Invalidation**: Mutations auto-invalidate related queries
+- **Optimistic Updates**: Consider optimistic updates for better UX
+- **Error Handling**: Leverage built-in retry and error state
+
 ### Performance
-- Use pagination for large lists
+- Use TanStack Query caching to reduce API calls
+- Use pagination for large lists (with `placeholderData` to show previous page while fetching)
 - Implement infinite scroll where appropriate
 - Compress images before upload
-- Cache frequently accessed data (items in App.tsx)
+- Leverage background refetching on window focus
 
 ### Testing
 - Write unit tests for custom hooks
 - Write integration tests for components
-- Mock API calls in tests
+- Mock TanStack Query hooks in tests
 - Use React Testing Library
+- Test error and loading states
 
 ---
 
@@ -773,4 +923,5 @@ graph LR
 - [Material-UI Documentation](https://mui.com/)
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
+- [TanStack Query Documentation](https://tanstack.com/query/latest)
 - [Backend API Documentation](../../PROJECT_DOCUMENTATION.md#api-documentation)
