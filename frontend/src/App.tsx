@@ -34,9 +34,9 @@ import Login from './components/Login'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { getItems, getOrders } from './services/api'
+import { getItems } from './services/api'
 import { APP_VERSION } from './config/version'
-import type { Item, Order, OrderId } from './types'
+import type { Item, OrderId } from './types'
 
 interface TabRoute {
   id: string;
@@ -81,7 +81,6 @@ function LoadingScreen({ message }: LoadingScreenProps): ReactElement {
 function AppContent(): ReactElement {
   const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
   const [items, setItems] = useState<Item[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const [currentTab, setCurrentTab] = useState<number>(0)
   const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null)
@@ -98,25 +97,12 @@ function AppContent(): ReactElement {
     }
   }, [])
 
-  const fetchOrders = useCallback(async (): Promise<void> => {
-    try {
-      const data = await getOrders()
-      setOrders(data)
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-    }
-  }, [])
-
   const handleOrderCreated = useCallback((): void => {
     // Increment key to trigger OrderHistory refresh when switching tabs
     setOrderHistoryKey(prev => prev + 1)
-    // Also refetch orders if they were already loaded (for SalesReport)
-    if (orders.length > 0) {
-      fetchOrders()
-    }
     // Clear duplicate order state
     setDuplicateOrderId(null)
-  }, [orders.length, fetchOrders])
+  }, [])
 
   const handleDuplicateOrder = useCallback((orderId: string): void => {
     setDuplicateOrderId(orderId)
@@ -143,14 +129,6 @@ function AppContent(): ReactElement {
     
     loadInitialData()
   }, [isAuthenticated, fetchItems])
-
-  // Lazy load orders when SalesReport tab is viewed
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (currentTab === 3 && orders.length === 0) {
-      fetchOrders()
-    }
-  }, [currentTab, isAuthenticated, orders.length, fetchOrders])
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
     setCurrentTab(newValue)
@@ -357,7 +335,7 @@ function AppContent(): ReactElement {
         )}
         
         {currentTab === 3 && (
-          <SalesReport orders={orders} />
+          <SalesReport />
         )}
         
         {currentTab === 4 && (

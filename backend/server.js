@@ -59,6 +59,7 @@ import itemRoutes from './routes/items.js';
 import orderRoutes from './routes/orders.js';
 import feedbackRoutes from './routes/feedbacks.js';
 import publicFeedbackRoutes from './routes/publicFeedbacks.js';
+import analyticsRoutes from './routes/analytics.js';
 
 // Public routes (no authentication)
 app.use('/api/public/feedbacks', publicFeedbackRoutes);
@@ -67,6 +68,7 @@ app.use('/api/public/feedbacks', publicFeedbackRoutes);
 app.use('/api/items', authMiddleware, itemRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 app.use('/api/feedbacks', authMiddleware, feedbackRoutes);
+app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
