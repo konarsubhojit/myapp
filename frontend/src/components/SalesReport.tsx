@@ -18,6 +18,8 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Stack from '@mui/material/Stack';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PersonIcon from '@mui/icons-material/Person';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -27,10 +29,9 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { useSalesAnalytics, TIME_RANGES, ItemData, CustomerData, SourceData, RangeAnalytics } from '../hooks';
+import { useSalesAnalyticsOptimized, ItemData, CustomerData, SourceData, RangeAnalytics } from '../hooks';
 import StatCard from './common/StatCard';
 import ProgressBarWithLabel from './common/ProgressBarWithLabel';
-import type { Order } from '../types';
 
 interface ViewOption {
   key: string;
@@ -54,9 +55,8 @@ const STATUS_FILTER_OPTIONS: StatusFilterOption[] = [
   { key: 'all', label: 'All Orders' },
 ];
 
-interface SalesReportProps {
-  orders: Order[];
-}
+// No props needed anymore - data fetched by the hook
+interface SalesReportProps {}
 
 // Helper to get max value from array using reduce for better performance with large arrays
 const getMaxValue = <T,>(items: T[], getValue: (item: T) => number): number => {
@@ -70,9 +70,10 @@ interface OverviewViewProps {
   analytics: Record<string, RangeAnalytics>;
   selectedRange: string;
   formatPrice: (price: number) => string;
+  timeRanges: Array<{ key: string; label: string; days: number }>;
 }
 
-function OverviewView({ currentStats, analytics, selectedRange, formatPrice }: OverviewViewProps) {
+function OverviewView({ currentStats, analytics, selectedRange, formatPrice, timeRanges }: OverviewViewProps) {
   const topSellingItem = currentStats.topItems.length > 0 ? currentStats.topItems[0] : null;
 
   return (
@@ -152,7 +153,7 @@ function OverviewView({ currentStats, analytics, selectedRange, formatPrice }: O
               </TableRow>
             </TableHead>
             <TableBody>
-              {TIME_RANGES.map(range => (
+              {timeRanges.map(range => (
                 <TableRow 
                   key={range.key} 
                   selected={selectedRange === range.key}
@@ -344,16 +345,16 @@ function SourceView({ sourceBreakdown, formatPrice }: SourceViewProps) {
 }
 
 // Main Component
-function SalesReport({ orders }: SalesReportProps) {
+function SalesReport({}: SalesReportProps) {
   const { formatPrice } = useCurrency();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   
   const [selectedRange, setSelectedRange] = useState('month');
   const [selectedView, setSelectedView] = useState('overview');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState('completed');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'completed' | 'all'>('completed');
 
-  const { analytics, getStatsForRange } = useSalesAnalytics(orders, selectedStatusFilter);
+  const { analytics, getStatsForRange, timeRanges, loading, error } = useSalesAnalyticsOptimized(selectedStatusFilter);
   const currentStats = getStatsForRange(selectedRange);
 
   const handleRangeChange = (e: SelectChangeEvent<string>) => {
@@ -361,12 +362,40 @@ function SalesReport({ orders }: SalesReportProps) {
   };
 
   const handleStatusFilterChange = (e: SelectChangeEvent<string>) => {
-    setSelectedStatusFilter(e.target.value);
+    setSelectedStatusFilter(e.target.value as 'completed' | 'all');
   };
 
   const handleViewChange = (e: SelectChangeEvent<string>) => {
     setSelectedView(e.target.value);
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+        <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+          Sales Report & Analytics
+        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+          <CircularProgress />
+        </Box>
+      </Paper>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+        <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+          Sales Report & Analytics
+        </Typography>
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      </Paper>
+    );
+  }
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>
@@ -384,14 +413,14 @@ function SalesReport({ orders }: SalesReportProps) {
                 label="Time Range"
                 onChange={handleRangeChange}
               >
-                {TIME_RANGES.map(range => (
+                {timeRanges.map(range => (
                   <MenuItem key={range.key} value={range.key}>{range.label}</MenuItem>
                 ))}
               </Select>
             </FormControl>
           ) : (
             <ButtonGroup variant="outlined" size="small">
-              {TIME_RANGES.map(range => (
+              {timeRanges.map(range => (
                 <Button
                   key={range.key}
                   variant={selectedRange === range.key ? 'contained' : 'outlined'}
@@ -447,6 +476,7 @@ function SalesReport({ orders }: SalesReportProps) {
           analytics={analytics} 
           selectedRange={selectedRange}
           formatPrice={formatPrice}
+          timeRanges={timeRanges}
         />
       )}
       {selectedView === 'byItem' && (

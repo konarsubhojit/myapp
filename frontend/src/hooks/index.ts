@@ -7,6 +7,7 @@ export { useOrderDetails } from './useOrderDetails';
 export { useOrderFilters } from './useOrderFilters';
 export { useOrderPagination } from './useOrderPagination';
 export { useSalesAnalytics, TIME_RANGES } from './useSalesAnalytics';
+export { useSalesAnalyticsOptimized } from './useSalesAnalyticsOptimized';
 export type { ItemData, CustomerData, SourceData, RangeAnalytics } from './useSalesAnalytics';
 export { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, getUrgencyLevel } from './usePriorityOrders';
 export type { OrderWithPriority } from './usePriorityOrders';

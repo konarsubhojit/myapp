@@ -282,3 +282,48 @@ export interface OrderEditForm {
 export interface ApiError {
   message: string;
 }
+
+// Sales Analytics Types
+export interface ItemData {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface CustomerData {
+  customerId: string;
+  customerName: string;
+  orderCount: number;
+  totalSpent: number;
+  items: Record<string, number>;
+}
+
+export interface SourceData {
+  count: number;
+  revenue: number;
+}
+
+export interface RangeAnalytics {
+  totalSales: number;
+  orderCount: number;
+  topItems: ItemData[];
+  topItemsByRevenue: ItemData[];
+  sourceBreakdown: Record<string, SourceData>;
+  topCustomersByOrders: CustomerData[];
+  topCustomersByRevenue: CustomerData[];
+  highestOrderingCustomer: CustomerData | null;
+  averageOrderValue: number;
+  uniqueCustomers: number;
+}
+
+export interface TimeRange {
+  key: string;
+  label: string;
+  days: number;
+}
+
+export interface SalesAnalyticsResponse {
+  analytics: Record<string, RangeAnalytics>;
+  timeRanges: TimeRange[];
+  generatedAt: string;
+}

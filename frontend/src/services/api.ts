@@ -351,3 +351,10 @@ export const generateFeedbackToken = async (orderId: number | string): Promise<T
   }
   return response.json();
 };
+
+// Analytics API
+export const getSalesAnalytics = async (statusFilter: 'completed' | 'all' = 'completed'): Promise<import('../types').SalesAnalyticsResponse> => {
+  const response = await authFetch(`${API_BASE_URL}/analytics/sales?statusFilter=${statusFilter}`);
+  if (!response.ok) throw new Error('Failed to fetch sales analytics');
+  return response.json();
+};
