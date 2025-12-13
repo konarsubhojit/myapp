@@ -108,6 +108,62 @@ describe('Redis Client', () => {
     });
   });
 
+  describe('getRedisIfReady', () => {
+    it('should return null when Redis is not connected', async () => {
+      delete process.env.REDIS_URL;
+      await redisClientModule.closeRedisClient();
+      const client = redisClientModule.getRedisIfReady();
+      expect(client).toBeNull();
+    });
+
+    it('should return the client when Redis is connected and ready', async () => {
+      process.env.REDIS_URL = 'redis://localhost:6379';
+      
+      const mockClient = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+        isOpen: true,
+      };
+      
+      createClient.mockReturnValue(mockClient);
+
+      await redisClientModule.getRedisClient();
+      const client = redisClientModule.getRedisIfReady();
+      expect(client).toBe(mockClient);
+    });
+
+    it('should return null when client exists but is not open', async () => {
+      process.env.REDIS_URL = 'redis://localhost:6379';
+      
+      const mockClient = {
+        connect: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+        isOpen: false, // Client exists but is not open
+      };
+      
+      createClient.mockReturnValue(mockClient);
+
+      await redisClientModule.getRedisClient();
+      const client = redisClientModule.getRedisIfReady();
+      // Since the internal client's isOpen is false, it should return null
+      expect(client).toBeNull();
+    });
+
+    it('should be synchronous and not trigger connection', async () => {
+      delete process.env.REDIS_URL;
+      await redisClientModule.closeRedisClient();
+      
+      // Reset mock call count
+      createClient.mockClear();
+      
+      // This should be synchronous and not create a new client
+      const client = redisClientModule.getRedisIfReady();
+      
+      expect(client).toBeNull();
+      expect(createClient).not.toHaveBeenCalled();
+    });
+  });
+
   describe('closeRedisClient', () => {
     it('should close the Redis connection gracefully', async () => {
       process.env.REDIS_URL = 'redis://localhost:6379';
