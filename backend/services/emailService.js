@@ -122,21 +122,21 @@ export function buildDigestEmailHtml({ oneDayOrders, threeDayOrders, sevenDayOrd
 
   sections.push(`
     <div style="margin-bottom: 24px;">
-      <h2 style="color: #d32f2f; margin-bottom: 12px;">🚨 Delivery in 1 Day</h2>
+      <h2 style="color: #d32f2f; margin-bottom: 12px;">🚨 Due today or tomorrow</h2>
       ${renderOrdersTable(oneDayOrders)}
     </div>
   `);
 
   sections.push(`
     <div style="margin-bottom: 24px;">
-      <h2 style="color: #ed6c02; margin-bottom: 12px;">⚠️ Delivery in 3 Days</h2>
+      <h2 style="color: #ed6c02; margin-bottom: 12px;">⚠️ Due in 2–3 days</h2>
       ${renderOrdersTable(threeDayOrders)}
     </div>
   `);
 
   sections.push(`
     <div style="margin-bottom: 24px;">
-      <h2 style="color: #0288d1; margin-bottom: 12px;">📅 Delivery in 7 Days</h2>
+      <h2 style="color: #0288d1; margin-bottom: 12px;">📅 Due in 4–7 days</h2>
       ${renderOrdersTable(sevenDayOrders)}
     </div>
   `);
@@ -197,9 +197,9 @@ export function buildDigestEmailText({ oneDayOrders, threeDayOrders, sevenDayOrd
     lines.push('');
   };
 
-  renderOrdersList('🚨 DELIVERY IN 1 DAY', oneDayOrders);
-  renderOrdersList('⚠️ DELIVERY IN 3 DAYS', threeDayOrders);
-  renderOrdersList('📅 DELIVERY IN 7 DAYS', sevenDayOrders);
+  renderOrdersList('🚨 DUE TODAY OR TOMORROW', oneDayOrders);
+  renderOrdersList('⚠️ DUE IN 2–3 DAYS', threeDayOrders);
+  renderOrdersList('📅 DUE IN 4–7 DAYS', sevenDayOrders);
 
   lines.push('---');
   lines.push('This is an automated digest from the Order Management System.');

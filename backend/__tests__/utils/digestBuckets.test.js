@@ -96,13 +96,14 @@ describe('Digest Buckets Utils', () => {
   describe('computeDigestBuckets', () => {
     it('should return buckets for 1d, 3d, and 7d', () => {
       // Create a sequence of mock dates for the 6 calls
+      // New bucket semantics: 1d=[S0, S0+2), 3d=[S0+2, S0+4), 7d=[S0+4, S0+8)
       const mockDates = [
-        new Date('2024-12-16T18:30:00.000Z'), // D+1 start (in UTC)
-        new Date('2024-12-17T18:30:00.000Z'), // D+2 end
-        new Date('2024-12-18T18:30:00.000Z'), // D+3 start
-        new Date('2024-12-19T18:30:00.000Z'), // D+4 end
-        new Date('2024-12-22T18:30:00.000Z'), // D+7 start
-        new Date('2024-12-23T18:30:00.000Z')  // D+8 end
+        new Date('2024-12-15T18:30:00.000Z'), // S0 (today start)
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2 end
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2 start
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4 end
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4 start
+        new Date('2024-12-23T18:30:00.000Z')  // S0+8 end
       ];
       
       let callIndex = 0;
@@ -127,13 +128,13 @@ describe('Digest Buckets Utils', () => {
       expect(buckets['7d']).toHaveProperty('end');
     });
 
-    it('should have buckets representing one calendar day each', () => {
+    it('should have 1d bucket spanning 2 days (today and tomorrow)', () => {
       const mockDates = [
-        new Date('2024-12-16T18:30:00.000Z'),
+        new Date('2024-12-15T18:30:00.000Z'), // S0
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2
         new Date('2024-12-17T18:30:00.000Z'),
-        new Date('2024-12-18T18:30:00.000Z'),
         new Date('2024-12-19T18:30:00.000Z'),
-        new Date('2024-12-22T18:30:00.000Z'),
+        new Date('2024-12-19T18:30:00.000Z'),
         new Date('2024-12-23T18:30:00.000Z')
       ];
       
@@ -147,9 +148,85 @@ describe('Digest Buckets Utils', () => {
 
       const buckets = computeDigestBuckets();
 
-      // 1-day bucket should span 1 day
+      // 1-day bucket should span 2 days (today and tomorrow)
       const oneDayDiff = buckets['1d'].end.getTime() - buckets['1d'].start.getTime();
-      expect(oneDayDiff).toBe(24 * 60 * 60 * 1000);
+      expect(oneDayDiff).toBe(2 * 24 * 60 * 60 * 1000);
+    });
+
+    it('should have 3d bucket spanning 2 days (days 2-3)', () => {
+      const mockDates = [
+        new Date('2024-12-15T18:30:00.000Z'),
+        new Date('2024-12-17T18:30:00.000Z'),
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4
+        new Date('2024-12-19T18:30:00.000Z'),
+        new Date('2024-12-23T18:30:00.000Z')
+      ];
+      
+      let callIndex = 0;
+      DateTime.now.mockImplementation(() => ({
+        setZone: jest.fn().mockReturnThis(),
+        startOf: jest.fn().mockReturnThis(),
+        plus: jest.fn().mockReturnThis(),
+        toJSDate: jest.fn().mockReturnValue(mockDates[callIndex++])
+      }));
+
+      const buckets = computeDigestBuckets();
+
+      // 3-day bucket should span 2 days (days 2-3)
+      const threeDayDiff = buckets['3d'].end.getTime() - buckets['3d'].start.getTime();
+      expect(threeDayDiff).toBe(2 * 24 * 60 * 60 * 1000);
+    });
+
+    it('should have 7d bucket spanning 4 days (days 4-7)', () => {
+      const mockDates = [
+        new Date('2024-12-15T18:30:00.000Z'),
+        new Date('2024-12-17T18:30:00.000Z'),
+        new Date('2024-12-17T18:30:00.000Z'),
+        new Date('2024-12-19T18:30:00.000Z'),
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4
+        new Date('2024-12-23T18:30:00.000Z')  // S0+8
+      ];
+      
+      let callIndex = 0;
+      DateTime.now.mockImplementation(() => ({
+        setZone: jest.fn().mockReturnThis(),
+        startOf: jest.fn().mockReturnThis(),
+        plus: jest.fn().mockReturnThis(),
+        toJSDate: jest.fn().mockReturnValue(mockDates[callIndex++])
+      }));
+
+      const buckets = computeDigestBuckets();
+
+      // 7-day bucket should span 4 days (days 4-7)
+      const sevenDayDiff = buckets['7d'].end.getTime() - buckets['7d'].start.getTime();
+      expect(sevenDayDiff).toBe(4 * 24 * 60 * 60 * 1000);
+    });
+
+    it('should have non-overlapping buckets', () => {
+      const mockDates = [
+        new Date('2024-12-15T18:30:00.000Z'), // S0
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2
+        new Date('2024-12-17T18:30:00.000Z'), // S0+2
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4
+        new Date('2024-12-19T18:30:00.000Z'), // S0+4
+        new Date('2024-12-23T18:30:00.000Z')  // S0+8
+      ];
+      
+      let callIndex = 0;
+      DateTime.now.mockImplementation(() => ({
+        setZone: jest.fn().mockReturnThis(),
+        startOf: jest.fn().mockReturnThis(),
+        plus: jest.fn().mockReturnThis(),
+        toJSDate: jest.fn().mockReturnValue(mockDates[callIndex++])
+      }));
+
+      const buckets = computeDigestBuckets();
+
+      // 1d bucket ends where 3d bucket starts
+      expect(buckets['1d'].end.getTime()).toBe(buckets['3d'].start.getTime());
+      // 3d bucket ends where 7d bucket starts
+      expect(buckets['3d'].end.getTime()).toBe(buckets['7d'].start.getTime());
     });
   });
 

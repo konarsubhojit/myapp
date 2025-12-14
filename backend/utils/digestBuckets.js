@@ -31,25 +31,26 @@ export function getKolkataStartOfDay(daysFromToday) {
  * Compute the time buckets for digest reminders
  * Returns UTC timestamps for filtering database records
  * 
- * Let D be "today's date" in Kolkata at runtime:
- * - 1-day bucket: [startOfDay(D+1 IST), startOfDay(D+2 IST))
- * - 3-day bucket: [startOfDay(D+3 IST), startOfDay(D+4 IST))
- * - 7-day bucket: [startOfDay(D+7 IST), startOfDay(D+8 IST))
+ * Let S0 be "start of today" in Kolkata at runtime.
+ * Uses non-overlapping ranges so each order appears in only one section:
+ * - 1-day bucket (due today or tomorrow): [S0, startOfDay(today+2))
+ * - 3-day bucket (due in 2-3 days): [startOfDay(today+2), startOfDay(today+4))
+ * - 7-day bucket (due in 4-7 days): [startOfDay(today+4), startOfDay(today+8))
  * 
  * @returns {Object} Object containing bucket ranges with start (inclusive) and end (exclusive)
  */
 export function computeDigestBuckets() {
   return {
     '1d': {
-      start: getKolkataStartOfDay(1),
+      start: getKolkataStartOfDay(0),
       end: getKolkataStartOfDay(2)
     },
     '3d': {
-      start: getKolkataStartOfDay(3),
+      start: getKolkataStartOfDay(2),
       end: getKolkataStartOfDay(4)
     },
     '7d': {
-      start: getKolkataStartOfDay(7),
+      start: getKolkataStartOfDay(4),
       end: getKolkataStartOfDay(8)
     }
   };
