@@ -13,7 +13,8 @@ jest.unstable_mockModule('../../utils/digestBuckets', () => ({
 
 jest.unstable_mockModule('../../services/emailService', () => ({
   sendEmail: jest.fn(),
-  buildDigestEmailHtml: jest.fn()
+  buildDigestEmailHtml: jest.fn(),
+  buildDigestEmailText: jest.fn()
 }));
 
 jest.unstable_mockModule('../../utils/logger', () => ({

@@ -17,7 +17,7 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 }));
 
 const nodemailer = await import('nodemailer');
-const { sendEmail, buildDigestEmailHtml } = await import('../../services/emailService.js');
+const { sendEmail, buildDigestEmailHtml, buildDigestEmailText } = await import('../../services/emailService.js');
 
 describe('EmailService', () => {
   const originalEnv = process.env;
@@ -204,6 +204,78 @@ describe('EmailService', () => {
       // Both orders should be in the HTML
       expect(html).toContain('ORD001');
       expect(html).toContain('ORD002');
+    });
+  });
+
+  describe('buildDigestEmailText', () => {
+    const mockFormatDate = (date) => `Formatted: ${date}`;
+
+    it('should build plain text with all sections', () => {
+      const buckets = {
+        oneDayOrders: [
+          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16') }
+        ],
+        threeDayOrders: [
+          { orderId: 'ORD002', customerName: 'Jane Smith', expectedDeliveryDate: new Date('2024-12-18') }
+        ],
+        sevenDayOrders: [
+          { orderId: 'ORD003', customerName: 'Bob Wilson', expectedDeliveryDate: new Date('2024-12-22') }
+        ]
+      };
+
+      const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
+
+      expect(text).toContain('DAILY DELIVERY DIGEST');
+      expect(text).toContain('2024-12-15');
+      expect(text).toContain('DELIVERY IN 1 DAY');
+      expect(text).toContain('DELIVERY IN 3 DAYS');
+      expect(text).toContain('DELIVERY IN 7 DAYS');
+      expect(text).toContain('ORD001');
+      expect(text).toContain('John Doe');
+      expect(text).toContain('ORD002');
+      expect(text).toContain('Jane Smith');
+      expect(text).toContain('ORD003');
+      expect(text).toContain('Bob Wilson');
+    });
+
+    it('should show "None" for empty sections', () => {
+      const buckets = {
+        oneDayOrders: [],
+        threeDayOrders: [],
+        sevenDayOrders: []
+      };
+
+      const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
+
+      expect(text).toContain('None');
+    });
+
+    it('should handle null/undefined orders arrays', () => {
+      const buckets = {
+        oneDayOrders: null,
+        threeDayOrders: undefined,
+        sevenDayOrders: []
+      };
+
+      const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
+
+      // Should not throw and should show "None" for empty sections
+      expect(text).toContain('DELIVERY IN 1 DAY');
+      expect(text).toContain('None');
+    });
+
+    it('should format orders as bullet points', () => {
+      const buckets = {
+        oneDayOrders: [
+          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16') }
+        ],
+        threeDayOrders: [],
+        sevenDayOrders: []
+      };
+
+      const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
+
+      expect(text).toContain('• ORD001 | John |');
     });
   });
 });

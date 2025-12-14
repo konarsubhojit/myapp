@@ -4,23 +4,6 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('EmailService');
 
 /**
- * Strip HTML tags from a string iteratively to handle nested/partial tags
- * This is safe for internal email content stripping (not for sanitizing user input)
- * @param {string} html - HTML string to strip
- * @returns {string} Plain text without HTML tags
- */
-function stripHtmlTags(html) {
-  let result = html;
-  let previous;
-  // Iteratively strip tags to handle any nested or partial tags
-  do {
-    previous = result;
-    result = result.replace(/<[^>]*>/g, '');
-  } while (result !== previous);
-  return result;
-}
-
-/**
  * Get the email transporter
  * Falls back to a mock transporter in test environment
  * @returns {Object} Nodemailer transporter
@@ -72,17 +55,14 @@ export async function sendEmail({ to, subject, html, text }) {
 
   const fromAddress = process.env.SMTP_FROM || 'noreply@order-management.local';
   
-  // Strip HTML tags for plain text version. This is safe because:
-  // 1. The HTML content is generated internally by buildDigestEmailHtml, not from user input
-  // 2. The plain text is only used as a fallback for email clients, not rendered as HTML
-  const plainText = text || stripHtmlTags(html);
-  
   const mailOptions = {
     from: fromAddress,
     to: Array.isArray(to) ? to.join(', ') : to,
     subject,
     html,
-    text: plainText
+    // Use provided text or let nodemailer handle text generation from HTML
+    // We don't manually strip HTML to avoid security issues with incomplete sanitization
+    text: text || undefined
   };
 
   try {
@@ -183,4 +163,46 @@ export function buildDigestEmailHtml({ oneDayOrders, threeDayOrders, sevenDayOrd
     </body>
     </html>
   `;
+}
+
+/**
+ * Build the plain text content for the digest email
+ * This avoids the need for HTML stripping and the associated security concerns
+ * @param {Object} buckets - Object containing orders for each tier
+ * @param {Array} buckets.oneDayOrders - Orders due in 1 day
+ * @param {Array} buckets.threeDayOrders - Orders due in 3 days
+ * @param {Array} buckets.sevenDayOrders - Orders due in 7 days
+ * @param {string} digestDate - The digest date (YYYY-MM-DD in Kolkata)
+ * @param {Function} formatDate - Function to format dates
+ * @returns {string} Plain text content for the email
+ */
+export function buildDigestEmailText({ oneDayOrders, threeDayOrders, sevenDayOrders }, digestDate, formatDate) {
+  const lines = [];
+  
+  lines.push('📦 DAILY DELIVERY DIGEST');
+  lines.push('========================');
+  lines.push(`Report for ${digestDate} (IST)`);
+  lines.push('');
+
+  const renderOrdersList = (title, orders) => {
+    lines.push(title);
+    lines.push('-'.repeat(title.length));
+    if (!orders || orders.length === 0) {
+      lines.push('None');
+    } else {
+      for (const order of orders) {
+        lines.push(`• ${order.orderId} | ${order.customerName} | ${formatDate(order.expectedDeliveryDate)}`);
+      }
+    }
+    lines.push('');
+  };
+
+  renderOrdersList('🚨 DELIVERY IN 1 DAY', oneDayOrders);
+  renderOrdersList('⚠️ DELIVERY IN 3 DAYS', threeDayOrders);
+  renderOrdersList('📅 DELIVERY IN 7 DAYS', sevenDayOrders);
+
+  lines.push('---');
+  lines.push('This is an automated digest from the Order Management System.');
+  
+  return lines.join('\n');
 }

@@ -3,7 +3,7 @@ import { getDatabase } from '../db/connection.js';
 import { orders, orderReminderState, digestRuns, notificationRecipients } from '../db/schema.js';
 import { createLogger } from '../utils/logger.js';
 import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest } from '../utils/digestBuckets.js';
-import { sendEmail, buildDigestEmailHtml } from './emailService.js';
+import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from './emailService.js';
 
 const logger = createLogger('DigestService');
 
@@ -260,18 +260,17 @@ export async function runDailyDigest() {
       return { status: 'sent', digestDate, message: 'No orders requiring reminders' };
     }
     
-    // Build and send email
+    // Build and send email with both HTML and plain text versions
     const recipientEmails = recipients.map(r => r.email);
-    const emailHtml = buildDigestEmailHtml(
-      { oneDayOrders, threeDayOrders, sevenDayOrders },
-      digestDate,
-      formatDateForDigest
-    );
+    const bucketData = { oneDayOrders, threeDayOrders, sevenDayOrders };
+    const emailHtml = buildDigestEmailHtml(bucketData, digestDate, formatDateForDigest);
+    const emailText = buildDigestEmailText(bucketData, digestDate, formatDateForDigest);
     
     await sendEmail({
       to: recipientEmails,
       subject: `📦 Daily Delivery Digest - ${digestDate}`,
-      html: emailHtml
+      html: emailHtml,
+      text: emailText
     });
     
     // Mark orders as sent in a transaction-like manner
