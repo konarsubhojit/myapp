@@ -16,10 +16,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import ImageIcon from '@mui/icons-material/Image';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { useItemDetails } from '../hooks/useItemDetails';
+import { useItemDetails, type ItemEditForm } from '../hooks/useItemDetails';
 import { useImageProcessing } from '../hooks/useImageProcessing';
 import ImageUploadField from './common/ImageUploadField';
-import type { ItemId, ItemEditForm } from '../hooks/useItemDetails';
+import type { ItemId } from '../types';
 
 interface ItemDetailsPageProps {
   itemId: ItemId;
