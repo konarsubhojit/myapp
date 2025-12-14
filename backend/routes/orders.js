@@ -6,6 +6,7 @@ import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
 import { parsePaginationParams } from '../utils/pagination.js';
 import { cacheMiddleware, invalidateOrderCache } from '../middleware/cache.js';
+import { upsertOrderReminderState } from '../services/digestService.js';
 import {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
@@ -408,6 +409,15 @@ router.post('/', asyncHandler(async (req, res) => {
   // Invalidate order cache again after creating to ensure consistency
   await invalidateOrderCache();
 
+  // Initialize reminder state if expectedDeliveryDate is set
+  if (newOrder.expectedDeliveryDate) {
+    try {
+      await upsertOrderReminderState(newOrder._id, new Date(newOrder.expectedDeliveryDate));
+    } catch (err) {
+      logger.warn('Failed to initialize reminder state', { orderId: newOrder.orderId, error: err.message });
+    }
+  }
+
   logger.info('Order created', { orderId: newOrder.orderId, totalPrice: newOrder.totalPrice });
   res.status(201).json(newOrder);
 }));
@@ -533,15 +543,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
     throw badRequestError(validation.error);
   }
 
-  const { paidAmountResult, itemsResult, paymentStatus } = validation.data;
+  const { paidAmountResult, itemsResult, paymentStatus, dateResult } = validation.data;
+  
+  // Fetch the existing order for validation and comparison
+  const existingOrder = await Order.findById(req.params.id);
+  if (!existingOrder) {
+    throw notFoundError('Order');
+  }
   
   // Validate payment amount against total price if needed
   if (paidAmountResult.parsedAmount !== undefined) {
-    const existingOrder = await Order.findById(req.params.id);
-    if (!existingOrder) {
-      throw notFoundError('Order');
-    }
-    
     const paymentValidation = validateUpdatePaymentAmount(
       paidAmountResult.parsedAmount, 
       itemsResult.totalPrice, 
@@ -565,6 +576,25 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
   // Invalidate order cache again after updating to ensure consistency
   await invalidateOrderCache();
+
+  // Update reminder state if expectedDeliveryDate changed
+  if (dateResult.parsedDate !== undefined) {
+    const oldDate = existingOrder.expectedDeliveryDate ? new Date(existingOrder.expectedDeliveryDate) : null;
+    const newDate = dateResult.parsedDate;
+    
+    // Only update if the date actually changed
+    const dateChanged = (oldDate === null && newDate !== null) ||
+                        (oldDate !== null && newDate === null) ||
+                        (oldDate !== null && newDate !== null && oldDate.getTime() !== newDate.getTime());
+    
+    if (dateChanged && newDate) {
+      try {
+        await upsertOrderReminderState(updatedOrder._id, newDate);
+      } catch (err) {
+        logger.warn('Failed to update reminder state', { orderId: updatedOrder.orderId, error: err.message });
+      }
+    }
+  }
 
   logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
   res.json(updatedOrder);

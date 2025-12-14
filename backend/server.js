@@ -60,9 +60,13 @@ import orderRoutes from './routes/orders.js';
 import feedbackRoutes from './routes/feedbacks.js';
 import publicFeedbackRoutes from './routes/publicFeedbacks.js';
 import analyticsRoutes from './routes/analytics.js';
+import digestRoutes from './routes/digest.js';
 
 // Public routes (no authentication)
 app.use('/api/public/feedbacks', publicFeedbackRoutes);
+
+// Internal routes (protected by secret, no OAuth)
+app.use('/api/internal/digest', digestRoutes);
 
 // Authenticated routes
 app.use('/api/items', authMiddleware, itemRoutes);
