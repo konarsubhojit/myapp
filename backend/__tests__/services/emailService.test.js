@@ -136,9 +136,9 @@ describe('EmailService', () => {
 
       expect(html).toContain('Daily Delivery Digest');
       expect(html).toContain('2024-12-15');
-      expect(html).toContain('Delivery in 1 Day');
-      expect(html).toContain('Delivery in 3 Days');
-      expect(html).toContain('Delivery in 7 Days');
+      expect(html).toContain('Due today or tomorrow');
+      expect(html).toContain('Due in 2–3 days');
+      expect(html).toContain('Due in 4–7 days');
       expect(html).toContain('ORD001');
       expect(html).toContain('John Doe');
       expect(html).toContain('ORD002');
@@ -185,7 +185,7 @@ describe('EmailService', () => {
       const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
 
       // Should not throw and should show "None" for empty sections
-      expect(html).toContain('Delivery in 1 Day');
+      expect(html).toContain('Due today or tomorrow');
       expect(html).toContain('None');
     });
 
@@ -227,9 +227,9 @@ describe('EmailService', () => {
 
       expect(text).toContain('DAILY DELIVERY DIGEST');
       expect(text).toContain('2024-12-15');
-      expect(text).toContain('DELIVERY IN 1 DAY');
-      expect(text).toContain('DELIVERY IN 3 DAYS');
-      expect(text).toContain('DELIVERY IN 7 DAYS');
+      expect(text).toContain('DUE TODAY OR TOMORROW');
+      expect(text).toContain('DUE IN 2–3 DAYS');
+      expect(text).toContain('DUE IN 4–7 DAYS');
       expect(text).toContain('ORD001');
       expect(text).toContain('John Doe');
       expect(text).toContain('ORD002');
@@ -260,7 +260,7 @@ describe('EmailService', () => {
       const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
 
       // Should not throw and should show "None" for empty sections
-      expect(text).toContain('DELIVERY IN 1 DAY');
+      expect(text).toContain('DUE TODAY OR TOMORROW');
       expect(text).toContain('None');
     });
 

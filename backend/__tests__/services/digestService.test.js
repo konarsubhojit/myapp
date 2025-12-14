@@ -70,10 +70,11 @@ describe('DigestService', () => {
     getDatabase.mockReturnValue(mockDb);
     getTodayInKolkata.mockReturnValue('2024-12-15');
     formatDateForDigest.mockImplementation((date) => date.toString());
+    // Updated bucket semantics: 1d=[S0, S0+2), 3d=[S0+2, S0+4), 7d=[S0+4, S0+8)
     computeDigestBuckets.mockReturnValue({
-      '1d': { start: new Date('2024-12-16T00:00:00.000Z'), end: new Date('2024-12-17T00:00:00.000Z') },
-      '3d': { start: new Date('2024-12-18T00:00:00.000Z'), end: new Date('2024-12-19T00:00:00.000Z') },
-      '7d': { start: new Date('2024-12-22T00:00:00.000Z'), end: new Date('2024-12-23T00:00:00.000Z') }
+      '1d': { start: new Date('2024-12-15T00:00:00.000Z'), end: new Date('2024-12-17T00:00:00.000Z') },
+      '3d': { start: new Date('2024-12-17T00:00:00.000Z'), end: new Date('2024-12-19T00:00:00.000Z') },
+      '7d': { start: new Date('2024-12-19T00:00:00.000Z'), end: new Date('2024-12-23T00:00:00.000Z') }
     });
   });
 
