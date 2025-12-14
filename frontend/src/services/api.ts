@@ -1,5 +1,6 @@
 import type {
   Item,
+  ItemId,
   Order,
   Feedback,
   CreateItemData,
@@ -87,29 +88,119 @@ interface MockDataResult {
 }
 
 /**
+ * Generate dummy items for guest mode testing
+ */
+function generateDummyItems(): Item[] {
+  return [
+    {
+      id: 1 as ItemId,
+      _id: 1 as ItemId,
+      name: 'Cotton Kurta',
+      price: 899,
+      color: 'Blue',
+      fabric: 'Cotton',
+      specialFeatures: 'Handwoven, Lightweight',
+      imageUrl: 'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400',
+      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: 2 as ItemId,
+      _id: 2 as ItemId,
+      name: 'Silk Saree',
+      price: 2499,
+      color: 'Red',
+      fabric: 'Silk',
+      specialFeatures: 'Embroidered, Traditional',
+      imageUrl: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=400',
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: 3 as ItemId,
+      _id: 3 as ItemId,
+      name: 'Linen Shirt',
+      price: 1299,
+      color: 'White',
+      fabric: 'Linen',
+      specialFeatures: 'Breathable, Casual',
+      imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400',
+      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: 4 as ItemId,
+      _id: 4 as ItemId,
+      name: 'Denim Jeans',
+      price: 1599,
+      color: 'Blue',
+      fabric: 'Denim',
+      specialFeatures: 'Stretchable, Durable',
+      imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400',
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      deletedAt: null,
+    },
+    {
+      id: 5 as ItemId,
+      _id: 5 as ItemId,
+      name: 'Woolen Sweater',
+      price: 1899,
+      color: 'Grey',
+      fabric: 'Wool',
+      specialFeatures: 'Warm, Winter Collection',
+      imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400',
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      deletedAt: null,
+    },
+  ];
+}
+
+/**
  * Wrapper for fetch that includes auth headers
  */
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   // Check if guest mode is enabled
   if (isGuestModeFn?.()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
-    // Return mock empty response for guest mode
-    let mockData: MockDataResult | Item[] | Order[] | Feedback[] | Record<string, never>;
+    
+    // Generate dummy data for testing
+    const dummyItems = generateDummyItems();
+    
+    // Return mock response with dummy data for guest mode
+    let mockData: MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never>;
     if (url.includes('?page=') || url.includes('&page=')) {
-      // Paginated endpoint - return pagination structure
+      // Paginated endpoint - return pagination structure with dummy data
       let dataKey: 'items' | 'orders' | 'feedbacks' = 'items';
-      if (url.includes('/orders')) dataKey = 'orders';
-      else if (url.includes('/feedbacks')) dataKey = 'feedbacks';
+      let data: Item[] | Order[] | Feedback[] = [];
+      
+      if (url.includes('/orders')) {
+        dataKey = 'orders';
+        data = [];
+      } else if (url.includes('/feedbacks')) {
+        dataKey = 'feedbacks';
+        data = [];
+      } else if (url.includes('/items')) {
+        dataKey = 'items';
+        data = dummyItems;
+      }
       
       mockData = { 
-        [dataKey]: [], 
-        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } 
+        [dataKey]: data, 
+        pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 } 
       } as MockDataResult;
     } else if (/\/(items|orders|feedbacks)\/[^/]+$/.test(url)) {
-      // Single item endpoint (with ID at the end) - return empty object
-      mockData = {};
+      // Single item endpoint (with ID at the end) - return empty object for updates/deletes
+      // Extract the method to determine if we should return data
+      if (options.method === 'PUT' || options.method === 'DELETE' || options.method === 'POST') {
+        mockData = { message: 'Success' } as Record<string, string>;
+      } else {
+        mockData = {};
+      }
+    } else if (url.includes('/items')) {
+      // List endpoint without pagination - return dummy items
+      mockData = dummyItems;
     } else {
-      // List endpoint without pagination - return empty array
+      // Other list endpoints - return empty array
       mockData = [];
     }
     return new Response(JSON.stringify(mockData), {
