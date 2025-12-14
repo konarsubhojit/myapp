@@ -69,8 +69,11 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
   const clearEditImageWrapper = () => {
     clearEditImage();
     handleEditChange('removeImage', true);
+    // Reset the file input - using getElementById is acceptable here as it's a controlled operation
     const fileInput = document.getElementById('editItemImage') as HTMLInputElement | null;
-    if (fileInput) fileInput.value = '';
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   const handleSaveClick = async () => {

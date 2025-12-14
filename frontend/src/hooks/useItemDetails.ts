@@ -135,7 +135,7 @@ export const useItemDetails = (
     try {
       const updateData: UpdateItemData = {
         name: editForm.name.trim(),
-        price: validation.parsedPrice,
+        price: validation.parsedPrice!, // Safe because validation.valid is true
         color: editForm.color.trim(),
         fabric: editForm.fabric.trim(),
         specialFeatures: editForm.specialFeatures.trim(),
