@@ -325,6 +325,7 @@ When multiple identical requests arrive simultaneously:
 | `/api/orders`                | `orders.js`            | Yes           | Order management                     |
 | `/api/feedbacks`             | `feedbacks.js`         | Yes           | Internal feedback management         |
 | `/api/analytics`             | `analytics.js`         | Yes           | Sales analytics                      |
+| `/api/internal/digest`       | `digest.js`            | Secret-based  | Daily digest email trigger           |
 | `/api/health`                | Inline handler         | No            | Health check                         |
 
 ### Complete API Endpoints
@@ -355,8 +356,11 @@ When multiple identical requests arrive simultaneously:
 | PUT    | `/api/feedbacks/:id`                | Yes  | None      | Update feedback (add response)                  |
 | POST   | `/api/feedbacks/generate-token/:orderId` | Yes | None      | Generate feedback token for customer            |
 | GET    | `/api/analytics/sales`              | Yes  | 1min      | Get sales analytics (pre-computed)              |
+| POST   | `/api/internal/digest/run`          | No*  | None      | Trigger daily digest email (secret-based auth)  |
 
 **Note:** All authenticated endpoints require `Authorization: Bearer <JWT>` header with a valid Google ID token.
+
+**\*Digest endpoint:** Uses secret-based authentication (`X-DIGEST-SECRET` or Vercel `CRON_SECRET`), not OAuth. See [Daily Digest Reminder System](#daily-digest-reminder-system) for details.
 
 ---
 
@@ -424,13 +428,16 @@ export function getDatabase() {
 
 **Schema:** `backend/db/schema.js`
 
-The schema defines 5 tables:
+The schema defines 8 tables:
 
 1. **`items`**: Product catalog (with soft delete support)
 2. **`orders`**: Order management (with delivery tracking)
 3. **`order_items`**: Junction table (orders ↔ items, many-to-many)
 4. **`feedbacks`**: Customer feedback (multi-dimensional ratings)
 5. **`feedback_tokens`**: Secure token-based feedback access
+6. **`notification_recipients`**: Email recipients for daily digest
+7. **`order_reminder_state`**: Per-order reminder tracking (daily digest)
+8. **`digest_runs`**: Daily digest execution idempotency
 
 **Enums:**
 - `order_from`: `instagram`, `facebook`, `whatsapp`, `call`, `offline`
@@ -475,18 +482,14 @@ Models encapsulate database queries using Drizzle ORM:
 
 **Location:** `backend/db/migrations/`
 
-**Migration Script:** `001_init_schema.sql` (consolidated single migration)
+**Migration Scripts:**
+- `001_init_schema.sql` - Initial schema (items, orders, order_items, feedbacks, feedback_tokens)
+- `002_digest_reminder_tables.sql` - Daily digest tables (notification_recipients, order_reminder_state, digest_runs)
 
-Includes:
-- All table definitions
-- All indexes
-- Enums
-- Foreign keys with cascade deletes
-- Check constraints
-
-**Run Migration:**
+**Run Migrations:**
 ```bash
 psql $NEON_DATABASE_URL -f backend/db/migrations/001_init_schema.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/002_digest_reminder_tables.sql
 ```
 
 **Documentation:** See [`backend/db/migrations/README.md`](../backend/db/migrations/README.md) for detailed migration guide.
@@ -584,6 +587,360 @@ The cache middleware validates responses before caching to prevent caching error
 **Blob URL Format:**
 ```
 https://blob.vercel-storage.com/items/<timestamp>-<random>.<extension>
+```
+
+---
+
+## Daily Digest Reminder System
+
+The Daily Digest system sends automated email notifications to internal recipients about orders approaching their expected delivery dates. It operates on a three-tier reminder schedule (1-day, 3-day, and 7-day advance notifications) using Kolkata timezone for all date calculations.
+
+### Feature Overview
+
+**Daily Digest Reminders** email internal recipients every day at 09:00 Asia/Kolkata (03:30 UTC) with orders whose expected delivery date falls within specific time buckets. The system ensures idempotent delivery and maintains durable tracking to prevent duplicate notifications.
+
+**Key Features:**
+- **Three-tier reminders**: 1-day, 3-day, and 7-day advance notifications
+- **Timezone-safe**: All calculations use Asia/Kolkata timezone
+- **Idempotent**: Will not send duplicate emails if triggered multiple times the same day
+- **Durable tracking**: Uses database state to avoid sending duplicate reminders for the same order/tier
+- **Automatic reset**: When an order's delivery date changes, reminder state resets to allow new reminders
+
+### Architecture
+
+```mermaid
+flowchart TD
+    A[Vercel Cron: 09:00 IST / 03:30 UTC] -->|POST| B[/api/internal/digest/run]
+    B --> C{Auth Valid?}
+    C -->|No| D[401 Unauthorized]
+    C -->|Yes| E[digestService.runDailyDigest]
+    
+    E --> F{Check idempotency}
+    F -->|Already sent| G[Return 'already_sent']
+    F -->|Not sent| H[Mark run as 'started']
+    
+    H --> I[Load enabled recipients]
+    I --> J{Recipients > 0?}
+    J -->|No| K[Mark 'sent', return]
+    J -->|Yes| L[Compute time buckets Asia/Kolkata]
+    
+    L --> M[Query orders for 1d bucket]
+    L --> N[Query orders for 3d bucket]
+    L --> O[Query orders for 7d bucket]
+    
+    M --> P{Any orders?}
+    N --> P
+    O --> P
+    
+    P -->|No| Q[Mark 'sent', return]
+    P -->|Yes| R[Build HTML + text email]
+    
+    R --> S[Send email via SMTP nodemailer]
+    S --> T{Email sent?}
+    
+    T -->|Success| U[Mark orders in order_reminder_state]
+    U --> V[Set sent_1d/sent_3d/sent_7d flags]
+    V --> W[Mark digest_runs as 'sent']
+    W --> X[Return success response]
+    
+    T -->|Failure| Y[Mark digest_runs as 'failed']
+    Y --> Z[Return 500 error]
+```
+
+### Components
+
+| Component | File Path | Description |
+|-----------|-----------|-------------|
+| Route handler | `backend/routes/digest.js` | Express route with auth middleware |
+| Service layer | `backend/services/digestService.js` | Core business logic for digest execution |
+| Bucket logic | `backend/utils/digestBuckets.js` | Timezone-safe date bucket computation |
+| Email builders | `backend/services/emailService.js` | HTML + text email generation & SMTP |
+| Migration | `backend/db/migrations/002_digest_reminder_tables.sql` | Creates 3 tables |
+| Schema | `backend/db/schema.js` | Drizzle ORM schema definitions |
+
+### API Endpoint
+
+#### POST /api/internal/digest/run
+
+Triggers the daily digest email. This endpoint is **protected by secret-based authentication** and does not require OAuth tokens.
+
+**Authentication Options (either one):**
+
+1. **X-DIGEST-SECRET header** (recommended for external cron services):
+   ```
+   X-DIGEST-SECRET: <DIGEST_JOB_SECRET>
+   ```
+
+2. **Vercel Cron Authorization header** (automatic with Vercel Cron):
+   ```
+   Authorization: Bearer <CRON_SECRET>
+   ```
+
+**Response Examples:**
+
+Success (new digest sent):
+```json
+{
+  "message": "Digest completed successfully",
+  "status": "sent",
+  "digestDate": "2024-12-15",
+  "orderCounts": {
+    "oneDay": 2,
+    "threeDay": 3,
+    "sevenDay": 5
+  }
+}
+```
+
+Already sent (idempotency check):
+```json
+{
+  "message": "Digest already sent for today",
+  "digestDate": "2024-12-15"
+}
+```
+
+No orders requiring reminders:
+```json
+{
+  "message": "Digest completed successfully",
+  "status": "sent",
+  "digestDate": "2024-12-15",
+  "message": "No orders requiring reminders"
+}
+```
+
+Error:
+```json
+{
+  "message": "Digest failed",
+  "error": "SMTP connection timeout"
+}
+```
+
+### Database Tables
+
+The digest system uses 3 tables added via migration `002_digest_reminder_tables.sql`:
+
+#### notification_recipients
+
+Stores email addresses for digest delivery.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | serial | Primary key |
+| email | text | Email address (unique) |
+| enabled | boolean | Whether to include in digests (default: true) |
+| created_at | timestamp | Creation time |
+| updated_at | timestamp | Last update time |
+
+#### order_reminder_state
+
+Tracks which reminder tiers have been sent for each order to prevent duplicates.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| order_id | integer | Primary key, references orders.id (cascade delete) |
+| delivery_date_snapshot | timestamp | Expected delivery date when state was set |
+| sent_7d | boolean | Whether 7-day reminder was sent |
+| sent_3d | boolean | Whether 3-day reminder was sent |
+| sent_1d | boolean | Whether 1-day reminder was sent |
+| updated_at | timestamp | Last update time |
+
+**Reminder State Reset Behavior:**
+
+When an order's `expectedDeliveryDate` is updated via `PUT /api/orders/:id`, the `upsertOrderReminderState` function:
+1. Compares the new delivery date with `delivery_date_snapshot`
+2. If different, resets all flags: `sent_7d`, `sent_3d`, `sent_1d` → `false`
+3. Updates `delivery_date_snapshot` to the new date
+4. The order becomes eligible for new reminders based on the new date
+
+**Implementation:** `backend/services/digestService.js:176-211`
+
+#### digest_runs
+
+Tracks daily digest executions for idempotency (ensures one send per Kolkata date).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | serial | Primary key |
+| digest_date | date | The Kolkata calendar date (unique constraint) |
+| status | text | `started`, `sent`, or `failed` |
+| started_at | timestamp | When the run started |
+| sent_at | timestamp | When email was sent (nullable) |
+| error | text | Error message if failed (nullable) |
+
+### Idempotency Details
+
+The digest system ensures **exactly-once delivery** per Kolkata calendar day using two mechanisms:
+
+1. **digest_runs table**: Before sending, checks if a run exists for today's Kolkata date with `status = 'sent'`. If found, returns `already_sent` immediately.
+
+2. **order_reminder_state table**: Tracks per-order, per-tier flags (`sent_1d`, `sent_3d`, `sent_7d`). Each order appears in only one tier per digest run based on non-overlapping time buckets.
+
+**Workflow:**
+```
+1. Check digest_runs for today's date
+   → If sent, return early
+2. Mark digest_runs as 'started'
+3. Query orders (excluding already-sent tiers)
+4. Send email
+5. Update order_reminder_state flags
+6. Mark digest_runs as 'sent'
+```
+
+If the digest job crashes after sending email but before marking as sent, the next run will re-send emails. This is acceptable (better than missing notifications).
+
+### Time Bucket Definitions
+
+Buckets are **non-overlapping** to ensure each order appears in only one section per day. Let S0 = "start of today in Asia/Kolkata at runtime":
+
+| Bucket | Range (Kolkata timezone) | Database Query Range (UTC) | Description |
+|--------|--------------------------|----------------------------|-------------|
+| **1-day** | Today + Tomorrow | `[S0, S0+2 days)` | Orders due today or tomorrow |
+| **3-day** | Day after tomorrow + 1 | `[S0+2 days, S0+4 days)` | Orders due in 2-3 days |
+| **7-day** | 4-7 days out | `[S0+4 days, S0+8 days)` | Orders due in 4-7 days |
+
+**Why these ranges?**
+
+The original design intended:
+- 1-day bucket: Orders due exactly 1 day from now
+- 3-day bucket: Orders due exactly 3 days from now
+- 7-day bucket: Orders due exactly 7 days from now
+
+However, the implementation uses **2-day windows** to avoid missing orders due to exact date matching issues (orders due at different times of day). This ensures:
+- Orders are captured in one bucket
+- No orders fall through gaps between buckets
+- Each order appears in only one tier per day
+
+**Calculation:** `backend/utils/digestBuckets.js:42-56`
+
+**Example (Dec 15, 2024 IST):**
+- 1d: Dec 15 00:00 IST → Dec 17 00:00 IST (captures orders due Dec 15-16)
+- 3d: Dec 17 00:00 IST → Dec 19 00:00 IST (captures orders due Dec 17-18)
+- 7d: Dec 19 00:00 IST → Dec 23 00:00 IST (captures orders due Dec 19-22)
+
+### Order Exclusions
+
+Orders are excluded from the digest if:
+- `status = 'completed'`
+- `status = 'cancelled'`
+- The specific tier reminder has already been sent (`sent_1d/sent_3d/sent_7d = true` in `order_reminder_state`)
+
+**Query logic:** `backend/services/digestService.js:83-119`
+
+### Environment Variables
+
+Add these to your backend `.env` file:
+
+#### Digest Authentication
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DIGEST_JOB_SECRET` | Recommended | Secret for X-DIGEST-SECRET header (use with external cron) |
+| `CRON_SECRET` | Optional | Vercel's automatic cron secret (auto-set by Vercel) |
+
+**Note:** At least one auth secret must be configured. Both can be set for flexibility.
+
+#### SMTP Configuration
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `SMTP_HOST` | Yes | SMTP server hostname | `smtp.gmail.com` |
+| `SMTP_PORT` | Yes | SMTP server port | `587` (TLS) or `465` (SSL) |
+| `SMTP_SECURE` | Yes | Use SSL/TLS | `true` (port 465) or `false` (port 587) |
+| `SMTP_USER` | Yes | SMTP username/email | `your-email@gmail.com` |
+| `SMTP_PASS` | Yes | SMTP password/app password | `your-app-password` |
+| `SMTP_FROM` | Yes | Sender email address | `noreply@your-domain.com` |
+
+**Implementation:** `backend/services/emailService.js`
+
+### Deployment & Scheduling
+
+#### Vercel Cron (Recommended)
+
+To automatically trigger the digest at 09:00 IST (03:30 UTC) daily, add to `vercel.json` in repository root:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/internal/digest/run",
+      "schedule": "30 3 * * *"
+    }
+  ]
+}
+```
+
+**How it works:**
+1. Vercel automatically sets `CRON_SECRET` environment variable
+2. Vercel includes `Authorization: Bearer <CRON_SECRET>` header on cron requests
+3. Digest route validates this header (see `backend/routes/digest.js:19-32`)
+
+**No additional configuration needed** - Vercel handles authentication automatically.
+
+#### External Cron Services (Alternative)
+
+If using external services (cron-job.org, Upstash, AWS EventBridge, etc.):
+
+1. Configure the service to:
+   - Send POST to `https://your-domain.com/api/internal/digest/run`
+   - Include header: `X-DIGEST-SECRET: <your-secret>`
+   - Schedule at `30 3 * * *` (03:30 UTC = 09:00 IST)
+
+2. Set `DIGEST_JOB_SECRET` environment variable in backend
+
+### Seeding Recipients
+
+To add recipients to the digest, insert records directly into the database:
+
+```sql
+INSERT INTO notification_recipients (email, enabled) 
+VALUES 
+  ('manager@example.com', true),
+  ('operations@example.com', true);
+```
+
+Or disable a recipient without deleting:
+
+```sql
+UPDATE notification_recipients 
+SET enabled = false 
+WHERE email = 'manager@example.com';
+```
+
+### Testing
+
+Run the digest-related tests:
+
+```bash
+cd backend
+
+# Test bucket computation logic
+npm test -- digestBuckets
+
+# Test digest route (auth, responses)
+npm test -- digest.test
+
+# Test digest service (core logic)
+npm test -- digestService
+
+# Test email service (HTML/text builders)
+npm test -- emailService
+```
+
+**Manual testing:**
+
+Trigger the digest manually via curl:
+
+```bash
+# Using X-DIGEST-SECRET
+curl -X POST http://localhost:5000/api/internal/digest/run \
+  -H "X-DIGEST-SECRET: your-secret-here"
+
+# Using Vercel CRON_SECRET
+curl -X POST http://localhost:5000/api/internal/digest/run \
+  -H "Authorization: Bearer your-cron-secret-here"
 ```
 
 ---
@@ -723,6 +1080,12 @@ res.json(result); // { items: [...], pagination: {...} }
 | `NEON_DATABASE_URL`    | Neon PostgreSQL connection string (pooled)            | `postgresql://user:pass@host.neon.tech/db?sslmode=require` |
 | `GOOGLE_CLIENT_ID`     | Google OAuth client ID (from Google Cloud Console)    | `123456789-abcdefg.apps.googleusercontent.com`          |
 | `BLOB_READ_WRITE_TOKEN`| Vercel Blob Storage access token                      | `vercel_blob_rw_XXXXXXXXXXXXXX`                         |
+| `SMTP_HOST`            | SMTP server hostname (for digest emails)              | `smtp.gmail.com`                                        |
+| `SMTP_PORT`            | SMTP server port                                      | `587` (TLS) or `465` (SSL)                             |
+| `SMTP_SECURE`          | Use SSL/TLS for SMTP                                  | `true` (port 465) or `false` (port 587)                |
+| `SMTP_USER`            | SMTP username/email                                   | `your-email@gmail.com`                                 |
+| `SMTP_PASS`            | SMTP password/app password                            | `your-app-password`                                    |
+| `SMTP_FROM`            | Sender email address                                  | `noreply@your-domain.com`                              |
 
 ### Optional Variables
 
@@ -733,6 +1096,8 @@ res.json(result); // { items: [...], pagination: {...} }
 | `AUTH_DISABLED` | Disable authentication (dev only)            | `false`        | **Never set to `true` in production**         |
 | `REDIS_URL`     | Redis connection string                      | None           | Caching disabled if not set                   |
 | `LOG_LEVEL`     | Logging verbosity                            | Auto           | `error`, `warn`, `info`, `debug`              |
+| `DIGEST_JOB_SECRET` | Secret for digest endpoint auth (external cron) | None       | Required if using external cron service       |
+| `CRON_SECRET`   | Vercel's automatic cron secret               | Auto (Vercel)  | Auto-set by Vercel, used for digest auth      |
 
 ### Example `.env` File
 
@@ -745,6 +1110,18 @@ BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
 PORT=5000
 AUTH_DISABLED=false
 REDIS_URL=redis://localhost:6379
+
+# Daily Digest SMTP Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=noreply@your-domain.com
+
+# Daily Digest Authentication (choose one or both)
+DIGEST_JOB_SECRET=your-secure-random-secret
+# CRON_SECRET is auto-set by Vercel
 ```
 
 ---

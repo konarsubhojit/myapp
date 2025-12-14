@@ -27,6 +27,7 @@ This directory contains technical documentation for the Order Management System.
 - [Architecture Overview](./backend.md#architecture-overview)
 - [API Endpoints](./backend.md#api-endpoints)
 - [Database Schema](./backend.md#database-schema)
+- [Daily Digest Reminder System](./backend.md#daily-digest-reminder-system)
 - [Development Setup](./backend.md#development-setup)
 
 ## Contributing

@@ -202,10 +202,9 @@ To enable error tracking with Rollbar:
 ## Documentation
 
 - [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
-- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, and database details
+- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, database details, and Daily Digest system
 - [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
 - [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
-- [Daily Digest Reminders](./docs/daily-digest.md) - Email reminder system for upcoming deliveries
 
 ## Development
 
