@@ -703,10 +703,9 @@ Already sent (idempotency check):
 No orders requiring reminders:
 ```json
 {
-  "message": "Digest completed successfully",
+  "message": "No orders requiring reminders",
   "status": "sent",
-  "digestDate": "2024-12-15",
-  "message": "No orders requiring reminders"
+  "digestDate": "2024-12-15"
 }
 ```
 
