@@ -6,6 +6,7 @@ import express from 'express';
 jest.unstable_mockModule('../../models/Order', () => ({
   default: {
     find: jest.fn(),
+    findPaginated: jest.fn(),
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
     create: jest.fn(),
@@ -15,6 +16,7 @@ jest.unstable_mockModule('../../models/Order', () => ({
 jest.unstable_mockModule('../../models/Item', () => ({
   default: {
     findById: jest.fn(),
+    findByIds: jest.fn(),
   },
 }));
 jest.unstable_mockModule('../../utils/logger', () => ({
@@ -78,14 +80,22 @@ describe('Orders Routes', () => {
   });
 
   describe('GET /api/orders', () => {
-    it('should return paginated orders using in-memory pagination', async () => {
-      const mockOrders = [
-        { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0, items: [] },
-        { _id: 2, orderId: 'ORD123457', customerName: 'Jane Smith', totalPrice: 200.0, items: [] },
-        { _id: 3, orderId: 'ORD123458', customerName: 'Bob Wilson', totalPrice: 150.0, items: [] },
-      ];
+    it('should return paginated orders using DB-level pagination', async () => {
+      const mockPaginatedResult = {
+        orders: [
+          { _id: 1, orderId: 'ORD123456', customerName: 'John Doe', totalPrice: 100.0, items: [] },
+          { _id: 2, orderId: 'ORD123457', customerName: 'Jane Smith', totalPrice: 200.0, items: [] },
+          { _id: 3, orderId: 'ORD123458', customerName: 'Bob Wilson', totalPrice: 150.0, items: [] },
+        ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 3,
+          totalPages: 1
+        }
+      };
 
-      Order.find.mockResolvedValue(mockOrders);
+      Order.findPaginated.mockResolvedValue(mockPaginatedResult);
 
       const response = await request(app).get('/api/orders?page=1&limit=10');
 
@@ -104,16 +114,24 @@ describe('Orders Routes', () => {
     });
 
     it('should return correct second page', async () => {
-      // Create 15 mock orders to test pagination across pages
-      const mockOrders = Array.from({ length: 15 }, (_, i) => ({
-        _id: i + 1,
-        orderId: `ORD${123456 + i}`,
-        customerName: `Customer ${i + 1}`,
-        totalPrice: 100.0 + i * 10,
-        items: []
-      }));
+      // Mock second page with 5 orders
+      const mockPaginatedResult = {
+        orders: Array.from({ length: 5 }, (_, i) => ({
+          _id: i + 11,
+          orderId: `ORD${123466 + i}`,
+          customerName: `Customer ${i + 11}`,
+          totalPrice: 200.0 + i * 10,
+          items: []
+        })),
+        pagination: {
+          page: 2,
+          limit: 10,
+          total: 15,
+          totalPages: 2
+        }
+      };
 
-      Order.find.mockResolvedValue(mockOrders);
+      Order.findPaginated.mockResolvedValue(mockPaginatedResult);
 
       const response = await request(app).get('/api/orders?page=2&limit=10');
 
@@ -129,7 +147,7 @@ describe('Orders Routes', () => {
     });
 
     it('should handle database errors', async () => {
-      Order.find.mockRejectedValue(new Error('Database error'));
+      Order.findPaginated.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app).get('/api/orders?page=1&limit=10');
 
@@ -140,11 +158,14 @@ describe('Orders Routes', () => {
 
   describe('POST /api/orders', () => {
     beforeEach(() => {
-      Item.findById.mockResolvedValue({
+      // Mock findByIds to return a Map with the test item
+      const itemsMap = new Map();
+      itemsMap.set(1, {
         _id: 1,
         name: 'Test Item',
         price: 50.0,
       });
+      Item.findByIds.mockResolvedValue(itemsMap);
     });
 
     it('should create a new order', async () => {
@@ -213,7 +234,8 @@ describe('Orders Routes', () => {
     });
 
     it('should return 400 when item not found', async () => {
-      Item.findById.mockResolvedValue(null);
+      // Mock findByIds to return an empty Map (item not found)
+      Item.findByIds.mockResolvedValue(new Map());
 
       const orderData = {
         orderFrom: 'Website',
@@ -383,11 +405,14 @@ describe('Orders Routes', () => {
         totalPrice: 100.0,
       });
 
-      Item.findById.mockResolvedValue({
+      // Mock findByIds to return a Map with the test item
+      const itemsMap = new Map();
+      itemsMap.set(1, {
         _id: 1,
         name: 'Test Item',
         price: 50.0,
       });
+      Item.findByIds.mockResolvedValue(itemsMap);
     });
 
     it('should update an order', async () => {
@@ -494,11 +519,14 @@ describe('Orders Routes', () => {
 
   describe('Delivery Tracking', () => {
     beforeEach(() => {
-      Item.findById.mockResolvedValue({
+      // Mock findByIds to return a Map with the test item
+      const itemsMap = new Map();
+      itemsMap.set(1, {
         _id: 1,
         name: 'Test Item',
         price: 50.0,
       });
+      Item.findByIds.mockResolvedValue(itemsMap);
     });
 
     it('should create order with delivery tracking fields', async () => {

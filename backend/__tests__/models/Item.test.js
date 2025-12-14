@@ -421,6 +421,81 @@ describe('Item Model', () => {
     });
   });
 
+  describe('findByIds', () => {
+    it('should return a map of items by ID', async () => {
+      const mockItems = [
+        { id: 1, name: 'Item 1', price: '10.00', createdAt: new Date() },
+        { id: 2, name: 'Item 2', price: '20.00', createdAt: new Date() },
+        { id: 3, name: 'Item 3', price: '30.00', createdAt: new Date() },
+      ];
+
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => Promise.resolve(mockItems)),
+        })),
+      }));
+
+      const result = await Item.findByIds([1, 2, 3]);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(3);
+      expect(result.get(1).name).toBe('Item 1');
+      expect(result.get(2).name).toBe('Item 2');
+      expect(result.get(3).name).toBe('Item 3');
+    });
+
+    it('should return empty map when no IDs provided', async () => {
+      const result = await Item.findByIds([]);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty map when null IDs provided', async () => {
+      const result = await Item.findByIds(null);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(0);
+    });
+
+    it('should filter out invalid IDs', async () => {
+      const mockItems = [
+        { id: 1, name: 'Item 1', price: '10.00', createdAt: new Date() },
+      ];
+
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => Promise.resolve(mockItems)),
+        })),
+      }));
+
+      const result = await Item.findByIds([1, 'invalid', NaN]);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(1);
+      expect(result.get(1).name).toBe('Item 1');
+    });
+
+    it('should handle case where some items are not found', async () => {
+      const mockItems = [
+        { id: 1, name: 'Item 1', price: '10.00', createdAt: new Date() },
+      ];
+
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => Promise.resolve(mockItems)),
+        })),
+      }));
+
+      const result = await Item.findByIds([1, 999]);
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.size).toBe(1);
+      expect(result.has(1)).toBe(true);
+      expect(result.has(999)).toBe(false);
+    });
+  });
+
   describe('permanentlyRemoveImage', () => {
     it('should remove image URL from item', async () => {
       const mockItem = {

@@ -105,6 +105,106 @@ describe('Order Model', () => {
     });
   });
 
+  describe('findPaginated', () => {
+    it('should return paginated orders with items', async () => {
+      const mockOrders = [
+        {
+          id: 1,
+          orderId: 'ORD123456',
+          customerName: 'John Doe',
+          customerId: 'CUST001',
+          totalPrice: '100.00',
+          status: 'pending',
+          createdAt: new Date(),
+        },
+      ];
+
+      const mockOrderItems = [
+        { id: 1, orderId: 1, itemId: 1, name: 'Item 1', price: '50.00', quantity: 2 },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => Promise.resolve([{ count: '5' }])),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => ({
+                offset: jest.fn(() => Promise.resolve(mockOrders)),
+              })),
+            })),
+          })),
+        })
+        .mockReturnValue({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockOrderItems)),
+          })),
+        });
+
+      const result = await Order.findPaginated({ page: 1, limit: 10 });
+
+      expect(result).toHaveProperty('orders');
+      expect(result).toHaveProperty('pagination');
+      expect(result.orders).toHaveLength(1);
+      expect(result.orders[0]._id).toBe(1);
+      expect(result.orders[0].items).toHaveLength(1);
+      expect(result.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 5,
+        totalPages: 1
+      });
+    });
+
+    it('should return empty result when no orders', async () => {
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => Promise.resolve([{ count: '0' }])),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => ({
+                offset: jest.fn(() => Promise.resolve([])),
+              })),
+            })),
+          })),
+        });
+
+      const result = await Order.findPaginated({ page: 1, limit: 10 });
+
+      expect(result.orders).toHaveLength(0);
+      expect(result.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0
+      });
+    });
+
+    it('should use default values for page and limit', async () => {
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => Promise.resolve([{ count: '0' }])),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => ({
+                offset: jest.fn(() => Promise.resolve([])),
+              })),
+            })),
+          })),
+        });
+
+      const result = await Order.findPaginated({});
+
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.limit).toBe(10);
+    });
+  });
+
   describe('findById', () => {
     it('should return order by ID with items', async () => {
       const mockOrder = {

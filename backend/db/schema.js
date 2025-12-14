@@ -46,7 +46,9 @@ export const orders = pgTable('orders', {
   customerIdIdx: index('orders_customer_id_idx').on(table.customerId),
   deliveryDateIdx: index('orders_delivery_date_idx').on(table.expectedDeliveryDate),
   priorityIdx: index('orders_priority_idx').on(table.priority),
-  statusIdx: index('orders_status_idx').on(table.status)
+  statusIdx: index('orders_status_idx').on(table.status),
+  // Index for pagination ORDER BY created_at DESC
+  createdAtIdx: index('orders_created_at_idx').on(table.createdAt)
 }));
 
 export const orderItems = pgTable('order_items', {
@@ -57,7 +59,10 @@ export const orderItems = pgTable('order_items', {
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
   quantity: integer('quantity').notNull(),
   customizationRequest: text('customization_request')
-});
+}, (table) => ({
+  // Index for efficient order items lookup by order_id
+  orderIdIdx: index('order_items_order_id_idx').on(table.orderId)
+}));
 
 export const feedbacks = pgTable('feedbacks', {
   id: serial('id').primaryKey(),

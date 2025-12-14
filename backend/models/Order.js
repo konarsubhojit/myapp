@@ -120,6 +120,61 @@ const Order = {
     }, { operationName: 'Order.find' });
   },
 
+  /**
+   * Find orders with DB-level pagination for optimal performance
+   * @param {Object} params - Pagination parameters
+   * @param {number} params.page - Page number (1-indexed)
+   * @param {number} params.limit - Items per page
+   * @returns {Promise<{orders: Array, pagination: Object}>}
+   */
+  async findPaginated({ page = 1, limit = 10 }) {
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const offset = (page - 1) * limit;
+      
+      // Get total count for pagination metadata
+      const countResult = await db.select({ count: sql`count(*)` }).from(orders);
+      const total = Number.parseInt(countResult[0].count, 10);
+      
+      // Get paginated orders with LIMIT and OFFSET at DB level
+      const ordersResult = await db.select()
+        .from(orders)
+        .orderBy(desc(orders.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      if (ordersResult.length === 0) {
+        return {
+          orders: [],
+          pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+        };
+      }
+      
+      // Bulk fetch items for all orders (avoids N+1)
+      const orderIds = ordersResult.map(o => o.id);
+      const allItems = await db.select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds));
+      
+      // Group items by orderId
+      const itemsByOrderId = allItems.reduce((acc, item) => {
+        if (!acc[item.orderId]) acc[item.orderId] = [];
+        acc[item.orderId].push(item);
+        return acc;
+      }, {});
+      
+      // Transform orders with their items
+      const transformedOrders = ordersResult.map(order => 
+        transformOrder(order, itemsByOrderId[order.id] || [])
+      );
+      
+      return {
+        orders: transformedOrders,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      };
+    }, { operationName: 'Order.findPaginated' });
+  },
+
   async findById(id) {
     return executeWithRetry(async () => {
       const db = getDatabase();

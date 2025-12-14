@@ -1,4 +1,4 @@
-import { eq, desc, isNull, isNotNull, ilike, or, sql, and } from 'drizzle-orm';
+import { eq, desc, isNull, isNotNull, ilike, or, sql, and, inArray } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { items } from '../db/schema.js';
 import { executeWithRetry } from '../utils/dbRetry.js';
@@ -48,6 +48,39 @@ const Item = {
       
       return transformItem(result[0]);
     }, { operationName: 'Item.findById' });
+  },
+
+  /**
+   * Bulk fetch items by IDs to avoid N+1 query problem
+   * @param {number[]} ids - Array of item IDs to fetch
+   * @returns {Promise<Map<number, Object>>} Map of item ID to item object
+   */
+  async findByIds(ids) {
+    return executeWithRetry(async () => {
+      if (!ids || ids.length === 0) {
+        return new Map();
+      }
+      
+      const db = getDatabase();
+      const numericIds = ids
+        .map(id => Number.parseInt(id, 10))
+        .filter(id => !Number.isNaN(id));
+      
+      if (numericIds.length === 0) {
+        return new Map();
+      }
+      
+      const result = await db.select()
+        .from(items)
+        .where(inArray(items.id, numericIds));
+      
+      const itemMap = new Map();
+      for (const item of result) {
+        itemMap.set(item.id, transformItem(item));
+      }
+      
+      return itemMap;
+    }, { operationName: 'Item.findByIds' });
   },
 
   async create(data) {
