@@ -251,30 +251,49 @@ function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotal
   return { valid: true };
 }
 
+/**
+ * Build order items list with bulk fetch to avoid N+1 query problem
+ * Fetches all items in a single DB query instead of N individual queries
+ * @param {Array} items - Array of order items with itemId and quantity
+ * @returns {Promise<{valid: boolean, orderItems?: Array, totalPrice?: number, error?: string}>}
+ */
 async function buildOrderItemsList(items) {
-  const orderItems = [];
-  let totalPrice = 0;
-
+  // Parse and validate quantities first (no DB needed)
+  const parsedItems = [];
   for (const orderItem of items) {
-    const item = await Item.findById(orderItem.itemId);
-    if (!item) {
-      return { valid: false, error: `Item with id ${orderItem.itemId} not found` };
-    }
-    
     const quantity = Number.parseInt(orderItem.quantity, 10);
     if (!Number.isInteger(quantity) || quantity < 1) {
       return { valid: false, error: 'Quantity must be a positive integer' };
+    }
+    parsedItems.push({
+      itemId: orderItem.itemId,
+      quantity,
+      customizationRequest: orderItem.customizationRequest || ''
+    });
+  }
+
+  // Bulk fetch all items in a single query (fixes N+1 problem)
+  const itemIds = parsedItems.map(i => i.itemId);
+  const itemsMap = await Item.findByIds(itemIds);
+  
+  const orderItems = [];
+  let totalPrice = 0;
+
+  for (const parsedItem of parsedItems) {
+    const item = itemsMap.get(Number.parseInt(parsedItem.itemId, 10));
+    if (!item) {
+      return { valid: false, error: `Item with id ${parsedItem.itemId} not found` };
     }
 
     orderItems.push({
       item: item._id,
       name: item.name,
       price: item.price,
-      quantity: quantity,
-      customizationRequest: orderItem.customizationRequest || ''
+      quantity: parsedItem.quantity,
+      customizationRequest: parsedItem.customizationRequest
     });
 
-    totalPrice += item.price * quantity;
+    totalPrice += item.price * parsedItem.quantity;
   }
 
   return { valid: true, orderItems, totalPrice };
@@ -311,19 +330,10 @@ router.get('/all', cacheMiddleware(86400), asyncHandler(async (req, res) => {
 router.get('/', asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
-  // Fetch all orders from database
-  const allOrders = await Order.find();
+  // Use DB-level pagination for optimal performance (O(1) vs O(N) memory)
+  const result = await Order.findPaginated({ page, limit });
   
-  // Paginate in-memory
-  const total = allOrders.length;
-  const totalPages = Math.ceil(total / limit);
-  const offset = (page - 1) * limit;
-  const paginatedOrders = allOrders.slice(offset, offset + limit);
-  
-  res.json({
-    orders: paginatedOrders,
-    pagination: { page, limit, total, totalPages }
-  });
+  res.json(result);
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
