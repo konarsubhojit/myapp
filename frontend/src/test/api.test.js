@@ -588,23 +588,30 @@ describe('API Service', () => {
   });
 
   describe('Guest Mode', () => {
-    it('should return empty data in guest mode', async () => {
+    it('should return dummy data in guest mode', async () => {
       setGuestModeChecker(() => true);
 
       const result = await getItems();
 
-      expect(result).toEqual([]);
+      // Should return dummy items, not empty array
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]).toHaveProperty('name');
+      expect(result[0]).toHaveProperty('price');
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('should return paginated structure in guest mode', async () => {
+    it('should return paginated structure with dummy data in guest mode', async () => {
       setGuestModeChecker(() => true);
 
       const result = await getItemsPaginated();
 
       expect(result).toHaveProperty('items');
       expect(result).toHaveProperty('pagination');
-      expect(result.items).toEqual([]);
+      // Should return dummy items in paginated structure
+      expect(Array.isArray(result.items)).toBe(true);
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.pagination.total).toBeGreaterThan(0);
       expect(global.fetch).not.toHaveBeenCalled();
     });
   });

@@ -16,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/konarsubhojit/myapp/issues"
   },
-  "homepage": "https://github.com/konarsubhojit/myapp#readme"
+  "homepage": "https://github.com/konarsubhojit/myapp#readme",
+  "devDependencies": {
+    "playwright": "^1.57.0"
+  }
 }
