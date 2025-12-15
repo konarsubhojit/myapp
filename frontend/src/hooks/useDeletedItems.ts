@@ -19,18 +19,18 @@ interface UseDeletedItemsResult {
 }
 
 /**
- * Custom hook for managing deleted items data with infinite scroll
+ * Custom hook for managing deleted items data with cursor-based infinite scroll
  */
 export const useDeletedItems = (showDeleted: boolean): UseDeletedItemsResult => {
   const [deletedItems, setDeletedItems] = useState<Item[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMoreDeleted, setHasMoreDeleted] = useState<boolean>(false);
   const [deletedSearch, setDeletedSearch] = useState<string>('');
   const [deletedSearchInput, setDeletedSearchInput] = useState<string>('');
   const [loadingDeleted, setLoadingDeleted] = useState<boolean>(false);
   const [loadingMoreDeleted, setLoadingMoreDeleted] = useState<boolean>(false);
 
-  const fetchDeletedItems = useCallback(async (pageNum: number, appendMode: boolean): Promise<void> => {
+  const fetchDeletedItems = useCallback(async (cursor: string | null, appendMode: boolean): Promise<void> => {
     if (appendMode) {
       setLoadingMoreDeleted(true);
     } else {
@@ -39,8 +39,8 @@ export const useDeletedItems = (showDeleted: boolean): UseDeletedItemsResult => 
     
     try {
       const result = await getDeletedItems({ 
-        page: pageNum, 
-        limit: DELETED_ITEMS_PER_PAGE, 
+        limit: DELETED_ITEMS_PER_PAGE,
+        cursor,
         search: deletedSearch 
       });
       
@@ -55,8 +55,8 @@ export const useDeletedItems = (showDeleted: boolean): UseDeletedItemsResult => 
         setDeletedItems(result.items);
       }
       
-      setTotalPages(result.pagination?.totalPages || 0);
-      setPage(pageNum);
+      setNextCursor(result.page.nextCursor);
+      setHasMoreDeleted(result.page.hasMore);
     } catch (err) {
       console.error('Failed to fetch deleted items:', err);
       if (!appendMode) {
@@ -71,37 +71,35 @@ export const useDeletedItems = (showDeleted: boolean): UseDeletedItemsResult => 
   // Fetch deleted items when showDeleted becomes true or search changes
   useEffect(() => {
     if (showDeleted) {
-      fetchDeletedItems(1, false);
+      fetchDeletedItems(null, false);
     }
   }, [showDeleted, deletedSearch]);
 
   const loadMoreDeleted = useCallback((): void => {
-    if (!loadingMoreDeleted && page < totalPages) {
-      fetchDeletedItems(page + 1, true);
+    if (!loadingMoreDeleted && hasMoreDeleted && nextCursor) {
+      fetchDeletedItems(nextCursor, true);
     }
-  }, [loadingMoreDeleted, page, totalPages, fetchDeletedItems]);
+  }, [loadingMoreDeleted, hasMoreDeleted, nextCursor, fetchDeletedItems]);
 
   const handleDeletedSearch = (e: React.FormEvent): void => {
     e.preventDefault();
     setDeletedSearch(deletedSearchInput);
-    setPage(1);
   };
 
   const clearDeletedSearch = (): void => {
     setDeletedSearchInput('');
     setDeletedSearch('');
-    setPage(1);
   };
 
   const refetchDeletedItems = async (): Promise<void> => {
-    await fetchDeletedItems(1, false);
+    await fetchDeletedItems(null, false);
   };
 
   return {
     deletedItems,
     loadingDeleted,
     loadingMoreDeleted,
-    hasMoreDeleted: page < totalPages,
+    hasMoreDeleted,
     deletedSearch,
     deletedSearchInput,
     setDeletedSearchInput,

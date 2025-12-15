@@ -4,12 +4,29 @@ import { put, del } from '@vercel/blob';
 import Item from '../models/Item.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
-import { parsePaginationParams } from '../utils/pagination.js';
+import { PAGINATION } from '../constants/paginationConstants.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
 import { IMAGE_CONFIG } from '../constants/imageConstants.js';
 import { cacheMiddleware, invalidateItemCache } from '../middleware/cache.js';
 
 const logger = createLogger('ItemsRoute');
+
+const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
+
+/**
+ * Parse and validate cursor pagination parameters from query string
+ * @param {Object} query - Express request query object
+ * @returns {Object} Validated parameters { limit, cursor, search }
+ */
+function parseCursorParams(query) {
+  const parsedLimit = Number.parseInt(query.limit, 10);
+  
+  return {
+    limit: ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT,
+    cursor: query.cursor || null,
+    search: query.search || ''
+  };
+}
 
 async function uploadImage(image) {
   const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -82,80 +99,86 @@ function validateItemPrice(price) {
 }
 
 /**
- * Validate paginated response format
- * @param {*} result - Result from paginated query
+ * Validate cursor-paginated response format
+ * @param {*} result - Result from cursor-paginated query
  * @param {string} source - Source function name for error logging
  * @throws {Error} If result format is invalid
  */
-function validatePaginatedResponse(result, source) {
-  if (!result || !result.items || !Array.isArray(result.items) || !result.pagination) {
-    logger.error(`Invalid paginated result from ${source}`, { 
+function validateCursorResponse(result, source) {
+  if (!result || !result.items || !Array.isArray(result.items) || !result.page) {
+    logger.error(`Invalid cursor result from ${source}`, { 
       resultType: typeof result,
       hasItems: !!result?.items,
       itemsIsArray: Array.isArray(result?.items),
       itemsLength: result?.items?.length,
-      hasPagination: !!result?.pagination
+      hasPage: !!result?.page
     });
-    throw badRequestError('Invalid paginated response: expected object with items array and pagination metadata');
+    throw badRequestError('Invalid cursor response: expected object with items array and page metadata');
   }
 }
 
 router.get('/', cacheMiddleware(86400), asyncHandler(async (req, res) => {
-  const { page, limit, search } = parsePaginationParams(req.query);
+  const { limit, cursor, search } = parseCursorParams(req.query);
   
   // Log request details for debugging (metadata only to avoid exposing sensitive data)
   logger.debug('GET /api/items request', { 
-    hasPageParam: 'page' in req.query,
+    hasCursorParam: !!req.query.cursor,
     hasLimitParam: 'limit' in req.query,
-    pageValue: req.query.page,
     limitValue: req.query.limit,
     hasSearchParam: !!req.query.search,
     searchLength: req.query.search?.length
   });
   
-  // Check if pagination was requested (using truthy check to match original behavior)
-  // Empty strings are falsy, so they won't trigger pagination
-  const paginationRequested = req.query.page || req.query.limit;
-  
-  if (paginationRequested) {
-    const result = await Item.findPaginated({ page, limit, search });
+  try {
+    const result = await Item.findCursor({ limit, cursor, search });
     
     // Defensive check: ensure result has expected format
-    validatePaginatedResponse(result, 'Item.findPaginated');
+    validateCursorResponse(result, 'Item.findCursor');
     
-    logger.debug('Returning paginated response', { 
-      itemCount: result.items.length, 
-      page: result.pagination.page,
-      totalPages: result.pagination.totalPages 
+    logger.debug('Returning cursor-paginated response', { 
+      itemCount: result.items.length,
+      hasMore: result.page.hasMore,
+      nextCursor: result.page.nextCursor ? 'present' : 'null'
     });
+    
     res.json(result);
-  } else {
-    const items = await Item.find();
-    
-    // Defensive check: ensure items is an array
-    if (!Array.isArray(items)) {
-      logger.error('Invalid result from Item.find', { 
-        resultType: typeof items,
-        isArray: Array.isArray(items),
-        length: items?.length
-      });
-      throw badRequestError('Invalid non-paginated response: expected items array');
+  } catch (error) {
+    // Provide helpful error message for invalid cursor
+    if (error.message && error.message.includes('Invalid cursor format')) {
+      throw badRequestError(error.message);
     }
-    
-    logger.debug('Returning non-paginated response', { itemCount: items.length });
-    res.json(items);
+    throw error;
   }
 }));
 
 router.get('/deleted', cacheMiddleware(86400), asyncHandler(async (req, res) => {
-  const { page, limit, search } = parsePaginationParams(req.query);
+  const { limit, cursor, search } = parseCursorParams(req.query);
   
-  const result = await Item.findDeletedPaginated({ page, limit, search });
+  logger.debug('GET /api/items/deleted request', {
+    hasCursorParam: !!req.query.cursor,
+    hasLimitParam: 'limit' in req.query,
+    hasSearchParam: !!req.query.search
+  });
   
-  // Defensive check: ensure result has expected format
-  validatePaginatedResponse(result, 'Item.findDeletedPaginated');
-  
-  res.json(result);
+  try {
+    const result = await Item.findDeletedCursor({ limit, cursor, search });
+    
+    // Defensive check: ensure result has expected format
+    validateCursorResponse(result, 'Item.findDeletedCursor');
+    
+    logger.debug('Returning cursor-paginated deleted items', {
+      itemCount: result.items.length,
+      hasMore: result.page.hasMore
+    });
+    
+    res.json(result);
+  } catch (error) {
+    // Provide helpful error message for invalid cursor
+    if (error.message && error.message.includes('Invalid cursor format')) {
+      throw badRequestError(error.message);
+    }
+    throw error;
+  }
 }));
 
 router.post('/', asyncHandler(async (req, res) => {

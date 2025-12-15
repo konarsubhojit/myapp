@@ -1,4 +1,4 @@
-import { eq, desc, isNull, isNotNull, ilike, or, sql, and, inArray } from 'drizzle-orm';
+import { eq, desc, isNull, isNotNull, ilike, or, sql, and, inArray, lt } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { items } from '../db/schema.js';
 import { executeWithRetry } from '../utils/dbRetry.js';
@@ -24,6 +24,47 @@ function buildSearchCondition(search) {
     ilike(items.fabric, searchTerm),
     ilike(items.specialFeatures, searchTerm)
   );
+}
+
+/**
+ * Parse and validate cursor for active items
+ * Format: "createdAt:id" (e.g., "2025-12-15T10:35:12.123Z:345")
+ * @param {string} cursor - Cursor string
+ * @returns {{createdAt: Date, id: number} | null} Parsed cursor or null if invalid
+ */
+function parseCursor(cursor) {
+  if (!cursor) return null;
+  
+  const parts = cursor.split(':');
+  if (parts.length !== 2) return null;
+  
+  const [createdAtStr, idStr] = parts;
+  const createdAt = new Date(createdAtStr);
+  const id = Number.parseInt(idStr, 10);
+  
+  if (Number.isNaN(createdAt.getTime()) || Number.isNaN(id)) {
+    return null;
+  }
+  
+  return { createdAt, id };
+}
+
+/**
+ * Encode cursor for active items
+ * @param {Object} item - Item with createdAt and id
+ * @returns {string} Cursor string
+ */
+function encodeCursor(item) {
+  return `${item.createdAt.toISOString()}:${item.id}`;
+}
+
+/**
+ * Encode cursor for deleted items
+ * @param {Object} item - Item with deletedAt and id
+ * @returns {string} Cursor string
+ */
+function encodeDeletedCursor(item) {
+  return `${item.deletedAt.toISOString()}:${item.id}`;
 }
 
 const Item = {
@@ -216,6 +257,165 @@ const Item = {
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
       };
     }, { operationName: 'Item.findDeletedPaginated' });
+  },
+
+  /**
+   * Find active items using cursor-based pagination (keyset pagination)
+   * @param {Object} params - Query parameters
+   * @param {number} params.limit - Number of items to return (default: 10)
+   * @param {string} params.cursor - Cursor for pagination (format: "createdAt:id")
+   * @param {string} params.search - Search query
+   * @returns {Promise<{items: Array, page: {limit: number, nextCursor: string|null, hasMore: boolean}}>}
+   * @throws {Error} If cursor format is invalid
+   */
+  async findCursor({ limit = 10, cursor = null, search = '' }) {
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      
+      // Validate and parse cursor
+      let cursorData = null;
+      if (cursor) {
+        cursorData = parseCursor(cursor);
+        if (!cursorData) {
+          throw new Error('Invalid cursor format. Expected format: "createdAt:id"');
+        }
+      }
+      
+      // Build WHERE conditions
+      const conditions = [isNull(items.deletedAt)];
+      
+      // Add search condition
+      const searchCondition = buildSearchCondition(search);
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+      
+      // Add cursor condition for keyset pagination
+      if (cursorData) {
+        // For ORDER BY created_at DESC, id DESC:
+        // We want items where (created_at, id) < (cursor_created_at, cursor_id)
+        conditions.push(
+          or(
+            lt(items.createdAt, cursorData.createdAt),
+            and(
+              eq(items.createdAt, cursorData.createdAt),
+              lt(items.id, cursorData.id)
+            )
+          )
+        );
+      }
+      
+      const whereCondition = and(...conditions);
+      
+      // Fetch limit + 1 to determine if there are more items
+      const result = await db.select()
+        .from(items)
+        .where(whereCondition)
+        .orderBy(desc(items.createdAt), desc(items.id))
+        .limit(limit + 1);
+      
+      // Determine if there are more items
+      const hasMore = result.length > limit;
+      
+      // Trim to requested limit
+      const itemsToReturn = hasMore ? result.slice(0, limit) : result;
+      
+      // Generate next cursor from last item
+      let nextCursor = null;
+      if (hasMore && itemsToReturn.length > 0) {
+        const lastItem = itemsToReturn[itemsToReturn.length - 1];
+        nextCursor = encodeCursor(lastItem);
+      }
+      
+      return {
+        items: itemsToReturn.map(transformItem),
+        page: {
+          limit,
+          nextCursor,
+          hasMore
+        }
+      };
+    }, { operationName: 'Item.findCursor' });
+  },
+
+  /**
+   * Find deleted items using cursor-based pagination (keyset pagination)
+   * @param {Object} params - Query parameters
+   * @param {number} params.limit - Number of items to return (default: 10)
+   * @param {string} params.cursor - Cursor for pagination (format: "deletedAt:id")
+   * @param {string} params.search - Search query
+   * @returns {Promise<{items: Array, page: {limit: number, nextCursor: string|null, hasMore: boolean}}>}
+   * @throws {Error} If cursor format is invalid
+   */
+  async findDeletedCursor({ limit = 10, cursor = null, search = '' }) {
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      
+      // Validate and parse cursor (same format for both active and deleted)
+      let cursorData = null;
+      if (cursor) {
+        cursorData = parseCursor(cursor);
+        if (!cursorData) {
+          throw new Error('Invalid cursor format. Expected format: "deletedAt:id"');
+        }
+      }
+      
+      // Build WHERE conditions
+      const conditions = [isNotNull(items.deletedAt)];
+      
+      // Add search condition
+      const searchCondition = buildSearchCondition(search);
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+      
+      // Add cursor condition for keyset pagination
+      if (cursorData) {
+        // For ORDER BY deleted_at DESC, id DESC:
+        // We want items where (deleted_at, id) < (cursor_deleted_at, cursor_id)
+        // Note: cursor uses createdAt key name but contains deletedAt value
+        conditions.push(
+          or(
+            lt(items.deletedAt, cursorData.createdAt),
+            and(
+              eq(items.deletedAt, cursorData.createdAt),
+              lt(items.id, cursorData.id)
+            )
+          )
+        );
+      }
+      
+      const whereCondition = and(...conditions);
+      
+      // Fetch limit + 1 to determine if there are more items
+      const result = await db.select()
+        .from(items)
+        .where(whereCondition)
+        .orderBy(desc(items.deletedAt), desc(items.id))
+        .limit(limit + 1);
+      
+      // Determine if there are more items
+      const hasMore = result.length > limit;
+      
+      // Trim to requested limit
+      const itemsToReturn = hasMore ? result.slice(0, limit) : result;
+      
+      // Generate next cursor from last item
+      let nextCursor = null;
+      if (hasMore && itemsToReturn.length > 0) {
+        const lastItem = itemsToReturn[itemsToReturn.length - 1];
+        nextCursor = encodeDeletedCursor(lastItem);
+      }
+      
+      return {
+        items: itemsToReturn.map(transformItem),
+        page: {
+          limit,
+          nextCursor,
+          hasMore
+        }
+      };
+    }, { operationName: 'Item.findDeletedCursor' });
   },
 
   async permanentlyRemoveImage(id) {

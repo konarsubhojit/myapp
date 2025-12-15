@@ -9,16 +9,22 @@ export interface ItemsPaginationParams {
   search?: string;
 }
 
+export interface ItemsCursorParams {
+  limit: number;
+  cursor?: string | null;
+  search?: string;
+}
+
 export interface PaginationParams {
   page: number;
   limit: number;
 }
 
 export const queryKeys = {
-  // Items
+  // Items (cursor-based)
   items: () => ['items'] as const,
-  itemsPaginated: (params: ItemsPaginationParams) => ['items', 'page', params] as const,
-  deletedItems: (params: ItemsPaginationParams) => ['items', 'deleted', params] as const,
+  itemsCursor: (params: ItemsCursorParams) => ['items', 'cursor', params] as const,
+  deletedItems: (params: ItemsCursorParams) => ['items', 'deleted', params] as const,
 
   // Orders
   ordersAll: () => ['orders', 'all'] as const,

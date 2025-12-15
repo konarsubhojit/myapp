@@ -174,6 +174,27 @@ export interface PaginatedResult<T> {
   pagination: PaginationInfo;
 }
 
+// Cursor-based pagination types
+export interface CursorPaginationParams {
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface CursorSearchPaginationParams extends CursorPaginationParams {
+  search?: string;
+}
+
+export interface CursorPageInfo {
+  limit: number;
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+export interface CursorPaginatedResult<T> {
+  items: T[];
+  page: CursorPageInfo;
+}
+
 export interface PaginatedOrdersResult {
   orders: Order[];
   pagination: PaginationInfo;
