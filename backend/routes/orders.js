@@ -19,11 +19,47 @@ import {
 
 const logger = createLogger('OrdersRoute');
 
-function validateCustomerNotes(customerNotes) {
-  if (customerNotes && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
-    return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
+/**
+ * Validate a single field with custom validation logic
+ * @param {*} value - The value to validate
+ * @param {Function} isValid - Function that returns true if value is valid
+ * @param {string} errorMessage - Error message to return if invalid
+ * @returns {{valid: boolean, error?: string}}
+ */
+function validateField(value, isValid, errorMessage) {
+  if (value !== undefined && !isValid(value)) {
+    return { valid: false, error: errorMessage };
   }
   return { valid: true };
+}
+
+/**
+ * Validate a value against a list of allowed values
+ * @param {*} value - The value to validate
+ * @param {Array} allowedValues - Array of allowed values
+ * @param {string} fieldName - Name of the field for error message
+ * @returns {{valid: boolean, error?: string}}
+ */
+function validateEnum(value, allowedValues, fieldName) {
+  if (!value) {
+    return { valid: true };
+  }
+  
+  if (!allowedValues.includes(value)) {
+    return { 
+      valid: false, 
+      error: `Invalid ${fieldName}. Must be one of: ${allowedValues.join(', ')}` 
+    };
+  }
+  return { valid: true };
+}
+
+function validateCustomerNotes(customerNotes) {
+  return validateField(
+    customerNotes,
+    notes => !(typeof notes === 'string' && notes.length > MAX_CUSTOMER_NOTES_LENGTH),
+    `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters`
+  );
 }
 
 function validateRequiredFields(orderFrom, customerName, customerId, items) {
@@ -59,8 +95,9 @@ function validateDeliveryDate(expectedDeliveryDate) {
 }
 
 function validatePaymentData(paymentStatus, paidAmount, totalPrice) {
-  if (paymentStatus && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
-    return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
+  const statusValidation = validateEnum(paymentStatus, VALID_PAYMENT_STATUSES, 'payment status');
+  if (!statusValidation.valid) {
+    return statusValidation;
   }
 
   let parsedPaidAmount = 0;
@@ -99,24 +136,18 @@ function validatePriority(priority) {
 }
 
 function validateConfirmationStatus(confirmationStatus) {
-  if (confirmationStatus && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
-    return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
-  }
-  return { valid: true };
+  return validateEnum(confirmationStatus, VALID_CONFIRMATION_STATUSES, 'confirmation status');
 }
 
 function validateDeliveryStatus(deliveryStatus) {
-  if (deliveryStatus && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
-    return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
-  }
-  return { valid: true };
+  return validateEnum(deliveryStatus, VALID_DELIVERY_STATUSES, 'delivery status');
 }
 
 function validateUpdateDeliveryStatus(deliveryStatus) {
-  if (deliveryStatus !== undefined && !VALID_DELIVERY_STATUSES.includes(deliveryStatus)) {
-    return { valid: false, error: `Invalid delivery status. Must be one of: ${VALID_DELIVERY_STATUSES.join(', ')}` };
+  if (deliveryStatus === undefined) {
+    return { valid: true };
   }
-  return { valid: true };
+  return validateEnum(deliveryStatus, VALID_DELIVERY_STATUSES, 'delivery status');
 }
 
 function validateActualDeliveryDate(actualDeliveryDate) {
@@ -150,10 +181,11 @@ function parseUpdateActualDeliveryDate(actualDeliveryDate) {
 }
 
 function validateUpdateCustomerNotes(customerNotes) {
-  if (customerNotes !== undefined && typeof customerNotes === 'string' && customerNotes.length > MAX_CUSTOMER_NOTES_LENGTH) {
-    return { valid: false, error: `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters` };
-  }
-  return { valid: true };
+  return validateField(
+    customerNotes,
+    notes => !(typeof notes === 'string' && notes.length > MAX_CUSTOMER_NOTES_LENGTH),
+    `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters`
+  );
 }
 
 function validateUpdateFields(customerName, customerId) {
@@ -167,24 +199,24 @@ function validateUpdateFields(customerName, customerId) {
 }
 
 function validateOrderStatus(status) {
-  if (status !== undefined && !VALID_ORDER_STATUSES.includes(status)) {
-    return { valid: false, error: `Invalid status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` };
+  if (status === undefined) {
+    return { valid: true };
   }
-  return { valid: true };
+  return validateEnum(status, VALID_ORDER_STATUSES, 'status');
 }
 
 function validateUpdatePaymentStatus(paymentStatus) {
-  if (paymentStatus !== undefined && !VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
-    return { valid: false, error: `Invalid payment status. Must be one of: ${VALID_PAYMENT_STATUSES.join(', ')}` };
+  if (paymentStatus === undefined) {
+    return { valid: true };
   }
-  return { valid: true };
+  return validateEnum(paymentStatus, VALID_PAYMENT_STATUSES, 'payment status');
 }
 
 function validateUpdateConfirmationStatus(confirmationStatus) {
-  if (confirmationStatus !== undefined && !VALID_CONFIRMATION_STATUSES.includes(confirmationStatus)) {
-    return { valid: false, error: `Invalid confirmation status. Must be one of: ${VALID_CONFIRMATION_STATUSES.join(', ')}` };
+  if (confirmationStatus === undefined) {
+    return { valid: true };
   }
-  return { valid: true };
+  return validateEnum(confirmationStatus, VALID_CONFIRMATION_STATUSES, 'confirmation status');
 }
 
 function parseUpdatePaidAmount(paidAmount) {
@@ -463,45 +495,54 @@ router.get('/:id', cacheMiddleware(86400), asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Validate all update request fields and return comprehensive validation results
+ */
+async function validateAllUpdateFields(requestBody) {
+  const validations = [
+    validateUpdateCustomerNotes(requestBody.customerNotes),
+    validateUpdateFields(requestBody.customerName, requestBody.customerId),
+    validateOrderStatus(requestBody.status),
+    validateUpdatePaymentStatus(requestBody.paymentStatus),
+    validateUpdateConfirmationStatus(requestBody.confirmationStatus),
+    validateUpdateDeliveryStatus(requestBody.deliveryStatus),
+    parseUpdatePaidAmount(requestBody.paidAmount),
+    parseUpdatePriority(requestBody.priority),
+    parseUpdateDeliveryDate(requestBody.expectedDeliveryDate),
+    parseUpdateActualDeliveryDate(requestBody.actualDeliveryDate),
+  ];
+  
+  for (const validation of validations) {
+    if (!validation.valid) {
+      return validation;
+    }
+  }
+  
+  const itemsResult = await processUpdateOrderItems(requestBody.items);
+  if (!itemsResult.valid) {
+    return itemsResult;
+  }
+  
+  return { valid: true, itemsResult };
+}
+
+/**
  * Validates all fields required for updating an order
  * @param {Object} requestBody - The request body containing order update fields
  * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
  */
 async function validateUpdateRequest(requestBody) {
-  const { customerName, customerId, items, expectedDeliveryDate, status, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, actualDeliveryDate } = requestBody;
+  const { paidAmount, priority, expectedDeliveryDate, actualDeliveryDate, items, paymentStatus } = requestBody;
 
-  const notesValidation = validateUpdateCustomerNotes(customerNotes);
-  if (!notesValidation.valid) return notesValidation;
-
-  const fieldsValidation = validateUpdateFields(customerName, customerId);
-  if (!fieldsValidation.valid) return fieldsValidation;
-
-  const statusValidation = validateOrderStatus(status);
-  if (!statusValidation.valid) return statusValidation;
-
-  const paymentStatusValidation = validateUpdatePaymentStatus(paymentStatus);
-  if (!paymentStatusValidation.valid) return paymentStatusValidation;
-
-  const confirmationValidation = validateUpdateConfirmationStatus(confirmationStatus);
-  if (!confirmationValidation.valid) return confirmationValidation;
-
-  const deliveryStatusValidation = validateUpdateDeliveryStatus(deliveryStatus);
-  if (!deliveryStatusValidation.valid) return deliveryStatusValidation;
-
+  const baseValidation = await validateAllUpdateFields(requestBody);
+  if (!baseValidation.valid) {
+    return baseValidation;
+  }
+  
   const paidAmountResult = parseUpdatePaidAmount(paidAmount);
-  if (!paidAmountResult.valid) return paidAmountResult;
-
   const priorityResult = parseUpdatePriority(priority);
-  if (!priorityResult.valid) return priorityResult;
-
   const dateResult = parseUpdateDeliveryDate(expectedDeliveryDate);
-  if (!dateResult.valid) return dateResult;
-
   const actualDeliveryDateResult = parseUpdateActualDeliveryDate(actualDeliveryDate);
-  if (!actualDeliveryDateResult.valid) return actualDeliveryDateResult;
-
-  const itemsResult = await processUpdateOrderItems(items);
-  if (!itemsResult.valid) return itemsResult;
+  const itemsResult = baseValidation.itemsResult;
 
   return { 
     valid: true, 
@@ -569,6 +610,39 @@ function buildUpdateData(validationData, requestBody) {
   return updateData;
 }
 
+/**
+ * Check if delivery date has changed and needs reminder state update
+ */
+function hasDeliveryDateChanged(oldDate, newDate) {
+  if (oldDate === null && newDate !== null) return true;
+  if (oldDate !== null && newDate === null) return true;
+  if (oldDate !== null && newDate !== null && oldDate.getTime() !== newDate.getTime()) return true;
+  return false;
+}
+
+/**
+ * Update reminder state if delivery date changed
+ */
+async function updateReminderStateIfNeeded(existingOrder, dateResult, updatedOrder) {
+  if (dateResult.parsedDate === undefined) {
+    return;
+  }
+  
+  const oldDate = existingOrder.expectedDeliveryDate ? new Date(existingOrder.expectedDeliveryDate) : null;
+  const newDate = dateResult.parsedDate;
+  
+  if (hasDeliveryDateChanged(oldDate, newDate) && newDate) {
+    try {
+      await upsertOrderReminderState(updatedOrder._id, newDate);
+    } catch (err) {
+      logger.warn('Failed to update reminder state', { 
+        orderId: updatedOrder.orderId, 
+        error: err.message 
+      });
+    }
+  }
+}
+
 router.put('/:id', asyncHandler(async (req, res) => {
   const validation = await validateUpdateRequest(req.body);
   if (!validation.valid) {
@@ -577,13 +651,11 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
   const { paidAmountResult, itemsResult, paymentStatus, dateResult } = validation.data;
   
-  // Fetch the existing order for validation and comparison
   const existingOrder = await Order.findById(req.params.id);
   if (!existingOrder) {
     throw notFoundError('Order');
   }
   
-  // Validate payment amount against total price if needed
   if (paidAmountResult.parsedAmount !== undefined) {
     const paymentValidation = validateUpdatePaymentAmount(
       paidAmountResult.parsedAmount, 
@@ -598,7 +670,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
   const updateData = buildUpdateData(validation.data, req.body);
   
-  // Proactively invalidate cache BEFORE updating to prevent race conditions
   await invalidateOrderCache();
   
   const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
@@ -606,27 +677,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
     throw notFoundError('Order');
   }
 
-  // Invalidate order cache again after updating to ensure consistency
   await invalidateOrderCache();
-
-  // Update reminder state if expectedDeliveryDate changed
-  if (dateResult.parsedDate !== undefined) {
-    const oldDate = existingOrder.expectedDeliveryDate ? new Date(existingOrder.expectedDeliveryDate) : null;
-    const newDate = dateResult.parsedDate;
-    
-    // Only update if the date actually changed
-    const dateChanged = (oldDate === null && newDate !== null) ||
-                        (oldDate !== null && newDate === null) ||
-                        (oldDate !== null && newDate !== null && oldDate.getTime() !== newDate.getTime());
-    
-    if (dateChanged && newDate) {
-      try {
-        await upsertOrderReminderState(updatedOrder._id, newDate);
-      } catch (err) {
-        logger.warn('Failed to update reminder state', { orderId: updatedOrder.orderId, error: err.message });
-      }
-    }
-  }
+  await updateReminderStateIfNeeded(existingOrder, dateResult, updatedOrder);
 
   logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
   res.json(updatedOrder);

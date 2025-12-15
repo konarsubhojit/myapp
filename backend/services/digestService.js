@@ -211,26 +211,101 @@ export async function upsertOrderReminderState(orderId, expectedDeliveryDate) {
 }
 
 /**
- * Run the daily digest
- * @returns {Promise<Object>} Result of the digest run
+ * Check if digest was already sent for the given date
+ * @param {string} digestDate - Date in YYYY-MM-DD format
+ * @returns {Promise<Object|null>} Returns status if already sent, null otherwise
  */
-export async function runDailyDigest() {
-  const digestDate = getTodayInKolkata();
-  
-  logger.info('Starting daily digest', { digestDate });
-  
-  // Check idempotency
+async function checkDigestIdempotency(digestDate) {
   const existingRun = await getDigestRunForDate(digestDate);
   if (existingRun && existingRun.status === 'sent') {
     logger.info('Digest already sent for this date', { digestDate });
     return { status: 'already_sent', digestDate };
   }
+  return null;
+}
+
+/**
+ * Fetch all orders grouped by delivery date buckets
+ * @param {Object} buckets - Bucket ranges from computeDigestBuckets
+ * @returns {Promise<Object>} Object containing orders for each bucket
+ */
+async function fetchOrdersForAllBuckets(buckets) {
+  const oneDayOrders = await getOrdersForBucket(buckets['1d'].start, buckets['1d'].end, 'sent_1d');
+  const threeDayOrders = await getOrdersForBucket(buckets['3d'].start, buckets['3d'].end, 'sent_3d');
+  const sevenDayOrders = await getOrdersForBucket(buckets['7d'].start, buckets['7d'].end, 'sent_7d');
   
-  // Mark as started
+  logger.info('Orders found for digest', {
+    oneDayCount: oneDayOrders.length,
+    threeDayCount: threeDayOrders.length,
+    sevenDayCount: sevenDayOrders.length
+  });
+  
+  return { oneDayOrders, threeDayOrders, sevenDayOrders };
+}
+
+/**
+ * Check if all order buckets are empty
+ * @param {Object} bucketData - Object containing order arrays for each bucket
+ * @returns {boolean} True if all buckets are empty
+ */
+function areAllBucketsEmpty(bucketData) {
+  const { oneDayOrders, threeDayOrders, sevenDayOrders } = bucketData;
+  return oneDayOrders.length === 0 && threeDayOrders.length === 0 && sevenDayOrders.length === 0;
+}
+
+/**
+ * Send digest email to all recipients
+ * @param {Array} recipients - List of recipient objects with email property
+ * @param {Object} bucketData - Orders grouped by buckets
+ * @param {string} digestDate - Date string for the digest
+ */
+async function sendDigestEmail(recipients, bucketData, digestDate) {
+  const recipientEmails = recipients.map(r => r.email);
+  const emailHtml = buildDigestEmailHtml(bucketData, digestDate, formatDateForDigest);
+  const emailText = buildDigestEmailText(bucketData, digestDate, formatDateForDigest);
+  
+  await sendEmail({
+    to: recipientEmails,
+    subject: `📦 Daily Delivery Digest - ${digestDate}`,
+    html: emailHtml,
+    text: emailText
+  });
+  
+  return recipientEmails;
+}
+
+/**
+ * Mark all orders in buckets as having received their reminders
+ * @param {Object} bucketData - Orders grouped by buckets
+ */
+async function markAllOrdersAsSent(bucketData) {
+  const { oneDayOrders, threeDayOrders, sevenDayOrders } = bucketData;
+  
+  const oneDayIds = oneDayOrders.map(o => o.id);
+  const threeDayIds = threeDayOrders.map(o => o.id);
+  const sevenDayIds = sevenDayOrders.map(o => o.id);
+  
+  await markOrdersAsSent(oneDayIds, '1d');
+  await markOrdersAsSent(threeDayIds, '3d');
+  await markOrdersAsSent(sevenDayIds, '7d');
+}
+
+/**
+ * Run the daily digest
+ * @returns {Promise<Object>} Result of the digest run
+ */
+export async function runDailyDigest() {
+  const digestDate = getTodayInKolkata();
+  logger.info('Starting daily digest', { digestDate });
+  
+  const idempotencyCheck = await checkDigestIdempotency(digestDate);
+  if (idempotencyCheck) {
+    return idempotencyCheck;
+  }
+  
   await upsertDigestRun(digestDate, 'started');
   
   try {
-    // Get recipients
     const recipients = await getEnabledRecipients();
     
     if (recipients.length === 0) {
@@ -239,65 +314,33 @@ export async function runDailyDigest() {
       return { status: 'sent', digestDate, message: 'No recipients configured' };
     }
     
-    // Compute buckets
     const buckets = computeDigestBuckets();
+    const bucketData = await fetchOrdersForAllBuckets(buckets);
     
-    // Get orders for each bucket
-    const oneDayOrders = await getOrdersForBucket(buckets['1d'].start, buckets['1d'].end, 'sent_1d');
-    const threeDayOrders = await getOrdersForBucket(buckets['3d'].start, buckets['3d'].end, 'sent_3d');
-    const sevenDayOrders = await getOrdersForBucket(buckets['7d'].start, buckets['7d'].end, 'sent_7d');
-    
-    logger.info('Orders found for digest', {
-      oneDayCount: oneDayOrders.length,
-      threeDayCount: threeDayOrders.length,
-      sevenDayCount: sevenDayOrders.length
-    });
-    
-    // If all buckets are empty, mark as sent and return
-    if (oneDayOrders.length === 0 && threeDayOrders.length === 0 && sevenDayOrders.length === 0) {
+    if (areAllBucketsEmpty(bucketData)) {
       logger.info('No orders to send in digest');
       await upsertDigestRun(digestDate, 'sent');
       return { status: 'sent', digestDate, message: 'No orders requiring reminders' };
     }
     
-    // Build and send email with both HTML and plain text versions
-    const recipientEmails = recipients.map(r => r.email);
-    const bucketData = { oneDayOrders, threeDayOrders, sevenDayOrders };
-    const emailHtml = buildDigestEmailHtml(bucketData, digestDate, formatDateForDigest);
-    const emailText = buildDigestEmailText(bucketData, digestDate, formatDateForDigest);
-    
-    await sendEmail({
-      to: recipientEmails,
-      subject: `📦 Daily Delivery Digest - ${digestDate}`,
-      html: emailHtml,
-      text: emailText
-    });
-    
-    // Mark orders as sent in a transaction-like manner
-    const oneDayIds = oneDayOrders.map(o => o.id);
-    const threeDayIds = threeDayOrders.map(o => o.id);
-    const sevenDayIds = sevenDayOrders.map(o => o.id);
-    
-    await markOrdersAsSent(oneDayIds, '1d');
-    await markOrdersAsSent(threeDayIds, '3d');
-    await markOrdersAsSent(sevenDayIds, '7d');
-    
-    // Mark digest as sent
+    const recipientEmails = await sendDigestEmail(recipients, bucketData, digestDate);
+    await markAllOrdersAsSent(bucketData);
     await upsertDigestRun(digestDate, 'sent');
     
+    const totalOrders = bucketData.oneDayOrders.length + bucketData.threeDayOrders.length + bucketData.sevenDayOrders.length;
     logger.info('Daily digest completed successfully', {
       digestDate,
       recipientCount: recipientEmails.length,
-      orderCount: oneDayOrders.length + threeDayOrders.length + sevenDayOrders.length
+      orderCount: totalOrders
     });
     
     return {
       status: 'sent',
       digestDate,
       orderCounts: {
-        oneDay: oneDayOrders.length,
-        threeDay: threeDayOrders.length,
-        sevenDay: sevenDayOrders.length
+        oneDay: bucketData.oneDayOrders.length,
+        threeDay: bucketData.threeDayOrders.length,
+        sevenDay: bucketData.sevenDayOrders.length
       }
     };
   } catch (error) {
