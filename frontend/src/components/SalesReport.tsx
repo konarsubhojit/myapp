@@ -345,7 +345,7 @@ function SourceView({ sourceBreakdown, formatPrice }: SourceViewProps) {
 }
 
 // Main Component
-function SalesReport({}: SalesReportProps) {
+function SalesReport() {
   const { formatPrice } = useCurrency();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));

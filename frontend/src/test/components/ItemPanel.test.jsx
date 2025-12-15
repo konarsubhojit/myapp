@@ -9,7 +9,8 @@ import { NotificationProvider } from '../../contexts/NotificationContext';
 
 vi.mock('../../services/api');
 
-const mockPaginationResponse = {
+// Updated to match cursor-based pagination format
+const mockCursorPaginationResponse = {
   items: [
     {
       _id: 'item1',
@@ -30,11 +31,10 @@ const mockPaginationResponse = {
       imageUrl: null,
     },
   ],
-  pagination: {
-    total: 2,
-    page: 1,
+  page: {
     limit: 10,
-    pages: 1,
+    nextCursor: null,
+    hasMore: false,
   },
 };
 
@@ -53,10 +53,10 @@ describe('ItemPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    api.getItemsPaginated = vi.fn().mockResolvedValue(mockPaginationResponse);
-    api.getDeletedItemsPaginated = vi.fn().mockResolvedValue({
+    api.getItemsPaginated = vi.fn().mockResolvedValue(mockCursorPaginationResponse);
+    api.getDeletedItems = vi.fn().mockResolvedValue({
       items: [],
-      pagination: { total: 0, page: 1, limit: 10, pages: 0 },
+      page: { limit: 10, nextCursor: null, hasMore: false },
     });
     api.createItem = vi.fn().mockResolvedValue({ _id: 'new-item', name: 'New Item', price: 50 });
   });
