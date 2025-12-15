@@ -1,5 +1,7 @@
 import { eq, and, gte, lt, ne } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
+// Note: orderReminderState is kept for backward compatibility and for upsertOrderReminderState
+// which is called from orders route when orders are created/updated
 import { orders, orderReminderState, digestRuns, notificationRecipients } from '../db/schema.js';
 import { createLogger } from '../utils/logger.js';
 import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } from '../utils/digestBuckets.js';
