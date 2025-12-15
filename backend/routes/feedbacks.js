@@ -185,62 +185,50 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(newFeedback);
 }));
 
-/**
- * Validate and build update data for feedback update
- * @param {Object} requestBody - Request body with potential updates
- * @returns {Object} Returns {updateData: Object} on success or {error: string} on validation failure
- */
-function validateAndBuildFeedbackUpdateData(requestBody) {
-  const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = requestBody;
+function validateAllFeedbackFields(requestBody) {
+  const { rating, comment, productQuality, deliveryExperience, responseText } = requestBody;
   
-  // Validate rating if provided
-  if (rating !== undefined) {
-    const ratingValidation = validateRating(rating, 'Overall rating');
-    if (!ratingValidation.valid) {
-      return { error: ratingValidation.error };
+  const validations = [
+    { condition: rating !== undefined, fn: () => validateRating(rating, 'Overall rating') },
+    { condition: productQuality !== undefined, fn: () => validateOptionalRating(productQuality, 'Product quality rating') },
+    { condition: deliveryExperience !== undefined, fn: () => validateOptionalRating(deliveryExperience, 'Delivery experience rating') },
+    { condition: comment !== undefined, fn: () => validateComment(comment) },
+    { condition: responseText !== undefined, fn: () => validateResponse(responseText) }
+  ];
+  
+  for (const { condition, fn } of validations) {
+    if (condition) {
+      const validation = fn();
+      if (!validation.valid) {
+        return { error: validation.error };
+      }
     }
   }
+  
+  return { valid: true };
+}
 
-  // Validate optional ratings if provided
-  if (productQuality !== undefined) {
-    const productQualityValidation = validateOptionalRating(productQuality, 'Product quality rating');
-    if (!productQualityValidation.valid) {
-      return { error: productQualityValidation.error };
-    }
-  }
-
-  if (deliveryExperience !== undefined) {
-    const deliveryValidation = validateOptionalRating(deliveryExperience, 'Delivery experience rating');
-    if (!deliveryValidation.valid) {
-      return { error: deliveryValidation.error };
-    }
-  }
-
-  // Validate comment if provided
-  if (comment !== undefined) {
-    const commentValidation = validateComment(comment);
-    if (!commentValidation.valid) {
-      return { error: commentValidation.error };
-    }
-  }
-
-  // Validate response if provided
-  if (responseText !== undefined) {
-    const responseValidation = validateResponse(responseText);
-    if (!responseValidation.valid) {
-      return { error: responseValidation.error };
-    }
-  }
-
-  // Build update data object
+function buildFeedbackUpdateData(requestBody) {
+  const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = requestBody;
   const updateData = {};
+  
   if (rating !== undefined) updateData.rating = Number.parseInt(rating, 10);
   if (comment !== undefined) updateData.comment = comment;
   if (productQuality !== undefined) updateData.productQuality = productQuality ? Number.parseInt(productQuality, 10) : null;
   if (deliveryExperience !== undefined) updateData.deliveryExperience = deliveryExperience ? Number.parseInt(deliveryExperience, 10) : null;
   if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
   if (responseText !== undefined) updateData.responseText = responseText;
+  
+  return updateData;
+}
 
+function validateAndBuildFeedbackUpdateData(requestBody) {
+  const validationResult = validateAllFeedbackFields(requestBody);
+  if (validationResult.error) {
+    return { error: validationResult.error };
+  }
+  
+  const updateData = buildFeedbackUpdateData(requestBody);
   return { updateData };
 }
 

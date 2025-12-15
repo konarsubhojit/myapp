@@ -164,80 +164,81 @@ function generateDummyItems(): Item[] {
   ];
 }
 
+function getCursorPaginatedMockData(dummyItems: Item[]): MockDataResult {
+  return {
+    items: dummyItems,
+    page: {
+      limit: 10,
+      nextCursor: null,
+      hasMore: false
+    }
+  };
+}
+
+function getPagePaginatedMockData(url: string, dummyItems: Item[]): MockDataResult {
+  let dataKey: 'items' | 'orders' | 'feedbacks' = 'items';
+  let data: Item[] | Order[] | Feedback[] = [];
+  
+  if (url.includes('/orders')) {
+    dataKey = 'orders';
+  } else if (url.includes('/feedbacks')) {
+    dataKey = 'feedbacks';
+  } else if (url.includes('/items')) {
+    dataKey = 'items';
+    data = dummyItems;
+  }
+  
+  return { 
+    [dataKey]: data, 
+    pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 } 
+  } as MockDataResult;
+}
+
+function getSingleItemMockData(options: RequestInit): Record<string, string> | Record<string, never> {
+  const isModifyingRequest = options.method === 'PUT' || options.method === 'DELETE' || options.method === 'POST';
+  return isModifyingRequest ? { message: 'Success' } : {};
+}
+
+function getItemsEndpointMockData(url: string, dummyItems: Item[]): MockDataResult | Item[] {
+  const hasQueryParams = url.includes('?');
+  if (hasQueryParams) {
+    return getCursorPaginatedMockData(dummyItems);
+  }
+  return dummyItems;
+}
+
+function getMockDataForGuestMode(url: string, options: RequestInit): MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never> {
+  const dummyItems = generateDummyItems();
+  
+  const isCursorPaginated = url.includes('/items') && (url.includes('?cursor=') || url.includes('&cursor=') || url.includes('?limit=') || url.includes('&limit='));
+  if (isCursorPaginated) {
+    return getCursorPaginatedMockData(dummyItems);
+  }
+  
+  const isPagePaginated = url.includes('?page=') || url.includes('&page=');
+  if (isPagePaginated) {
+    return getPagePaginatedMockData(url, dummyItems);
+  }
+  
+  const isSingleItemEndpoint = /\/(items|orders|feedbacks)\/[^/]+$/.test(url);
+  if (isSingleItemEndpoint) {
+    return getSingleItemMockData(options);
+  }
+  
+  if (url.includes('/items')) {
+    return getItemsEndpointMockData(url, dummyItems);
+  }
+  
+  return [];
+}
+
 /**
  * Wrapper for fetch that includes auth headers
  */
 async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
-  // Check if guest mode is enabled
   if (isGuestModeFn?.()) {
     console.log('[API] Guest mode active - skipping API call to:', url);
-    
-    // Generate dummy data for testing
-    const dummyItems = generateDummyItems();
-    
-    // Return mock response with dummy data for guest mode
-    let mockData: MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never>;
-    
-    // Check if it's a cursor-paginated endpoint (items)
-    if (url.includes('/items') && (url.includes('?cursor=') || url.includes('&cursor=') || url.includes('?limit=') || url.includes('&limit='))) {
-      // Cursor-paginated items endpoint
-      mockData = {
-        items: dummyItems,
-        page: {
-          limit: 10,
-          nextCursor: null,
-          hasMore: false
-        }
-      } as MockDataResult;
-    } else if (url.includes('?page=') || url.includes('&page=')) {
-      // Old-style paginated endpoint (orders, feedbacks) - return pagination structure with dummy data
-      let dataKey: 'items' | 'orders' | 'feedbacks' = 'items';
-      let data: Item[] | Order[] | Feedback[] = [];
-      
-      if (url.includes('/orders')) {
-        dataKey = 'orders';
-        data = [];
-      } else if (url.includes('/feedbacks')) {
-        dataKey = 'feedbacks';
-        data = [];
-      } else if (url.includes('/items')) {
-        dataKey = 'items';
-        data = dummyItems;
-      }
-      
-      mockData = { 
-        [dataKey]: data, 
-        pagination: { page: 1, limit: 10, total: data.length, totalPages: 1 } 
-      } as MockDataResult;
-    } else if (/\/(items|orders|feedbacks)\/[^/]+$/.test(url)) {
-      // Single item endpoint (with ID at the end) - return empty object for updates/deletes
-      // Extract the method to determine if we should return data
-      if (options.method === 'PUT' || options.method === 'DELETE' || options.method === 'POST') {
-        mockData = { message: 'Success' } as Record<string, string>;
-      } else {
-        mockData = {};
-      }
-    } else if (url.includes('/items')) {
-      // Check if it's a simple list endpoint (no pagination params)
-      const hasQueryParams = url.includes('?');
-      if (!hasQueryParams) {
-        // Simple items list - return array
-        mockData = dummyItems;
-      } else {
-        // Default items endpoint with params - return cursor-paginated format
-        mockData = {
-          items: dummyItems,
-          page: {
-            limit: 10,
-            nextCursor: null,
-            hasMore: false
-          }
-        } as MockDataResult;
-      }
-    } else {
-      // Other list endpoints - return empty array
-      mockData = [];
-    }
+    const mockData = getMockDataForGuestMode(url, options);
     return new Response(JSON.stringify(mockData), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

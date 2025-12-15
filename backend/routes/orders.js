@@ -564,6 +564,35 @@ async function updateReminderStateIfNeeded(existingOrder, dateResult, updatedOrd
   }
 }
 
+async function validatePaymentAmountIfProvided(paidAmountResult, itemsResult, existingOrder, paymentStatus) {
+  if (paidAmountResult.parsedAmount === undefined) {
+    return;
+  }
+  
+  const paymentValidation = validateUpdatePaymentAmount(
+    paidAmountResult.parsedAmount, 
+    itemsResult.totalPrice, 
+    existingOrder.totalPrice, 
+    paymentStatus
+  );
+  
+  if (!paymentValidation.valid) {
+    throw badRequestError(paymentValidation.error);
+  }
+}
+
+async function performOrderUpdate(orderId, updateData) {
+  await invalidateOrderCache();
+  
+  const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData);
+  if (!updatedOrder) {
+    throw notFoundError('Order');
+  }
+  
+  await invalidateOrderCache();
+  return updatedOrder;
+}
+
 router.put('/:id', asyncHandler(async (req, res) => {
   const validation = await validateUpdateRequest(req.body);
   if (!validation.valid) {
@@ -577,28 +606,10 @@ router.put('/:id', asyncHandler(async (req, res) => {
     throw notFoundError('Order');
   }
   
-  if (paidAmountResult.parsedAmount !== undefined) {
-    const paymentValidation = validateUpdatePaymentAmount(
-      paidAmountResult.parsedAmount, 
-      itemsResult.totalPrice, 
-      existingOrder.totalPrice, 
-      paymentStatus
-    );
-    if (!paymentValidation.valid) {
-      throw badRequestError(paymentValidation.error);
-    }
-  }
+  await validatePaymentAmountIfProvided(paidAmountResult, itemsResult, existingOrder, paymentStatus);
 
   const updateData = buildUpdateData(validation.data, req.body);
-  
-  await invalidateOrderCache();
-  
-  const updatedOrder = await Order.findByIdAndUpdate(req.params.id, updateData);
-  if (!updatedOrder) {
-    throw notFoundError('Order');
-  }
-
-  await invalidateOrderCache();
+  const updatedOrder = await performOrderUpdate(req.params.id, updateData);
   await updateReminderStateIfNeeded(existingOrder, dateResult, updatedOrder);
 
   logger.info('Order updated', { orderId: updatedOrder.orderId, id: req.params.id });
