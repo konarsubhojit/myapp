@@ -19,13 +19,6 @@ import {
 
 const logger = createLogger('OrdersRoute');
 
-/**
- * Validate a single field with custom validation logic
- * @param {*} value - The value to validate
- * @param {Function} isValid - Function that returns true if value is valid
- * @param {string} errorMessage - Error message to return if invalid
- * @returns {{valid: boolean, error?: string}}
- */
 function validateField(value, isValid, errorMessage) {
   if (value !== undefined && !isValid(value)) {
     return { valid: false, error: errorMessage };
@@ -33,13 +26,6 @@ function validateField(value, isValid, errorMessage) {
   return { valid: true };
 }
 
-/**
- * Validate a value against a list of allowed values
- * @param {*} value - The value to validate
- * @param {Array} allowedValues - Array of allowed values
- * @param {string} fieldName - Name of the field for error message
- * @returns {{valid: boolean, error?: string}}
- */
 function validateEnum(value, allowedValues, fieldName) {
   if (!value) {
     return { valid: true };
@@ -57,7 +43,7 @@ function validateEnum(value, allowedValues, fieldName) {
 function validateCustomerNotes(customerNotes) {
   return validateField(
     customerNotes,
-    notes => !(typeof notes === 'string' && notes.length > MAX_CUSTOMER_NOTES_LENGTH),
+    notes => typeof notes === 'string' && notes.length <= MAX_CUSTOMER_NOTES_LENGTH,
     `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters`
   );
 }
@@ -180,14 +166,6 @@ function parseUpdateActualDeliveryDate(actualDeliveryDate) {
   return { valid: true, parsedDate };
 }
 
-function validateUpdateCustomerNotes(customerNotes) {
-  return validateField(
-    customerNotes,
-    notes => !(typeof notes === 'string' && notes.length > MAX_CUSTOMER_NOTES_LENGTH),
-    `Customer notes cannot exceed ${MAX_CUSTOMER_NOTES_LENGTH} characters`
-  );
-}
-
 function validateUpdateFields(customerName, customerId) {
   if (customerName !== undefined && !customerName?.trim()) {
     return { valid: false, error: 'Customer name cannot be empty' };
@@ -267,7 +245,7 @@ function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotal
     return { valid: true };
   }
   
-  const effectiveTotalPrice = totalPrice !== undefined ? totalPrice : existingTotalPrice;
+  const effectiveTotalPrice = totalPrice === undefined ? existingTotalPrice : totalPrice;
   
   if (parsedPaidAmount > effectiveTotalPrice) {
     return { valid: false, error: 'Paid amount cannot exceed total price' };
@@ -283,14 +261,7 @@ function validateUpdatePaymentAmount(parsedPaidAmount, totalPrice, existingTotal
   return { valid: true };
 }
 
-/**
- * Build order items list with bulk fetch to avoid N+1 query problem
- * Fetches all items in a single DB query instead of N individual queries
- * @param {Array} items - Array of order items with itemId and quantity
- * @returns {Promise<{valid: boolean, orderItems?: Array, totalPrice?: number, error?: string}>}
- */
 async function buildOrderItemsList(items) {
-  // Parse and validate quantities first (no DB needed)
   const parsedItems = [];
   for (const orderItem of items) {
     const quantity = Number.parseInt(orderItem.quantity, 10);
@@ -304,7 +275,6 @@ async function buildOrderItemsList(items) {
     });
   }
 
-  // Bulk fetch all items in a single query (fixes N+1 problem)
   const itemIds = parsedItems.map(i => i.itemId);
   const itemsMap = await Item.findByIds(itemIds);
   
@@ -352,25 +322,18 @@ router.get('/priority', cacheMiddleware(300), asyncHandler(async (req, res) => {
   res.json(priorityOrders);
 }));
 
-// Get all orders without pagination - this is the source of truth
 router.get('/all', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   const orders = await Order.find();
   res.json(orders);
 }));
 
-// Get orders with cursor-based pagination (for infinite scroll)
-// IMPORTANT: This must come BEFORE the base '/' route to avoid route shadowing
 router.get('/cursor', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const { cursor, limit } = req.query;
   
-  // Validate limit parameter
   const parsedLimit = limit ? Number.parseInt(limit, 10) : 10;
   if (Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
     throw badRequestError('Limit must be a number between 1 and 100');
   }
-  
-  // Cursor is optional (for first page), but if provided must be valid
-  // Validation happens in Order.findCursorPaginated which will throw on invalid cursor
   
   const result = await Order.findCursorPaginated({ 
     limit: parsedLimit, 
@@ -380,11 +343,9 @@ router.get('/cursor', cacheMiddleware(60), asyncHandler(async (req, res) => {
   res.json(result);
 }));
 
-// Get orders with pagination
 router.get('/', asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
-  // Use DB-level pagination for optimal performance (O(1) vs O(N) memory)
   const result = await Order.findPaginated({ page, limit });
   
   res.json(result);
@@ -393,61 +354,51 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/', asyncHandler(async (req, res) => {
   const { orderFrom, customerName, customerId, address, orderDate, items, expectedDeliveryDate, paymentStatus, paidAmount, confirmationStatus, customerNotes, priority, deliveryStatus, trackingId, deliveryPartner, actualDeliveryDate } = req.body;
 
-  // Validate customer notes
   const notesValidation = validateCustomerNotes(customerNotes);
   if (!notesValidation.valid) {
     throw badRequestError(notesValidation.error);
   }
 
-  // Validate required fields
   const fieldsValidation = validateRequiredFields(orderFrom, customerName, customerId, items);
   if (!fieldsValidation.valid) {
     throw badRequestError(fieldsValidation.error);
   }
 
-  // Validate delivery date
   const dateValidation = validateDeliveryDate(expectedDeliveryDate);
   if (!dateValidation.valid) {
     throw badRequestError(dateValidation.error);
   }
 
-  // Validate confirmation status
   const confirmationValidation = validateConfirmationStatus(confirmationStatus);
   if (!confirmationValidation.valid) {
     throw badRequestError(confirmationValidation.error);
   }
 
-  // Validate priority
   const priorityValidation = validatePriority(priority);
   if (!priorityValidation.valid) {
     throw badRequestError(priorityValidation.error);
   }
 
-  // Validate delivery status
   const deliveryStatusValidation = validateDeliveryStatus(deliveryStatus);
   if (!deliveryStatusValidation.valid) {
     throw badRequestError(deliveryStatusValidation.error);
   }
 
-  // Validate actual delivery date
   const actualDeliveryDateValidation = validateActualDeliveryDate(actualDeliveryDate);
   if (!actualDeliveryDateValidation.valid) {
     throw badRequestError(actualDeliveryDateValidation.error);
   }
 
-  // Process order items
   const itemsResult = await processOrderItems(items);
   if (!itemsResult.valid) {
     throw badRequestError(itemsResult.error);
   }
 
-  // Validate payment data
   const paymentValidation = validatePaymentData(paymentStatus, paidAmount, itemsResult.totalPrice);
   if (!paymentValidation.valid) {
     throw badRequestError(paymentValidation.error);
   }
 
-  // Proactively invalidate cache BEFORE creating order to prevent race conditions
   await invalidateOrderCache();
 
   const newOrder = await Order.create({
@@ -470,10 +421,8 @@ router.post('/', asyncHandler(async (req, res) => {
     actualDeliveryDate: actualDeliveryDateValidation.parsedDate
   });
 
-  // Invalidate order cache again after creating to ensure consistency
   await invalidateOrderCache();
 
-  // Initialize reminder state if expectedDeliveryDate is set
   if (newOrder.expectedDeliveryDate) {
     try {
       await upsertOrderReminderState(newOrder._id, new Date(newOrder.expectedDeliveryDate));
@@ -494,12 +443,9 @@ router.get('/:id', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   res.json(order);
 }));
 
-/**
- * Validate all update request fields and return comprehensive validation results
- */
 async function validateAllUpdateFields(requestBody) {
   const validations = [
-    validateUpdateCustomerNotes(requestBody.customerNotes),
+    validateCustomerNotes(requestBody.customerNotes),
     validateUpdateFields(requestBody.customerName, requestBody.customerId),
     validateOrderStatus(requestBody.status),
     validateUpdatePaymentStatus(requestBody.paymentStatus),
@@ -525,13 +471,8 @@ async function validateAllUpdateFields(requestBody) {
   return { valid: true, itemsResult };
 }
 
-/**
- * Validates all fields required for updating an order
- * @param {Object} requestBody - The request body containing order update fields
- * @returns {Promise<Object>} - Returns {valid: true, data: {...}} on success or {valid: false, error: string} on failure
- */
 async function validateUpdateRequest(requestBody) {
-  const { paidAmount, priority, expectedDeliveryDate, actualDeliveryDate, items, paymentStatus } = requestBody;
+  const { paidAmount, priority, expectedDeliveryDate, actualDeliveryDate, paymentStatus } = requestBody;
 
   const baseValidation = await validateAllUpdateFields(requestBody);
   if (!baseValidation.valid) {
@@ -557,31 +498,18 @@ async function validateUpdateRequest(requestBody) {
   };
 }
 
-/**
- * Adds a field to update data if it's defined
- * @param {Object} target - The target object to update
- * @param {string} key - The key to set
- * @param {*} value - The value to set
- */
 function addIfDefined(target, key, value) {
   if (value !== undefined) {
     target[key] = value;
   }
 }
 
-/**
- * Builds the update data object from validated request data
- * @param {Object} validationData - The validated data from validateUpdateRequest
- * @param {Object} requestBody - The original request body
- * @returns {Object} - The update data object with only defined fields
- */
 function buildUpdateData(validationData, requestBody) {
   const { orderFrom, customerName, customerId, address, orderDate, status, paymentStatus, confirmationStatus, customerNotes, deliveryStatus, trackingId, deliveryPartner } = requestBody;
   const { paidAmountResult, priorityResult, dateResult, actualDeliveryDateResult, itemsResult } = validationData;
   
   const updateData = {};
   
-  // Direct fields from request body
   const directFields = [
     ['orderFrom', orderFrom],
     ['customerName', customerName],
@@ -599,7 +527,6 @@ function buildUpdateData(validationData, requestBody) {
   
   directFields.forEach(([key, value]) => addIfDefined(updateData, key, value));
   
-  // Parsed fields from validation results
   addIfDefined(updateData, 'expectedDeliveryDate', dateResult.parsedDate);
   addIfDefined(updateData, 'paidAmount', paidAmountResult.parsedAmount);
   addIfDefined(updateData, 'priority', priorityResult.parsedPriority);
@@ -610,9 +537,6 @@ function buildUpdateData(validationData, requestBody) {
   return updateData;
 }
 
-/**
- * Check if delivery date has changed and needs reminder state update
- */
 function hasDeliveryDateChanged(oldDate, newDate) {
   if (oldDate === null && newDate !== null) return true;
   if (oldDate !== null && newDate === null) return true;
@@ -620,9 +544,6 @@ function hasDeliveryDateChanged(oldDate, newDate) {
   return false;
 }
 
-/**
- * Update reminder state if delivery date changed
- */
 async function updateReminderStateIfNeeded(existingOrder, dateResult, updatedOrder) {
   if (dateResult.parsedDate === undefined) {
     return;
