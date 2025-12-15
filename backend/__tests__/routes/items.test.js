@@ -12,6 +12,8 @@ jest.unstable_mockModule('../../models/Item', () => ({
     create: jest.fn(),
     findPaginated: jest.fn(),
     findDeletedPaginated: jest.fn(),
+    findCursor: jest.fn(),
+    findDeletedCursor: jest.fn(),
     restore: jest.fn(),
     permanentlyRemoveImage: jest.fn(),
   },
@@ -45,53 +47,85 @@ describe('Items Routes', () => {
   });
 
   describe('GET /api/items', () => {
-    it('should return all items without pagination', async () => {
-      const mockItems = [
-        { _id: 1, name: 'Item 1', price: 10.0 },
-        { _id: 2, name: 'Item 2', price: 20.0 },
-      ];
+    it('should return cursor-paginated items by default', async () => {
+      const mockResult = {
+        items: [
+          { _id: 1, name: 'Item 1', price: 10.0 },
+          { _id: 2, name: 'Item 2', price: 20.0 }
+        ],
+        page: { limit: 10, nextCursor: null, hasMore: false }
+      };
 
-      Item.find.mockResolvedValue(mockItems);
+      Item.findCursor.mockResolvedValue(mockResult);
 
       const response = await request(app).get('/api/items');
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(2);
-      expect(response.body[0].name).toBe('Item 1');
+      expect(response.body).toHaveProperty('items');
+      expect(response.body).toHaveProperty('page');
+      expect(response.body.items).toHaveLength(2);
+      expect(response.body.page).toHaveProperty('limit', 10);
+      expect(response.body.page).toHaveProperty('hasMore', false);
+      expect(Item.findCursor).toHaveBeenCalledWith({ limit: 10, cursor: null, search: '' });
     });
 
-    it('should return paginated items when pagination params provided', async () => {
+    it('should return cursor-paginated items with custom limit', async () => {
       const mockResult = {
         items: [{ _id: 1, name: 'Item 1', price: 10.0 }],
-        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+        page: { limit: 20, nextCursor: '2025-12-15T10:35:12.123Z:1', hasMore: true }
       };
 
-      Item.findPaginated.mockResolvedValue(mockResult);
+      Item.findCursor.mockResolvedValue(mockResult);
 
-      const response = await request(app).get('/api/items?page=1&limit=10');
+      const response = await request(app).get('/api/items?limit=20');
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('items');
-      expect(response.body).toHaveProperty('pagination');
-      expect(response.body.items).toHaveLength(1);
+      expect(response.body.page.limit).toBe(20);
+      expect(response.body.page.hasMore).toBe(true);
+      expect(Item.findCursor).toHaveBeenCalledWith({ limit: 20, cursor: null, search: '' });
     });
 
-    it('should handle search query', async () => {
+    it('should handle cursor parameter', async () => {
+      const cursor = '2025-12-15T10:35:12.123Z:100';
       const mockResult = {
-        items: [{ _id: 1, name: 'Search Item', price: 10.0 }],
-        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+        items: [{ _id: 99, name: 'Item 99', price: 10.0 }],
+        page: { limit: 10, nextCursor: '2025-12-15T09:35:12.123Z:99', hasMore: true }
       };
 
-      Item.findPaginated.mockResolvedValue(mockResult);
+      Item.findCursor.mockResolvedValue(mockResult);
 
-      const response = await request(app).get('/api/items?page=1&search=Search');
+      const response = await request(app).get(`/api/items?cursor=${encodeURIComponent(cursor)}`);
 
       expect(response.status).toBe(200);
-      expect(Item.findPaginated).toHaveBeenCalledWith({ page: 1, limit: 10, search: 'Search' });
+      expect(Item.findCursor).toHaveBeenCalledWith({ limit: 10, cursor, search: '' });
+    });
+
+    it('should handle search query with cursor pagination', async () => {
+      const mockResult = {
+        items: [{ _id: 1, name: 'Search Item', price: 10.0 }],
+        page: { limit: 10, nextCursor: null, hasMore: false }
+      };
+
+      Item.findCursor.mockResolvedValue(mockResult);
+
+      const response = await request(app).get('/api/items?search=Search');
+
+      expect(response.status).toBe(200);
+      expect(Item.findCursor).toHaveBeenCalledWith({ limit: 10, cursor: null, search: 'Search' });
+    });
+
+    it('should return 400 for invalid cursor format', async () => {
+      Item.findCursor.mockRejectedValue(new Error('Invalid cursor format. Expected format: "createdAt:id"'));
+
+      const response = await request(app).get('/api/items?cursor=invalid-cursor');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Invalid cursor format');
     });
 
     it('should handle database errors', async () => {
-      Item.find.mockRejectedValue(new Error('Database error'));
+      Item.findCursor.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app).get('/api/items');
 
@@ -101,19 +135,37 @@ describe('Items Routes', () => {
   });
 
   describe('GET /api/items/deleted', () => {
-    it('should return deleted items', async () => {
+    it('should return cursor-paginated deleted items', async () => {
       const mockResult = {
         items: [{ _id: 1, name: 'Deleted Item', price: 10.0, deletedAt: new Date() }],
-        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+        page: { limit: 10, nextCursor: null, hasMore: false }
       };
 
-      Item.findDeletedPaginated.mockResolvedValue(mockResult);
+      Item.findDeletedCursor.mockResolvedValue(mockResult);
 
-      const response = await request(app).get('/api/items/deleted?page=1&limit=10');
+      const response = await request(app).get('/api/items/deleted');
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('items');
+      expect(response.body).toHaveProperty('page');
       expect(response.body.items).toHaveLength(1);
+      expect(response.body.page).toHaveProperty('hasMore', false);
+      expect(Item.findDeletedCursor).toHaveBeenCalledWith({ limit: 10, cursor: null, search: '' });
+    });
+
+    it('should handle cursor parameter for deleted items', async () => {
+      const cursor = '2025-12-15T10:35:12.123Z:50';
+      const mockResult = {
+        items: [{ _id: 49, name: 'Deleted Item', price: 10.0, deletedAt: new Date() }],
+        page: { limit: 10, nextCursor: '2025-12-15T09:35:12.123Z:49', hasMore: true }
+      };
+
+      Item.findDeletedCursor.mockResolvedValue(mockResult);
+
+      const response = await request(app).get(`/api/items/deleted?cursor=${encodeURIComponent(cursor)}`);
+
+      expect(response.status).toBe(200);
+      expect(Item.findDeletedCursor).toHaveBeenCalledWith({ limit: 10, cursor, search: '' });
     });
   });
 
