@@ -6,8 +6,23 @@ const logger = createLogger('CacheMiddleware');
 // Default cache TTL (Time To Live) in seconds
 const DEFAULT_TTL = 300; // 5 minutes
 
-// Global cache version key - used for versioned cache invalidation
-export const CACHE_VERSION_KEY = 'cache:v:global';
+// Cache version keys - separate versioning for different resource types
+export const CACHE_VERSION_KEYS = {
+  ITEMS: 'cache:v:items',
+  ORDERS: 'cache:v:orders',
+  FEEDBACKS: 'cache:v:feedbacks',
+  GLOBAL: 'cache:v:global', // Fallback for non-resource-specific caches
+};
+
+// Map URL patterns to cache version keys
+const CACHE_VERSION_MAP = {
+  '/api/items': CACHE_VERSION_KEYS.ITEMS,
+  '/api/orders': CACHE_VERSION_KEYS.ORDERS,
+  '/api/feedbacks': CACHE_VERSION_KEYS.FEEDBACKS,
+};
+
+// Legacy export for backward compatibility
+export const CACHE_VERSION_KEY = CACHE_VERSION_KEYS.GLOBAL;
 
 // In-memory memoization for version lookup to reduce Redis calls in burst traffic
 // Note: Node.js is single-threaded, so concurrent requests are handled sequentially
@@ -18,8 +33,7 @@ export const CACHE_VERSION_KEY = 'cache:v:global';
 // different cache versions. This can result in stale data being served after cache invalidation.
 // This is a deliberate performance vs. consistency trade-off to reduce Redis GET calls.
 // Reduce VERSION_MEMO_TTL_MS for stronger consistency or set to 0 to disable memoization.
-let localVersion = null;
-let localVersionFetchedAt = 0;
+const localVersions = new Map(); // Map<versionKey, { version: number, fetchedAt: number }>
 // Memoization TTL for cache version (in ms). Reduce this to minimize stale data risk.
 // Trade-off: Lower values increase Redis load but improve consistency.
 export const VERSION_MEMO_TTL_MS = 200; // 200ms memoization (minimizes staleness window)
@@ -83,87 +97,120 @@ function validateResponseForCaching(body) {
 }
 
 /**
- * Get the current global cache version from Redis with in-memory memoization
+ * Get the cache version from Redis with in-memory memoization
  * This reduces Redis lookups in burst traffic on warm lambdas
  * @param {Object} redis - Redis client
+ * @param {string} versionKey - Cache version key (e.g., CACHE_VERSION_KEYS.ITEMS)
  * @returns {Promise<number>} Current version number (defaults to 1 if not set)
  * @exported for testing purposes
  */
-export async function getGlobalCacheVersion(redis) {
+export async function getCacheVersion(redis, versionKey = CACHE_VERSION_KEYS.GLOBAL) {
   const now = Date.now();
   
   // Return memoized version if still valid
-  if (localVersion !== null && (now - localVersionFetchedAt) < VERSION_MEMO_TTL_MS) {
-    logger.debug('Using memoized cache version', { version: localVersion });
-    return localVersion;
+  const cached = localVersions.get(versionKey);
+  if (cached && (now - cached.fetchedAt) < VERSION_MEMO_TTL_MS) {
+    logger.debug('Using memoized cache version', { versionKey, version: cached.version });
+    return cached.version;
   }
   
   try {
-    let version = await redis.get(CACHE_VERSION_KEY);
+    let version = await redis.get(versionKey);
     
     if (version === null) {
       // Initialize version to 1 if it doesn't exist (use SETNX for atomicity)
-      const wasSet = await redis.setNX(CACHE_VERSION_KEY, '1');
+      const wasSet = await redis.setNX(versionKey, '1');
       if (wasSet) {
         version = '1';
-        logger.debug('Initialized global cache version', { version: 1 });
+        logger.debug('Initialized cache version', { versionKey, version: 1 });
       } else {
         // Another process set it first, fetch the actual value
-        version = await redis.get(CACHE_VERSION_KEY) || '1';
-        logger.debug('Fetched existing global cache version after race', { version });
+        version = await redis.get(versionKey) || '1';
+        logger.debug('Fetched existing cache version after race', { versionKey, version });
       }
     }
     
     const parsedVersion = parseInt(version, 10);
     
     // Update memoization
-    localVersion = parsedVersion;
-    localVersionFetchedAt = now;
+    localVersions.set(versionKey, { version: parsedVersion, fetchedAt: now });
     
-    logger.debug('Fetched global cache version from Redis', { version: parsedVersion });
+    logger.debug('Fetched cache version from Redis', { versionKey, version: parsedVersion });
     return parsedVersion;
   } catch (error) {
-    logger.error('Failed to get global cache version', { error: error.message });
+    logger.error('Failed to get cache version', { versionKey, error: error.message });
     // Return memoized version or default to 1 on error
-    return localVersion !== null ? localVersion : 1;
+    return cached ? cached.version : 1;
   }
 }
 
 /**
- * Bump (increment) the global cache version to invalidate all cached entries
+ * Legacy function for backward compatibility
+ * @deprecated Use getCacheVersion(redis, versionKey) instead
+ */
+export async function getGlobalCacheVersion(redis) {
+  return getCacheVersion(redis, CACHE_VERSION_KEYS.GLOBAL);
+}
+
+/**
+ * Bump (increment) a cache version to invalidate cached entries for that resource type
  * This is more efficient than SCAN-based invalidation for serverless environments
+ * @param {string} versionKey - Cache version key to bump (e.g., CACHE_VERSION_KEYS.ITEMS)
  * @returns {Promise<number|null>} New version number, or null if Redis unavailable
  */
-export async function bumpGlobalCacheVersion() {
+export async function bumpCacheVersion(versionKey = CACHE_VERSION_KEYS.GLOBAL) {
   try {
     const redis = getRedisIfReady();
     
     if (!redis) {
-      logger.debug('Redis not ready, skipping cache version bump');
+      logger.debug('Redis not ready, skipping cache version bump', { versionKey });
       return null;
     }
     
-    const newVersion = await redis.incr(CACHE_VERSION_KEY);
+    const newVersion = await redis.incr(versionKey);
     
     // Update local memoization eagerly
-    localVersion = newVersion;
-    localVersionFetchedAt = Date.now();
+    localVersions.set(versionKey, { version: newVersion, fetchedAt: Date.now() });
     
-    logger.info('Global cache version bumped', { newVersion });
+    logger.info('Cache version bumped', { versionKey, newVersion });
     return newVersion;
   } catch (error) {
-    logger.error('Failed to bump global cache version', { error: error.message });
+    logger.error('Failed to bump cache version', { versionKey, error: error.message });
     return null;
   }
+}
+
+/**
+ * Legacy function for backward compatibility
+ * @deprecated Use bumpCacheVersion(versionKey) instead
+ */
+export async function bumpGlobalCacheVersion() {
+  return bumpCacheVersion(CACHE_VERSION_KEYS.GLOBAL);
 }
 
 /**
  * Reset the in-memory version cache and pending requests (useful for testing)
  */
 export function resetVersionMemo() {
-  localVersion = null;
-  localVersionFetchedAt = 0;
+  localVersions.clear();
   pendingRequests.clear();
+}
+
+/**
+ * Determine which cache version key to use based on the request URL
+ * @param {string} url - Request URL (baseUrl + path)
+ * @returns {string} Cache version key to use
+ */
+function getCacheVersionKeyForUrl(url) {
+  // Check if URL starts with any of the mapped patterns
+  for (const [pattern, versionKey] of Object.entries(CACHE_VERSION_MAP)) {
+    if (url.startsWith(pattern)) {
+      return versionKey;
+    }
+  }
+  
+  // Default to global version key for unmapped URLs
+  return CACHE_VERSION_KEYS.GLOBAL;
 }
 
 /**
@@ -262,8 +309,12 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
         return next();
       }
 
-      // Get the current global cache version
-      const version = await getGlobalCacheVersion(redis);
+      // Determine which cache version key to use based on the request URL
+      const fullPath = req.baseUrl + req.path;
+      const versionKey = getCacheVersionKeyForUrl(fullPath);
+      
+      // Get the current cache version for this resource type
+      const version = await getCacheVersion(redis, versionKey);
       
       // Generate versioned cache key: v{VERSION}:{METHOD}:{PATH}
       cacheKey = generateCacheKey(req, version);
@@ -400,57 +451,54 @@ export async function invalidateCache(pattern) {
 }
 
 /**
- * Invalidate all item-related caches by bumping global version
- * This is preferred over SCAN-based invalidation for serverless environments
+ * Invalidate all item-related caches by bumping item version
+ * This only invalidates item caches, not orders or feedbacks
  */
 export async function invalidateItemCache() {
   logger.debug('Invalidating item cache via version bump');
-  await bumpGlobalCacheVersion();
+  await bumpCacheVersion(CACHE_VERSION_KEYS.ITEMS);
 }
 
 /**
- * Invalidate all order-related caches by bumping global version
- * This is preferred over SCAN-based invalidation for serverless environments
+ * Invalidate all order-related caches by bumping order version
+ * This only invalidates order caches, not items or feedbacks
  */
 export async function invalidateOrderCache() {
   logger.debug('Invalidating order cache via version bump');
-  await bumpGlobalCacheVersion();
+  await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
 
 /**
- * Invalidate all feedback-related caches by bumping global version
+ * Invalidate all feedback-related caches by bumping feedback version
+ * This only invalidates feedback caches, not items or orders
  */
 export async function invalidateFeedbackCache() {
   logger.debug('Invalidating feedback cache via version bump');
-  await bumpGlobalCacheVersion();
+  await bumpCacheVersion(CACHE_VERSION_KEYS.FEEDBACKS);
 }
 
 /**
- * Invalidate paginated order history caches by bumping global version
- * @deprecated Use bumpGlobalCacheVersion() directly. With global versioning,
- * this function invalidates ALL caches, not just paginated orders.
- * Kept for backward compatibility.
+ * Invalidate paginated order history caches by bumping order version
+ * This only invalidates order caches, not all caches
  */
 export async function invalidatePaginatedOrderCache() {
-  logger.debug('Invalidating all caches via version bump (called from invalidatePaginatedOrderCache)');
-  await bumpGlobalCacheVersion();
+  logger.debug('Invalidating order cache via version bump (called from invalidatePaginatedOrderCache)');
+  await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
 
 /**
- * Invalidate priority orders cache by bumping global version
- * @deprecated Use bumpGlobalCacheVersion() directly. With global versioning,
- * this function invalidates ALL caches, not just priority orders.
- * Kept for backward compatibility.
+ * Invalidate priority orders cache by bumping order version
+ * This only invalidates order caches, not all caches
  */
 export async function invalidatePriorityOrderCache() {
-  logger.debug('Invalidating all caches via version bump (called from invalidatePriorityOrderCache)');
-  await bumpGlobalCacheVersion();
+  logger.debug('Invalidating order cache via version bump (called from invalidatePriorityOrderCache)');
+  await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
 
 /**
  * Clear all caches (debug utility)
  * This flushes all Redis data - use with caution in production
- * For normal cache invalidation, prefer bumpGlobalCacheVersion()
+ * For normal cache invalidation, prefer bumpCacheVersion(versionKey)
  */
 export async function clearAllCache() {
   try {
@@ -463,12 +511,14 @@ export async function clearAllCache() {
 
     await redis.flushDb();
     
-    // Reset the version after flushing
-    await redis.set(CACHE_VERSION_KEY, '1');
-    localVersion = 1;
-    localVersionFetchedAt = Date.now();
+    // Reset all version keys after flushing
+    const versionKeys = Object.values(CACHE_VERSION_KEYS);
+    for (const versionKey of versionKeys) {
+      await redis.set(versionKey, '1');
+      localVersions.set(versionKey, { version: 1, fetchedAt: Date.now() });
+    }
     
-    logger.info('All caches cleared and version reset');
+    logger.info('All caches cleared and versions reset');
   } catch (error) {
     logger.error('Failed to clear all caches', error);
   }

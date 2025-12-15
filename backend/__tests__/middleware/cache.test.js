@@ -327,7 +327,8 @@ describe('Cache Middleware', () => {
       const middleware = cacheMiddleware(300);
       await middleware(req, res, next);
       
-      expect(mockRedisClient.setNX).toHaveBeenCalledWith('cache:v:global', '1');
+      // Request path is /api/items, so it should use items cache version
+      expect(mockRedisClient.setNX).toHaveBeenCalledWith('cache:v:items', '1');
       expect(next).toHaveBeenCalled();
     });
 
@@ -551,45 +552,45 @@ describe('Cache Middleware', () => {
     });
   });
 
-  describe('invalidateItemCache (now uses version bump)', () => {
-    it('should bump global cache version', async () => {
+  describe('invalidateItemCache (now uses separate version)', () => {
+    it('should bump item cache version only', async () => {
       mockRedisClient.incr.mockResolvedValue(2);
       
       await invalidateItemCache();
       
-      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:global');
+      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:items');
     });
   });
 
-  describe('invalidateOrderCache (now uses version bump)', () => {
-    it('should bump global cache version', async () => {
+  describe('invalidateOrderCache (now uses separate version)', () => {
+    it('should bump order cache version only', async () => {
       mockRedisClient.incr.mockResolvedValue(3);
       
       await invalidateOrderCache();
       
-      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:global');
+      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:orders');
     });
   });
 
   describe('invalidatePaginatedOrderCache', () => {
-    it('should bump global cache version', async () => {
+    it('should bump order cache version only', async () => {
       mockRedisClient.incr.mockResolvedValue(4);
       
       const { invalidatePaginatedOrderCache } = await import('../../middleware/cache.js');
       await invalidatePaginatedOrderCache();
       
-      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:global');
+      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:orders');
     });
   });
 
   describe('invalidatePriorityOrderCache', () => {
-    it('should bump global cache version', async () => {
+    it('should bump order cache version only', async () => {
       mockRedisClient.incr.mockResolvedValue(5);
       
       const { invalidatePriorityOrderCache } = await import('../../middleware/cache.js');
       await invalidatePriorityOrderCache();
       
-      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:global');
+      expect(mockRedisClient.incr).toHaveBeenCalledWith('cache:v:orders');
     });
   });
 

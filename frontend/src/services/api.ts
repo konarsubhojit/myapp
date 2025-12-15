@@ -15,7 +15,9 @@ import type {
   FeedbackStats,
   TokenGenerationResponse,
   PaginationParams,
-  SearchPaginationParams
+  SearchPaginationParams,
+  CursorSearchPaginationParams,
+  CursorPaginatedResult
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -84,6 +86,11 @@ interface MockDataResult {
     limit: number;
     total: number;
     totalPages: number;
+  };
+  page?: {
+    limit: number;
+    nextCursor: string | null;
+    hasMore: boolean;
   };
 }
 
@@ -168,8 +175,20 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
     
     // Return mock response with dummy data for guest mode
     let mockData: MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never>;
-    if (url.includes('?page=') || url.includes('&page=')) {
-      // Paginated endpoint - return pagination structure with dummy data
+    
+    // Check if it's a cursor-paginated endpoint (items)
+    if (url.includes('/items') && (url.includes('?cursor=') || url.includes('&cursor=') || url.includes('?limit=') || url.includes('&limit='))) {
+      // Cursor-paginated items endpoint
+      mockData = {
+        items: dummyItems,
+        page: {
+          limit: 10,
+          nextCursor: null,
+          hasMore: false
+        }
+      } as MockDataResult;
+    } else if (url.includes('?page=') || url.includes('&page=')) {
+      // Old-style paginated endpoint (orders, feedbacks) - return pagination structure with dummy data
       let dataKey: 'items' | 'orders' | 'feedbacks' = 'items';
       let data: Item[] | Order[] | Feedback[] = [];
       
@@ -197,8 +216,15 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
         mockData = {};
       }
     } else if (url.includes('/items')) {
-      // List endpoint without pagination - return dummy items
-      mockData = dummyItems;
+      // Default items endpoint - return cursor-paginated format
+      mockData = {
+        items: dummyItems,
+        page: {
+          limit: 10,
+          nextCursor: null,
+          hasMore: false
+        }
+      } as MockDataResult;
     } else {
       // Other list endpoints - return empty array
       mockData = [];
@@ -236,12 +262,14 @@ export const getItems = async (): Promise<Item[]> => {
   return response.json();
 };
 
+// Items API - Cursor-based pagination
 export const getItemsPaginated = async ({ 
-  page = 1, 
   limit = 10, 
+  cursor = null,
   search = '' 
-}: SearchPaginationParams = {}): Promise<PaginatedResult<Item>> => {
-  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+}: CursorSearchPaginationParams = {}): Promise<CursorPaginatedResult<Item>> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.append('cursor', cursor);
   if (search) params.append('search', search);
   
   const response = await authFetch(`${API_BASE_URL}/items?${params}`);
@@ -250,11 +278,12 @@ export const getItemsPaginated = async ({
 };
 
 export const getDeletedItems = async ({ 
-  page = 1, 
-  limit = 10, 
+  limit = 10,
+  cursor = null,
   search = '' 
-}: SearchPaginationParams = {}): Promise<PaginatedResult<Item>> => {
-  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+}: CursorSearchPaginationParams = {}): Promise<CursorPaginatedResult<Item>> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.append('cursor', cursor);
   if (search) params.append('search', search);
   
   const response = await authFetch(`${API_BASE_URL}/items/deleted?${params}`);

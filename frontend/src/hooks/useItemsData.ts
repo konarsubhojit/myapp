@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getItemsPaginated } from '../services/api';
-import type { Item, PaginatedResult, PaginationInfo } from '../types';
+import type { Item } from '../types';
 
 type AllowedLimit = 10 | 20 | 50;
 const ITEMS_PER_PAGE = 10; // Fixed page size for infinite scroll
@@ -22,12 +22,12 @@ interface ItemsDataResult {
 }
 
 /**
- * Custom hook for managing active items data with infinite scroll
+ * Custom hook for managing active items data with cursor-based infinite scroll
  */
 export const useItemsData = (): ItemsDataResult => {
   const [items, setItems] = useState<Item[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   // Start with loading=true to prevent flash of "no items" on initial load
@@ -35,7 +35,7 @@ export const useItemsData = (): ItemsDataResult => {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchItems = useCallback(async (pageNum: number, appendMode: boolean): Promise<void> => {
+  const fetchItems = useCallback(async (cursor: string | null, appendMode: boolean): Promise<void> => {
     if (appendMode) {
       setLoadingMore(true);
     } else {
@@ -45,8 +45,8 @@ export const useItemsData = (): ItemsDataResult => {
     
     try {
       const result = await getItemsPaginated({ 
-        page: pageNum, 
-        limit: ITEMS_PER_PAGE, 
+        limit: ITEMS_PER_PAGE,
+        cursor,
         search: search 
       });
       
@@ -63,8 +63,8 @@ export const useItemsData = (): ItemsDataResult => {
         setItems(result.items);
       }
       
-      setTotalPages(result.pagination?.totalPages || 0);
-      setPage(pageNum);
+      setNextCursor(result.page.nextCursor);
+      setHasMore(result.page.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
       if (!appendMode) {
@@ -78,36 +78,34 @@ export const useItemsData = (): ItemsDataResult => {
 
   // Initial fetch
   useEffect(() => {
-    fetchItems(1, false);
-  }, [search]); // Re-fetch from page 1 when search changes
+    fetchItems(null, false);
+  }, [search]); // Re-fetch from beginning when search changes
 
   const loadMore = useCallback((): void => {
-    if (!loadingMore && page < totalPages) {
-      fetchItems(page + 1, true);
+    if (!loadingMore && hasMore && nextCursor) {
+      fetchItems(nextCursor, true);
     }
-  }, [loadingMore, page, totalPages, fetchItems]);
+  }, [loadingMore, hasMore, nextCursor, fetchItems]);
 
   const handleSearch = (e: React.FormEvent): void => {
     e.preventDefault();
     setSearch(searchInput);
-    setPage(1);
   };
 
   const clearSearch = (): void => {
     setSearchInput('');
     setSearch('');
-    setPage(1);
   };
 
   const refetchItems = async (): Promise<void> => {
-    await fetchItems(1, false);
+    await fetchItems(null, false);
   };
 
   return {
     items,
     loading,
     loadingMore,
-    hasMore: page < totalPages,
+    hasMore,
     error,
     search,
     searchInput,
