@@ -35,10 +35,13 @@ function buildSearchCondition(search) {
 function parseCursor(cursor) {
   if (!cursor) return null;
   
-  const parts = cursor.split(':');
-  if (parts.length !== 2) return null;
+  // Find the last colon to split timestamp from id
+  const lastColonIndex = cursor.lastIndexOf(':');
+  if (lastColonIndex === -1) return null;
   
-  const [createdAtStr, idStr] = parts;
+  const createdAtStr = cursor.substring(0, lastColonIndex);
+  const idStr = cursor.substring(lastColonIndex + 1);
+  
   const createdAt = new Date(createdAtStr);
   const id = Number.parseInt(idStr, 10);
   
