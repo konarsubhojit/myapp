@@ -326,17 +326,8 @@ router.get('/all', cacheMiddleware(86400), asyncHandler(async (req, res) => {
   res.json(orders);
 }));
 
-// Get orders with pagination
-router.get('/', asyncHandler(async (req, res) => {
-  const { page, limit } = parsePaginationParams(req.query);
-  
-  // Use DB-level pagination for optimal performance (O(1) vs O(N) memory)
-  const result = await Order.findPaginated({ page, limit });
-  
-  res.json(result);
-}));
-
 // Get orders with cursor-based pagination (for infinite scroll)
+// IMPORTANT: This must come BEFORE the base '/' route to avoid route shadowing
 router.get('/cursor', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const { cursor, limit } = req.query;
   
@@ -353,6 +344,16 @@ router.get('/cursor', cacheMiddleware(60), asyncHandler(async (req, res) => {
     limit: parsedLimit, 
     cursor: cursor || null 
   });
+  
+  res.json(result);
+}));
+
+// Get orders with pagination
+router.get('/', asyncHandler(async (req, res) => {
+  const { page, limit } = parsePaginationParams(req.query);
+  
+  // Use DB-level pagination for optimal performance (O(1) vs O(N) memory)
+  const result = await Order.findPaginated({ page, limit });
   
   res.json(result);
 }));
