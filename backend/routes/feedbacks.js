@@ -185,15 +185,19 @@ router.post('/', asyncHandler(async (req, res) => {
   res.status(201).json(newFeedback);
 }));
 
-// PUT /api/feedbacks/:id - Update a feedback
-router.put('/:id', asyncHandler(async (req, res) => {
-  const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = req.body;
-
+/**
+ * Validate and build update data for feedback update
+ * @param {Object} requestBody - Request body with potential updates
+ * @returns {Object} Returns {updateData: Object} on success or {error: string} on validation failure
+ */
+function validateAndBuildFeedbackUpdateData(requestBody) {
+  const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = requestBody;
+  
   // Validate rating if provided
   if (rating !== undefined) {
     const ratingValidation = validateRating(rating, 'Overall rating');
     if (!ratingValidation.valid) {
-      throw badRequestError(ratingValidation.error);
+      return { error: ratingValidation.error };
     }
   }
 
@@ -201,14 +205,14 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (productQuality !== undefined) {
     const productQualityValidation = validateOptionalRating(productQuality, 'Product quality rating');
     if (!productQualityValidation.valid) {
-      throw badRequestError(productQualityValidation.error);
+      return { error: productQualityValidation.error };
     }
   }
 
   if (deliveryExperience !== undefined) {
     const deliveryValidation = validateOptionalRating(deliveryExperience, 'Delivery experience rating');
     if (!deliveryValidation.valid) {
-      throw badRequestError(deliveryValidation.error);
+      return { error: deliveryValidation.error };
     }
   }
 
@@ -216,7 +220,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (comment !== undefined) {
     const commentValidation = validateComment(comment);
     if (!commentValidation.valid) {
-      throw badRequestError(commentValidation.error);
+      return { error: commentValidation.error };
     }
   }
 
@@ -224,10 +228,11 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (responseText !== undefined) {
     const responseValidation = validateResponse(responseText);
     if (!responseValidation.valid) {
-      throw badRequestError(responseValidation.error);
+      return { error: responseValidation.error };
     }
   }
 
+  // Build update data object
   const updateData = {};
   if (rating !== undefined) updateData.rating = Number.parseInt(rating, 10);
   if (comment !== undefined) updateData.comment = comment;
@@ -236,10 +241,22 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (isPublic !== undefined) updateData.isPublic = Boolean(isPublic);
   if (responseText !== undefined) updateData.responseText = responseText;
 
+  return { updateData };
+}
+
+// PUT /api/feedbacks/:id - Update a feedback
+router.put('/:id', asyncHandler(async (req, res) => {
+  // Validate request body and build update data
+  const result = validateAndBuildFeedbackUpdateData(req.body);
+  
+  if (result.error) {
+    throw badRequestError(result.error);
+  }
+
   // Proactively invalidate cache BEFORE updating to prevent race conditions
   await invalidateFeedbackCache();
 
-  const updatedFeedback = await Feedback.findByIdAndUpdate(req.params.id, updateData);
+  const updatedFeedback = await Feedback.findByIdAndUpdate(req.params.id, result.updateData);
   if (!updatedFeedback) {
     throw notFoundError('Feedback');
   }

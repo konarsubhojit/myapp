@@ -46,6 +46,52 @@ const pendingRequests = new Map();
 const LOCK_TIMEOUT = 30000; // 30 seconds
 
 /**
+ * Check if response is an error response
+ * @param {*} body - Response body to check
+ * @returns {boolean} True if response is an error
+ */
+function isErrorResponse(body) {
+  if (typeof body !== 'object' || Array.isArray(body)) {
+    return false;
+  }
+  
+  // If response has 'error' key, it's likely an error response
+  if ('error' in body) {
+    return true;
+  }
+  
+  // If response only has 'message' key (common for simple errors)
+  // Note: Valid responses with 'message' + other properties will still be cached
+  const keys = Object.keys(body);
+  return keys.length === 1 && keys[0] === 'message';
+}
+
+/**
+ * Validate paginated response structure
+ * @param {Object} body - Response body to validate
+ * @returns {boolean} True if paginated response is valid
+ */
+function validatePaginatedResponse(body) {
+  // Ensure items/orders/feedbacks array exists and pagination metadata is present
+  const dataKey = body.items !== undefined ? 'items' : 
+                  body.orders !== undefined ? 'orders' : 
+                  body.feedbacks !== undefined ? 'feedbacks' : null;
+  
+  if (!dataKey || !Array.isArray(body[dataKey]) || !body.pagination) {
+    logger.debug('Paginated response validation failed', { 
+      hasDataKey: !!dataKey,
+      dataKey,
+      isArray: body[dataKey] ? Array.isArray(body[dataKey]) : false,
+      hasPagination: !!body.pagination 
+    });
+    return false;
+  }
+  
+  logger.debug('Paginated response validated successfully', { dataKey, itemCount: body[dataKey].length });
+  return true;
+}
+
+/**
  * Validate response data before caching to prevent caching invalid/empty data
  * @param {*} body - Response body to validate
  * @returns {boolean} True if response should be cached
@@ -57,34 +103,13 @@ function validateResponseForCaching(body) {
   }
   
   // Don't cache error responses
-  // Check if response has 'error' or 'message' properties that indicate an error
-  if (typeof body === 'object' && !Array.isArray(body)) {
-    // If response has 'error' key, it's likely an error response - don't cache
-    if ('error' in body) {
-      return false;
-    }
-    // If response only has 'message' key (common for simple errors), don't cache
-    // Note: Valid responses with 'message' + other properties will still be cached
-    const keys = Object.keys(body);
-    if (keys.length === 1 && keys[0] === 'message') {
-      return false;
-    }
+  if (isErrorResponse(body)) {
+    return false;
   }
   
   // For paginated responses, validate structure
   if (body && typeof body === 'object' && 'pagination' in body) {
-    // Ensure items/orders/feedbacks array exists and pagination metadata is present
-    const dataKey = body.items !== undefined ? 'items' : body.orders !== undefined ? 'orders' : body.feedbacks !== undefined ? 'feedbacks' : null;
-    if (!dataKey || !Array.isArray(body[dataKey]) || !body.pagination) {
-      logger.debug('Paginated response validation failed', { 
-        hasDataKey: !!dataKey,
-        dataKey,
-        isArray: body[dataKey] ? Array.isArray(body[dataKey]) : false,
-        hasPagination: !!body.pagination 
-      });
-      return false;
-    }
-    logger.debug('Paginated response validated successfully', { dataKey, itemCount: body[dataKey].length });
+    return validatePaginatedResponse(body);
   }
   
   // For array responses, ensure it's a valid array
@@ -130,7 +155,7 @@ export async function getCacheVersion(redis, versionKey = CACHE_VERSION_KEYS.GLO
       }
     }
     
-    const parsedVersion = parseInt(version, 10);
+    const parsedVersion = Number.parseInt(version, 10);
     
     // Update memoization
     localVersions.set(versionKey, { version: parsedVersion, fetchedAt: now });
