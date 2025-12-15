@@ -1,8 +1,8 @@
-import { eq, and, gte, lt, ne, or, sql } from 'drizzle-orm';
+import { eq, and, gte, lt, ne } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { orders, orderReminderState, digestRuns, notificationRecipients } from '../db/schema.js';
 import { createLogger } from '../utils/logger.js';
-import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest } from '../utils/digestBuckets.js';
+import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } from '../utils/digestBuckets.js';
 import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from './emailService.js';
 
 const logger = createLogger('DigestService');
@@ -74,17 +74,14 @@ export async function upsertDigestRun(digestDate, status, error = null) {
 }
 
 /**
- * Query orders for a specific time bucket, excluding completed and already-sent
+ * Query orders for a specific time bucket, excluding completed and cancelled
  * @param {Date} bucketStart - Start of the bucket (inclusive)
  * @param {Date} bucketEnd - End of the bucket (exclusive)
- * @param {string} tierFlag - Which sent flag to check: 'sent_1d', 'sent_3d', or 'sent_7d'
- * @returns {Promise<Array>} Orders in this bucket
+ * @returns {Promise<Array>} All pending orders in this bucket
  */
-export async function getOrdersForBucket(bucketStart, bucketEnd, tierFlag) {
+export async function getOrdersForBucket(bucketStart, bucketEnd) {
   const db = getDatabase();
   
-  // Get orders in the bucket that are not completed
-  // and haven't had this tier reminder sent yet
   const ordersResult = await db.select({
     id: orders.id,
     orderId: orders.orderId,
@@ -93,25 +90,40 @@ export async function getOrdersForBucket(bucketStart, bucketEnd, tierFlag) {
     status: orders.status
   })
     .from(orders)
-    .leftJoin(orderReminderState, eq(orders.id, orderReminderState.orderId))
     .where(
       and(
-        // Expected delivery date is in the bucket
         gte(orders.expectedDeliveryDate, bucketStart),
         lt(orders.expectedDeliveryDate, bucketEnd),
-        // Not completed
         ne(orders.status, 'completed'),
-        // Not cancelled
-        ne(orders.status, 'cancelled'),
-        // Either no reminder state exists OR the specific tier flag is false
-        or(
-          sql`${orderReminderState.orderId} IS NULL`,
-          tierFlag === 'sent_1d' 
-            ? eq(orderReminderState.sent1d, false)
-            : tierFlag === 'sent_3d'
-              ? eq(orderReminderState.sent3d, false)
-              : eq(orderReminderState.sent7d, false)
-        )
+        ne(orders.status, 'cancelled')
+      )
+    )
+    .orderBy(orders.expectedDeliveryDate, orders.orderId);
+
+  return ordersResult;
+}
+
+/**
+ * Query overdue orders (expected delivery date has passed)
+ * @returns {Promise<Array>} All overdue orders that are not completed or cancelled
+ */
+export async function getOverdueOrders() {
+  const db = getDatabase();
+  const today = getKolkataStartOfDay(0);
+  
+  const ordersResult = await db.select({
+    id: orders.id,
+    orderId: orders.orderId,
+    customerName: orders.customerName,
+    expectedDeliveryDate: orders.expectedDeliveryDate,
+    status: orders.status
+  })
+    .from(orders)
+    .where(
+      and(
+        lt(orders.expectedDeliveryDate, today),
+        ne(orders.status, 'completed'),
+        ne(orders.status, 'cancelled')
       )
     )
     .orderBy(orders.expectedDeliveryDate, orders.orderId);
@@ -227,20 +239,22 @@ async function checkDigestIdempotency(digestDate) {
 /**
  * Fetch all orders grouped by delivery date buckets
  * @param {Object} buckets - Bucket ranges from computeDigestBuckets
- * @returns {Promise<Object>} Object containing orders for each bucket
+ * @returns {Promise<Object>} Object containing orders for each bucket plus overdue orders
  */
 async function fetchOrdersForAllBuckets(buckets) {
-  const oneDayOrders = await getOrdersForBucket(buckets['1d'].start, buckets['1d'].end, 'sent_1d');
-  const threeDayOrders = await getOrdersForBucket(buckets['3d'].start, buckets['3d'].end, 'sent_3d');
-  const sevenDayOrders = await getOrdersForBucket(buckets['7d'].start, buckets['7d'].end, 'sent_7d');
+  const overdueOrders = await getOverdueOrders();
+  const oneDayOrders = await getOrdersForBucket(buckets['1d'].start, buckets['1d'].end);
+  const threeDayOrders = await getOrdersForBucket(buckets['3d'].start, buckets['3d'].end);
+  const sevenDayOrders = await getOrdersForBucket(buckets['7d'].start, buckets['7d'].end);
   
   logger.info('Orders found for digest', {
+    overdueCount: overdueOrders.length,
     oneDayCount: oneDayOrders.length,
     threeDayCount: threeDayOrders.length,
     sevenDayCount: sevenDayOrders.length
   });
   
-  return { oneDayOrders, threeDayOrders, sevenDayOrders };
+  return { overdueOrders, oneDayOrders, threeDayOrders, sevenDayOrders };
 }
 
 /**
@@ -249,45 +263,32 @@ async function fetchOrdersForAllBuckets(buckets) {
  * @returns {boolean} True if all buckets are empty
  */
 function areAllBucketsEmpty(bucketData) {
-  const { oneDayOrders, threeDayOrders, sevenDayOrders } = bucketData;
-  return oneDayOrders.length === 0 && threeDayOrders.length === 0 && sevenDayOrders.length === 0;
+  const { overdueOrders, oneDayOrders, threeDayOrders, sevenDayOrders } = bucketData;
+  return overdueOrders.length === 0 && oneDayOrders.length === 0 && threeDayOrders.length === 0 && sevenDayOrders.length === 0;
 }
 
 /**
- * Send digest email to all recipients
+ * Send digest email to all recipients (separate email for each)
  * @param {Array} recipients - List of recipient objects with email property
  * @param {Object} bucketData - Orders grouped by buckets
  * @param {string} digestDate - Date string for the digest
  */
 async function sendDigestEmail(recipients, bucketData, digestDate) {
-  const recipientEmails = recipients.map(r => r.email);
   const emailHtml = buildDigestEmailHtml(bucketData, digestDate, formatDateForDigest);
   const emailText = buildDigestEmailText(bucketData, digestDate, formatDateForDigest);
   
-  await sendEmail({
-    to: recipientEmails,
-    subject: `📦 Daily Delivery Digest - ${digestDate}`,
-    html: emailHtml,
-    text: emailText
-  });
+  const emailPromises = recipients.map(recipient => 
+    sendEmail({
+      to: [recipient.email],
+      subject: `⏰ Daily Order Reminder - ${digestDate} - Action Required`,
+      html: emailHtml,
+      text: emailText
+    })
+  );
   
-  return recipientEmails;
-}
-
-/**
- * Mark all orders in buckets as having received their reminders
- * @param {Object} bucketData - Orders grouped by buckets
- */
-async function markAllOrdersAsSent(bucketData) {
-  const { oneDayOrders, threeDayOrders, sevenDayOrders } = bucketData;
+  await Promise.all(emailPromises);
   
-  const oneDayIds = oneDayOrders.map(o => o.id);
-  const threeDayIds = threeDayOrders.map(o => o.id);
-  const sevenDayIds = sevenDayOrders.map(o => o.id);
-  
-  await markOrdersAsSent(oneDayIds, '1d');
-  await markOrdersAsSent(threeDayIds, '3d');
-  await markOrdersAsSent(sevenDayIds, '7d');
+  return recipients.map(r => r.email);
 }
 
 /**
@@ -324,10 +325,9 @@ export async function runDailyDigest() {
     }
     
     const recipientEmails = await sendDigestEmail(recipients, bucketData, digestDate);
-    await markAllOrdersAsSent(bucketData);
     await upsertDigestRun(digestDate, 'sent');
     
-    const totalOrders = bucketData.oneDayOrders.length + bucketData.threeDayOrders.length + bucketData.sevenDayOrders.length;
+    const totalOrders = bucketData.overdueOrders.length + bucketData.oneDayOrders.length + bucketData.threeDayOrders.length + bucketData.sevenDayOrders.length;
     logger.info('Daily digest completed successfully', {
       digestDate,
       recipientCount: recipientEmails.length,
@@ -338,6 +338,7 @@ export async function runDailyDigest() {
       status: 'sent',
       digestDate,
       orderCounts: {
+        overdue: bucketData.overdueOrders.length,
         oneDay: bucketData.oneDayOrders.length,
         threeDay: bucketData.threeDayOrders.length,
         sevenDay: bucketData.sevenDayOrders.length
