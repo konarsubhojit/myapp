@@ -601,17 +601,19 @@ describe('API Service', () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('should return paginated structure with dummy data in guest mode', async () => {
+    it('should return cursor-paginated structure with dummy data in guest mode', async () => {
       setGuestModeChecker(() => true);
 
       const result = await getItemsPaginated();
 
       expect(result).toHaveProperty('items');
-      expect(result).toHaveProperty('pagination');
-      // Should return dummy items in paginated structure
+      expect(result).toHaveProperty('page');
+      // Should return dummy items in cursor-paginated structure
       expect(Array.isArray(result.items)).toBe(true);
       expect(result.items.length).toBeGreaterThan(0);
-      expect(result.pagination.total).toBeGreaterThan(0);
+      expect(result.page).toHaveProperty('limit');
+      expect(result.page).toHaveProperty('nextCursor');
+      expect(result.page).toHaveProperty('hasMore');
       expect(global.fetch).not.toHaveBeenCalled();
     });
   });

@@ -218,15 +218,22 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
         mockData = {};
       }
     } else if (url.includes('/items')) {
-      // Default items endpoint - return cursor-paginated format
-      mockData = {
-        items: dummyItems,
-        page: {
-          limit: 10,
-          nextCursor: null,
-          hasMore: false
-        }
-      } as MockDataResult;
+      // Check if it's a simple list endpoint (no pagination params)
+      const hasQueryParams = url.includes('?');
+      if (!hasQueryParams) {
+        // Simple items list - return array
+        mockData = dummyItems;
+      } else {
+        // Default items endpoint with params - return cursor-paginated format
+        mockData = {
+          items: dummyItems,
+          page: {
+            limit: 10,
+            nextCursor: null,
+            hasMore: false
+          }
+        } as MockDataResult;
+      }
     } else {
       // Other list endpoints - return empty array
       mockData = [];
