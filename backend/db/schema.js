@@ -48,7 +48,10 @@ export const orders = pgTable('orders', {
   priorityIdx: index('orders_priority_idx').on(table.priority),
   statusIdx: index('orders_status_idx').on(table.status),
   // Index for pagination ORDER BY created_at DESC
-  createdAtIdx: index('orders_created_at_idx').on(table.createdAt)
+  createdAtIdx: index('orders_created_at_idx').on(table.createdAt),
+  // Composite index for cursor-based pagination (created_at DESC, id DESC)
+  // This enables stable, efficient cursor pagination with no duplicates/skips
+  createdAtIdIdx: index('orders_created_at_id_idx').on(table.createdAt.desc(), table.id.desc())
 }));
 
 export const orderItems = pgTable('order_items', {

@@ -173,8 +173,8 @@ interface UseOrderFiltersResult {
 export const useOrderFilters = (orders: Order[]): UseOrderFiltersResult => {
   const [filters, setFilters] = useState<OrderFilters>(createEmptyFilters());
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: 'expectedDeliveryDate',
-    direction: 'asc'
+    key: 'createdAt',
+    direction: 'desc'
   });
 
   const handleFilterChange = (field: keyof OrderFilters, value: string): void => {

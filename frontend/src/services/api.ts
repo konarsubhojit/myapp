@@ -12,6 +12,8 @@ import type {
   PaginatedResult,
   PaginatedOrdersResult,
   PaginatedFeedbacksResult,
+  CursorPaginatedOrdersResult,
+  CursorPaginationParams,
   FeedbackStats,
   TokenGenerationResponse,
   PaginationParams,
@@ -332,6 +334,18 @@ export const getOrdersPaginated = async ({
 }: PaginationParams = {}): Promise<PaginatedOrdersResult> => {
   const response = await authFetch(`${API_BASE_URL}/orders?page=${page}&limit=${limit}`);
   if (!response.ok) throw new Error('Failed to fetch orders');
+  return response.json();
+};
+
+export const getOrdersCursorPaginated = async ({ 
+  limit = 10,
+  cursor = null
+}: CursorPaginationParams = {}): Promise<CursorPaginatedOrdersResult> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.append('cursor', cursor);
+  
+  const response = await authFetch(`${API_BASE_URL}/orders/cursor?${params}`);
+  if (!response.ok) throw new Error('Failed to fetch orders with cursor pagination');
   return response.json();
 };
 
