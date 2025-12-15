@@ -1,4 +1,4 @@
-import { eq, desc, sql, asc, inArray } from 'drizzle-orm';
+import { eq, desc, sql, asc, inArray, and, or, lt } from 'drizzle-orm';
 import { getDatabase } from '../db/connection.js';
 import { orders, orderItems } from '../db/schema.js';
 import { executeWithRetry } from '../utils/dbRetry.js';
@@ -84,6 +84,38 @@ async function updateOrderItems(db, orderId, items) {
     }));
     
     await db.insert(orderItems).values(orderItemsData);
+  }
+}
+
+/**
+ * Encode cursor for pagination
+ * Format: base64(JSON({createdAt, id}))
+ * @param {Object} order - Order object with createdAt and id
+ * @returns {string} Base64 encoded cursor
+ */
+function encodeCursor(order) {
+  const cursorData = {
+    createdAt: order.createdAt.toISOString(),
+    id: order.id
+  };
+  return Buffer.from(JSON.stringify(cursorData)).toString('base64');
+}
+
+/**
+ * Decode cursor for pagination
+ * @param {string} cursor - Base64 encoded cursor
+ * @returns {{createdAt: Date, id: number}|null} Decoded cursor or null if invalid
+ */
+function decodeCursor(cursor) {
+  try {
+    const decoded = Buffer.from(cursor, 'base64').toString('utf-8');
+    const parsed = JSON.parse(decoded);
+    return {
+      createdAt: new Date(parsed.createdAt),
+      id: parsed.id
+    };
+  } catch (error) {
+    return null;
   }
 }
 
@@ -173,6 +205,89 @@ const Order = {
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
       };
     }, { operationName: 'Order.findPaginated' });
+  },
+
+  /**
+   * Find orders with cursor-based pagination for stable infinite scroll
+   * Uses composite index (created_at DESC, id DESC) for optimal performance
+   * @param {Object} params - Pagination parameters
+   * @param {number} params.limit - Items per page (default: 10, max: 100)
+   * @param {string} params.cursor - Cursor from previous page (base64 encoded)
+   * @returns {Promise<{orders: Array, pagination: Object}>}
+   */
+  async findCursorPaginated({ limit = 10, cursor = null }) {
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      
+      // Validate and cap limit
+      const validLimit = Math.min(Math.max(1, limit), 100);
+      
+      let query = db.select().from(orders);
+      
+      // If cursor provided, decode and apply WHERE clause
+      if (cursor) {
+        const decodedCursor = decodeCursor(cursor);
+        if (!decodedCursor) {
+          throw new Error('Invalid cursor format');
+        }
+        
+        // Use composite WHERE for stable pagination: (created_at, id) < (cursor_created_at, cursor_id)
+        // This leverages the composite index (created_at DESC, id DESC)
+        query = query.where(
+          or(
+            lt(orders.createdAt, decodedCursor.createdAt),
+            and(
+              eq(orders.createdAt, decodedCursor.createdAt),
+              lt(orders.id, decodedCursor.id)
+            )
+          )
+        );
+      }
+      
+      // Order by created_at DESC, id DESC and fetch limit + 1 to determine hasMore
+      const ordersResult = await query
+        .orderBy(desc(orders.createdAt), desc(orders.id))
+        .limit(validLimit + 1);
+      
+      // Check if there are more results
+      const hasMore = ordersResult.length > validLimit;
+      
+      // Trim to actual limit
+      const ordersToReturn = hasMore ? ordersResult.slice(0, validLimit) : ordersResult;
+      
+      if (ordersToReturn.length === 0) {
+        return {
+          orders: [],
+          pagination: { limit: validLimit, nextCursor: null, hasMore: false }
+        };
+      }
+      
+      // Bulk fetch items for all orders (avoids N+1)
+      const orderIds = ordersToReturn.map(o => o.id);
+      const allItems = await db.select()
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, orderIds));
+      
+      // Group items by orderId
+      const itemsByOrderId = allItems.reduce((acc, item) => {
+        if (!acc[item.orderId]) acc[item.orderId] = [];
+        acc[item.orderId].push(item);
+        return acc;
+      }, {});
+      
+      // Transform orders with their items
+      const transformedOrders = ordersToReturn.map(order => 
+        transformOrder(order, itemsByOrderId[order.id] || [])
+      );
+      
+      // Generate next cursor from last item
+      const nextCursor = hasMore ? encodeCursor(ordersToReturn[ordersToReturn.length - 1]) : null;
+      
+      return {
+        orders: transformedOrders,
+        pagination: { limit: validLimit, nextCursor, hasMore }
+      };
+    }, { operationName: 'Order.findCursorPaginated' });
   },
 
   async findById(id) {

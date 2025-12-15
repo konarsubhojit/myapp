@@ -342,7 +342,8 @@ When multiple identical requests arrive simultaneously:
 | DELETE | `/api/items/:id`                    | Yes  | None      | Soft delete item                                |
 | POST   | `/api/items/:id/restore`            | Yes  | None      | Restore soft-deleted item                       |
 | DELETE | `/api/items/:id/permanent`          | Yes  | None      | Permanently delete item's image                 |
-| GET    | `/api/orders`                       | Yes  | None      | List orders (paginated, no cache)               |
+| GET    | `/api/orders`                       | Yes  | None      | List orders (offset pagination, legacy)         |
+| GET    | `/api/orders/cursor`                | Yes  | 60s       | List orders (cursor pagination, recommended)    |
 | GET    | `/api/orders/all`                   | Yes  | 24h       | List all orders (no pagination, cached)         |
 | GET    | `/api/orders/priority`              | Yes  | 5min      | List urgent orders (delivery date-based)        |
 | POST   | `/api/orders`                       | Yes  | None      | Create new order                                |
@@ -1067,6 +1068,108 @@ const { page, limit, search } = parsePaginationParams(req.query);
 const result = await Item.findPaginated({ page, limit, search });
 res.json(result); // { items: [...], pagination: {...} }
 ```
+
+### Cursor-Based Pagination
+
+**Purpose**: Stable pagination for infinite scroll with no duplicates or missing items under concurrent inserts.
+
+**Implementation**: `backend/models/Order.js:findCursorPaginated()`
+
+**When to Use**:
+- **Use cursor pagination** for infinite scroll UIs (recommended for order history)
+- **Use offset pagination** for traditional page-based navigation (legacy, backward compatibility)
+
+#### How Cursor Pagination Works
+
+Cursor pagination uses a **composite cursor** containing the last item's `(createdAt, id)` to fetch the next page. This ensures stable ordering even when new orders are created concurrently.
+
+**Composite Index**:
+```sql
+CREATE INDEX orders_created_at_id_idx ON orders (created_at DESC, id DESC);
+```
+
+**Query Pattern**:
+```sql
+-- First page (no cursor)
+SELECT * FROM orders
+ORDER BY created_at DESC, id DESC
+LIMIT 11;  -- fetch limit+1 to check hasMore
+
+-- Subsequent pages (with cursor)
+SELECT * FROM orders
+WHERE (created_at, id) < ('2024-01-15T10:30:00Z', 42)
+ORDER BY created_at DESC, id DESC
+LIMIT 11;
+```
+
+#### Cursor Format
+
+Cursors are **base64-encoded JSON** containing the last item's coordinates:
+
+```javascript
+// Cursor data
+{
+  createdAt: "2024-01-15T10:30:00.000Z",  // ISO timestamp
+  id: 42                                    // Order ID
+}
+
+// Encoded cursor (base64)
+"eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTE1VDEwOjMwOjAwLjAwMFoiLCJpZCI6NDJ9"
+```
+
+#### API Endpoint
+
+**GET /api/orders/cursor**
+
+Query Parameters:
+- `limit` (optional): Number of orders (1-100, default: 10)
+- `cursor` (optional): Base64 cursor from previous response (omit for first page)
+
+Response Format:
+```json
+{
+  "orders": [...],
+  "pagination": {
+    "limit": 10,
+    "nextCursor": "eyJjcmVhdGVkQXQiOi...",
+    "hasMore": true
+  }
+}
+```
+
+**Cache**: 60 seconds TTL with global version-based invalidation
+
+#### Example Usage
+
+```javascript
+// First page
+const page1 = await Order.findCursorPaginated({ limit: 10, cursor: null });
+// Returns: { orders: [...10 items], pagination: { limit: 10, nextCursor: "abc", hasMore: true } }
+
+// Next page using cursor
+const page2 = await Order.findCursorPaginated({ 
+  limit: 10, 
+  cursor: page1.pagination.nextCursor 
+});
+// Returns: { orders: [...10 items], pagination: { limit: 10, nextCursor: "xyz", hasMore: true } }
+```
+
+#### Advantages Over Offset Pagination
+
+| Feature | Cursor Pagination | Offset Pagination |
+|---------|-------------------|-------------------|
+| **Performance** | O(log n) - Uses index seek | O(n) - Scans offset rows |
+| **Stability** | No duplicates/skips | Can miss items on concurrent inserts |
+| **Scalability** | Consistent speed | Slower as offset increases |
+| **Cache-friendly** | Yes - Stable ordering | Problematic with dynamic data |
+
+#### Migration Path
+
+Both endpoints coexist for backward compatibility:
+- **`/api/orders/cursor`** (recommended): Cursor pagination for infinite scroll
+- **`/api/orders`** (legacy): Offset pagination for existing clients
+
+Frontend order history uses cursor pagination exclusively.
 
 ---
 

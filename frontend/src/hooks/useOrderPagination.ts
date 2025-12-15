@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getOrdersPaginated } from '../services/api';
+import { getOrdersCursorPaginated } from '../services/api';
 import type { Order } from '../types';
 
 const ORDERS_PER_PAGE = 10; // Fixed page size for infinite scroll
@@ -15,18 +15,18 @@ interface UseOrderPaginationResult {
 }
 
 /**
- * Custom hook for managing order data with infinite scroll
+ * Custom hook for managing order data with cursor-based infinite scroll
  */
 export const useOrderPagination = (): UseOrderPaginationResult => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
   // Start with loading=true to prevent flash of "no orders" on initial load
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchOrders = useCallback(async (pageNum: number, appendMode: boolean): Promise<void> => {
+  const fetchOrders = useCallback(async (cursor: string | null, appendMode: boolean): Promise<void> => {
     if (appendMode) {
       setLoadingMore(true);
     } else {
@@ -35,7 +35,7 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
     setError('');
     
     try {
-      const result = await getOrdersPaginated({ page: pageNum, limit: ORDERS_PER_PAGE });
+      const result = await getOrdersCursorPaginated({ cursor, limit: ORDERS_PER_PAGE });
       
       // Defensive check: ensure result.orders exists and is an array
       const ordersData = result.orders || [];
@@ -51,8 +51,8 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
         setOrders(ordersData);
       }
       
-      setTotalPages(result.pagination?.totalPages || 0);
-      setPage(pageNum);
+      setNextCursor(result.pagination?.nextCursor || null);
+      setHasMore(result.pagination?.hasMore || false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
       if (!appendMode) {
@@ -66,24 +66,24 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
 
   // Initial fetch
   useEffect(() => {
-    fetchOrders(1, false);
+    fetchOrders(null, false);
   }, [fetchOrders]);
 
   const loadMore = useCallback((): void => {
-    if (!loadingMore && page < totalPages) {
-      fetchOrders(page + 1, true);
+    if (!loadingMore && hasMore && nextCursor) {
+      fetchOrders(nextCursor, true);
     }
-  }, [loadingMore, page, totalPages, fetchOrders]);
+  }, [loadingMore, hasMore, nextCursor, fetchOrders]);
 
   const refetchOrders = async (): Promise<void> => {
-    await fetchOrders(1, false);
+    await fetchOrders(null, false);
   };
 
   return {
     orders,
     loading,
     loadingMore,
-    hasMore: page < totalPages,
+    hasMore,
     error,
     loadMore,
     fetchOrders: refetchOrders,
