@@ -125,6 +125,7 @@ npm run test:coverage  # Run tests with coverage
 - Use structured logging via `backend/utils/logger.js`
 
 ### General
+- Write self explanatory code, human-readable. Don't add inline comments to explain. If you need comments to explain code then refactor to simplify.
 - Use meaningful variable and function names
 - Keep functions small and focused
 - Add appropriate error handling
