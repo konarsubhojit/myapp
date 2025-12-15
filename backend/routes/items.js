@@ -5,7 +5,6 @@ import Item from '../models/Item.js';
 import { createLogger } from '../utils/logger.js';
 import { asyncHandler, badRequestError, notFoundError } from '../utils/errorHandler.js';
 import { PAGINATION } from '../constants/paginationConstants.js';
-import { HTTP_STATUS } from '../constants/httpConstants.js';
 import { IMAGE_CONFIG } from '../constants/imageConstants.js';
 import { cacheMiddleware, invalidateItemCache } from '../middleware/cache.js';
 

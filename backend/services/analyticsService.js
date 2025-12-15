@@ -91,62 +91,93 @@ function aggregateSourceBreakdown(filteredOrders) {
 }
 
 /**
- * Compute analytics for a specific time range and status filter
+ * Filter orders by time range
  */
-function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
-  const cutoffDate = new Date(now.getTime() - rangeDays * MILLISECONDS_PER_DAY);
-  
-  // Filter orders by time range and status
-  const filteredOrders = orders.filter(order => {
-    // Use orderDate if available, otherwise fall back to createdAt
+function filterOrdersByTimeRange(orders, cutoffDate) {
+  return orders.filter(order => {
     const dateToUse = order.orderDate || order.createdAt;
     const orderDate = new Date(dateToUse);
-    const isInTimeRange = orderDate >= cutoffDate;
-    
-    // Apply status filter
-    // Note: Orders with null/undefined status are treated as 'completed' 
-    // for backward compatibility with existing data
-    const matchesStatusFilter = statusFilter === 'all' || 
-      order.status === 'completed' || 
-      order.status === null || 
-      order.status === undefined;
-    
-    return isInTimeRange && matchesStatusFilter;
+    return orderDate >= cutoffDate;
   });
+}
 
-  // Calculate total sales and order count
-  const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
-  const orderCount = filteredOrders.length;
+/**
+ * Filter orders by status
+ */
+function filterOrdersByStatus(orders, statusFilter) {
+  if (statusFilter === 'all') {
+    return orders;
+  }
+  
+  return orders.filter(order => {
+    const status = order.status;
+    return status === 'completed' || status === null || status === undefined;
+  });
+}
 
-  // Aggregate items data
-  const itemCounts = aggregateItemCounts(filteredOrders);
+/**
+ * Calculate total sales and order count
+ */
+function calculateSalesTotals(orders) {
+  const totalSales = orders.reduce((sum, order) => sum + order.totalPrice, 0);
+  const orderCount = orders.length;
+  const averageOrderValue = orderCount > 0 ? totalSales / orderCount : 0;
+  
+  return { totalSales, orderCount, averageOrderValue };
+}
+
+/**
+ * Process item data to get top items by quantity and revenue
+ */
+function processItemData(itemCounts) {
   const itemsArray = Object.entries(itemCounts).map(([name, data]) => ({
     name,
     quantity: data.quantity,
     revenue: data.revenue
   }));
 
-  // Sort by quantity for top items
-  itemsArray.sort((a, b) => b.quantity - a.quantity);
-  const topItems = itemsArray.slice(0, 5);
-  
-  // Sort by revenue for top items by revenue
+  const topItems = [...itemsArray].sort((a, b) => b.quantity - a.quantity).slice(0, 5);
   const topItemsByRevenue = [...itemsArray].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-
-  // Aggregate source breakdown
-  const sourceBreakdown = aggregateSourceBreakdown(filteredOrders);
   
-  // Aggregate customer data
-  const customerCounts = aggregateCustomerData(filteredOrders);
+  return { topItems, topItemsByRevenue };
+}
+
+/**
+ * Process customer data to get top customers
+ */
+function processCustomerData(customerCounts) {
   const customersArray = Object.values(customerCounts);
   
-  // Sort by order count for top customers
-  customersArray.sort((a, b) => b.orderCount - a.orderCount);
-  const topCustomersByOrders = customersArray.slice(0, 5);
-  
-  // Sort by revenue for top customers by revenue
+  const topCustomersByOrders = [...customersArray].sort((a, b) => b.orderCount - a.orderCount).slice(0, 5);
   const topCustomersByRevenue = [...customersArray].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-  const highestOrderingCustomer = customersArray.length > 0 ? customersArray[0] : null;
+  const highestOrderingCustomer = customersArray.length > 0 ? topCustomersByOrders[0] : null;
+  
+  return {
+    topCustomersByOrders,
+    topCustomersByRevenue,
+    highestOrderingCustomer,
+    uniqueCustomers: customersArray.length
+  };
+}
+
+/**
+ * Compute analytics for a specific time range and status filter
+ */
+function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
+  const cutoffDate = new Date(now.getTime() - rangeDays * MILLISECONDS_PER_DAY);
+  
+  const timeFilteredOrders = filterOrdersByTimeRange(orders, cutoffDate);
+  const filteredOrders = filterOrdersByStatus(timeFilteredOrders, statusFilter);
+
+  const { totalSales, orderCount, averageOrderValue } = calculateSalesTotals(filteredOrders);
+  
+  const itemCounts = aggregateItemCounts(filteredOrders);
+  const { topItems, topItemsByRevenue } = processItemData(itemCounts);
+  
+  const sourceBreakdown = aggregateSourceBreakdown(filteredOrders);
+  
+  const customerCounts = aggregateCustomerData(filteredOrders);
+  const { topCustomersByOrders, topCustomersByRevenue, highestOrderingCustomer, uniqueCustomers } = processCustomerData(customerCounts);
 
   return {
     totalSales,
@@ -157,8 +188,8 @@ function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
     topCustomersByOrders,
     topCustomersByRevenue,
     highestOrderingCustomer,
-    averageOrderValue: orderCount > 0 ? totalSales / orderCount : 0,
-    uniqueCustomers: customersArray.length
+    averageOrderValue,
+    uniqueCustomers
   };
 }
 
