@@ -8,7 +8,8 @@ jest.unstable_mockModule('../../db/connection', () => ({
 jest.unstable_mockModule('../../utils/digestBuckets', () => ({
   computeDigestBuckets: jest.fn(),
   getTodayInKolkata: jest.fn(),
-  formatDateForDigest: jest.fn()
+  formatDateForDigest: jest.fn(),
+  getKolkataStartOfDay: jest.fn()
 }));
 
 jest.unstable_mockModule('../../services/emailService', () => ({
@@ -27,7 +28,7 @@ jest.unstable_mockModule('../../utils/logger', () => ({
 }));
 
 const { getDatabase } = await import('../../db/connection.js');
-const { computeDigestBuckets, getTodayInKolkata, formatDateForDigest } = await import('../../utils/digestBuckets.js');
+const { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } = await import('../../utils/digestBuckets.js');
 
 describe('DigestService', () => {
   let mockDb;
@@ -50,8 +51,21 @@ describe('DigestService', () => {
     mockValues = jest.fn().mockReturnValue({ returning: mockReturning });
     mockInsert = jest.fn().mockReturnValue({ values: mockValues });
     mockOrderBy = jest.fn().mockResolvedValue([]);
+    
+    // mockWhere needs to support both .orderBy() chaining and direct Promise resolution
+    const createWhereChain = () => {
+      const whereChain = jest.fn().mockImplementation(() => {
+        return { orderBy: mockOrderBy };
+      });
+      // Make it also a thenable so it can be awaited directly
+      whereChain.then = (resolve, reject) => {
+        return Promise.resolve([]).then(resolve, reject);
+      };
+      return whereChain;
+    };
+    
+    mockWhere = createWhereChain();
     mockLeftJoin = jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue({ orderBy: mockOrderBy }) });
-    mockWhere = jest.fn().mockResolvedValue([]);
     mockFrom = jest.fn().mockReturnValue({ 
       where: mockWhere,
       leftJoin: mockLeftJoin
@@ -69,6 +83,11 @@ describe('DigestService', () => {
 
     getDatabase.mockReturnValue(mockDb);
     getTodayInKolkata.mockReturnValue('2024-12-15');
+    getKolkataStartOfDay.mockImplementation((daysFromToday) => {
+      const baseDate = new Date('2024-12-15T00:00:00.000Z');
+      baseDate.setDate(baseDate.getDate() + daysFromToday);
+      return baseDate;
+    });
     formatDateForDigest.mockImplementation((date) => date.toString());
     // Updated bucket semantics: 1d=[S0, S0+2), 3d=[S0+2, S0+4), 7d=[S0+4, S0+8)
     computeDigestBuckets.mockReturnValue({
@@ -205,6 +224,62 @@ describe('DigestService', () => {
       await markOrdersAsSent([1], '7d');
 
       expect(mockDb.insert).toHaveBeenCalled();
+    });
+  });
+
+  describe('getOrdersForBucket', () => {
+    it('should fetch orders in the bucket excluding completed and cancelled', async () => {
+      const mockOrders = [
+        { id: 1, orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16'), status: 'pending' }
+      ];
+      mockOrderBy.mockResolvedValue(mockOrders);
+
+      const { getOrdersForBucket } = await import('../../services/digestService.js');
+      const bucketStart = new Date('2024-12-15T00:00:00.000Z');
+      const bucketEnd = new Date('2024-12-17T00:00:00.000Z');
+      
+      const result = await getOrdersForBucket(bucketStart, bucketEnd);
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(result).toEqual(mockOrders);
+    });
+
+    it('should return empty array when no orders in bucket', async () => {
+      mockOrderBy.mockResolvedValue([]);
+
+      const { getOrdersForBucket } = await import('../../services/digestService.js');
+      const bucketStart = new Date('2024-12-15T00:00:00.000Z');
+      const bucketEnd = new Date('2024-12-17T00:00:00.000Z');
+      
+      const result = await getOrdersForBucket(bucketStart, bucketEnd);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getOverdueOrders', () => {
+    it('should fetch overdue orders excluding completed and cancelled', async () => {
+      const mockOrders = [
+        { id: 1, orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-10'), status: 'pending' }
+      ];
+      mockOrderBy.mockResolvedValue(mockOrders);
+
+      const { getOverdueOrders } = await import('../../services/digestService.js');
+      
+      const result = await getOverdueOrders();
+
+      expect(mockDb.select).toHaveBeenCalled();
+      expect(result).toEqual(mockOrders);
+    });
+
+    it('should return empty array when no overdue orders', async () => {
+      mockOrderBy.mockResolvedValue([]);
+
+      const { getOverdueOrders } = await import('../../services/digestService.js');
+      
+      const result = await getOverdueOrders();
+
+      expect(result).toEqual([]);
     });
   });
 });

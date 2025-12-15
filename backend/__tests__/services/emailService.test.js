@@ -119,36 +119,44 @@ describe('EmailService', () => {
   describe('buildDigestEmailHtml', () => {
     const mockFormatDate = (date) => `Formatted: ${date}`;
 
-    it('should build HTML with all sections', () => {
+    it('should build HTML with all sections including overdue', () => {
       const buckets = {
+        overdueOrders: [
+          { orderId: 'ORD000', customerName: 'Alice Brown', expectedDeliveryDate: new Date('2024-12-10'), status: 'pending' }
+        ],
         oneDayOrders: [
-          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16') }
+          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16'), status: 'processing' }
         ],
         threeDayOrders: [
-          { orderId: 'ORD002', customerName: 'Jane Smith', expectedDeliveryDate: new Date('2024-12-18') }
+          { orderId: 'ORD002', customerName: 'Jane Smith', expectedDeliveryDate: new Date('2024-12-18'), status: 'pending' }
         ],
         sevenDayOrders: [
-          { orderId: 'ORD003', customerName: 'Bob Wilson', expectedDeliveryDate: new Date('2024-12-22') }
+          { orderId: 'ORD003', customerName: 'Bob Wilson', expectedDeliveryDate: new Date('2024-12-22'), status: 'pending' }
         ]
       };
 
       const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
 
-      expect(html).toContain('Daily Delivery Digest');
+      expect(html).toContain('Daily Order Reminder');
       expect(html).toContain('2024-12-15');
-      expect(html).toContain('Due today or tomorrow');
-      expect(html).toContain('Due in 2–3 days');
-      expect(html).toContain('Due in 4–7 days');
+      expect(html).toContain('OVERDUE');
+      expect(html).toContain('URGENT: Due Today or Tomorrow');
+      expect(html).toContain('Important: Due in 2–3 Days');
+      expect(html).toContain('Upcoming: Due in 4–7 Days');
+      expect(html).toContain('ORD000');
+      expect(html).toContain('Alice Brown');
       expect(html).toContain('ORD001');
       expect(html).toContain('John Doe');
       expect(html).toContain('ORD002');
       expect(html).toContain('Jane Smith');
       expect(html).toContain('ORD003');
       expect(html).toContain('Bob Wilson');
+      expect(html).toContain('Status');
     });
 
     it('should show "None" for empty sections', () => {
       const buckets = {
+        overdueOrders: [],
         oneDayOrders: [],
         threeDayOrders: [],
         sevenDayOrders: []
@@ -161,8 +169,9 @@ describe('EmailService', () => {
 
     it('should include table headers for orders', () => {
       const buckets = {
+        overdueOrders: [],
         oneDayOrders: [
-          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16') }
+          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16'), status: 'pending' }
         ],
         threeDayOrders: [],
         sevenDayOrders: []
@@ -173,10 +182,12 @@ describe('EmailService', () => {
       expect(html).toContain('Order ID');
       expect(html).toContain('Customer Name');
       expect(html).toContain('Expected Delivery');
+      expect(html).toContain('Status');
     });
 
     it('should handle null/undefined orders arrays', () => {
       const buckets = {
+        overdueOrders: null,
         oneDayOrders: null,
         threeDayOrders: undefined,
         sevenDayOrders: []
@@ -184,16 +195,16 @@ describe('EmailService', () => {
 
       const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
 
-      // Should not throw and should show "None" for empty sections
-      expect(html).toContain('Due today or tomorrow');
+      expect(html).toContain('URGENT: Due Today or Tomorrow');
       expect(html).toContain('None');
     });
 
     it('should sort orders correctly within sections', () => {
       const buckets = {
+        overdueOrders: [],
         oneDayOrders: [
-          { orderId: 'ORD002', customerName: 'Jane', expectedDeliveryDate: new Date('2024-12-16T12:00:00Z') },
-          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16T08:00:00Z') }
+          { orderId: 'ORD002', customerName: 'Jane', expectedDeliveryDate: new Date('2024-12-16T12:00:00Z'), status: 'pending' },
+          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16T08:00:00Z'), status: 'processing' }
         ],
         threeDayOrders: [],
         sevenDayOrders: []
@@ -201,35 +212,73 @@ describe('EmailService', () => {
 
       const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
 
-      // Both orders should be in the HTML
       expect(html).toContain('ORD001');
       expect(html).toContain('ORD002');
+    });
+
+    it('should not show overdue section when no overdue orders', () => {
+      const buckets = {
+        overdueOrders: [],
+        oneDayOrders: [
+          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16'), status: 'pending' }
+        ],
+        threeDayOrders: [],
+        sevenDayOrders: []
+      };
+
+      const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
+
+      expect(html).not.toContain('OVERDUE');
+    });
+
+    it('should show total pending count', () => {
+      const buckets = {
+        overdueOrders: [
+          { orderId: 'ORD000', customerName: 'Alice', expectedDeliveryDate: new Date('2024-12-10'), status: 'pending' }
+        ],
+        oneDayOrders: [
+          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16'), status: 'pending' }
+        ],
+        threeDayOrders: [],
+        sevenDayOrders: []
+      };
+
+      const html = buildDigestEmailHtml(buckets, '2024-12-15', mockFormatDate);
+
+      expect(html).toContain('2 pending order');
     });
   });
 
   describe('buildDigestEmailText', () => {
     const mockFormatDate = (date) => `Formatted: ${date}`;
 
-    it('should build plain text with all sections', () => {
+    it('should build plain text with all sections including overdue', () => {
       const buckets = {
+        overdueOrders: [
+          { orderId: 'ORD000', customerName: 'Alice Brown', expectedDeliveryDate: new Date('2024-12-10'), status: 'pending' }
+        ],
         oneDayOrders: [
-          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16') }
+          { orderId: 'ORD001', customerName: 'John Doe', expectedDeliveryDate: new Date('2024-12-16'), status: 'processing' }
         ],
         threeDayOrders: [
-          { orderId: 'ORD002', customerName: 'Jane Smith', expectedDeliveryDate: new Date('2024-12-18') }
+          { orderId: 'ORD002', customerName: 'Jane Smith', expectedDeliveryDate: new Date('2024-12-18'), status: 'pending' }
         ],
         sevenDayOrders: [
-          { orderId: 'ORD003', customerName: 'Bob Wilson', expectedDeliveryDate: new Date('2024-12-22') }
+          { orderId: 'ORD003', customerName: 'Bob Wilson', expectedDeliveryDate: new Date('2024-12-22'), status: 'pending' }
         ]
       };
 
       const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
 
-      expect(text).toContain('DAILY DELIVERY DIGEST');
+      expect(text).toContain('DAILY ORDER REMINDER');
       expect(text).toContain('2024-12-15');
-      expect(text).toContain('DUE TODAY OR TOMORROW');
-      expect(text).toContain('DUE IN 2–3 DAYS');
-      expect(text).toContain('DUE IN 4–7 DAYS');
+      expect(text).toContain('Total Pending Orders: 4');
+      expect(text).toContain('OVERDUE');
+      expect(text).toContain('URGENT: DUE TODAY OR TOMORROW');
+      expect(text).toContain('IMPORTANT: DUE IN 2–3 DAYS');
+      expect(text).toContain('UPCOMING: DUE IN 4–7 DAYS');
+      expect(text).toContain('ORD000');
+      expect(text).toContain('Alice Brown');
       expect(text).toContain('ORD001');
       expect(text).toContain('John Doe');
       expect(text).toContain('ORD002');
@@ -240,6 +289,7 @@ describe('EmailService', () => {
 
     it('should show "None" for empty sections', () => {
       const buckets = {
+        overdueOrders: [],
         oneDayOrders: [],
         threeDayOrders: [],
         sevenDayOrders: []
@@ -252,6 +302,7 @@ describe('EmailService', () => {
 
     it('should handle null/undefined orders arrays', () => {
       const buckets = {
+        overdueOrders: null,
         oneDayOrders: null,
         threeDayOrders: undefined,
         sevenDayOrders: []
@@ -259,15 +310,15 @@ describe('EmailService', () => {
 
       const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
 
-      // Should not throw and should show "None" for empty sections
-      expect(text).toContain('DUE TODAY OR TOMORROW');
+      expect(text).toContain('URGENT: DUE TODAY OR TOMORROW');
       expect(text).toContain('None');
     });
 
-    it('should format orders as bullet points', () => {
+    it('should format orders as bullet points with status', () => {
       const buckets = {
+        overdueOrders: [],
         oneDayOrders: [
-          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16') }
+          { orderId: 'ORD001', customerName: 'John', expectedDeliveryDate: new Date('2024-12-16'), status: 'pending' }
         ],
         threeDayOrders: [],
         sevenDayOrders: []
@@ -276,6 +327,7 @@ describe('EmailService', () => {
       const text = buildDigestEmailText(buckets, '2024-12-15', mockFormatDate);
 
       expect(text).toContain('• ORD001 | John |');
+      expect(text).toContain('| pending');
     });
   });
 });
