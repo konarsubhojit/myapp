@@ -35,6 +35,9 @@ function buildSearchCondition(search) {
 function parseCursor(cursor) {
   if (!cursor) return null;
   
+  // Type check to prevent parameter tampering
+  if (typeof cursor !== 'string') return null;
+  
   // Find the last colon to split timestamp from id
   const lastColonIndex = cursor.lastIndexOf(':');
   if (lastColonIndex === -1) return null;

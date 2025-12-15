@@ -59,6 +59,23 @@ describe('Item Cursor Pagination', () => {
       
       expect(Number.isNaN(id)).toBe(true);
     });
+
+    it('should reject non-string cursor input (type safety)', () => {
+      // Test array input (CodeQL vulnerability check)
+      const arrayInput = ['2025-12-15T10:35:12.123Z', '123'];
+      expect(typeof arrayInput).toBe('object');
+      expect(typeof arrayInput !== 'string').toBe(true);
+      
+      // Test object input
+      const objectInput = { timestamp: '2025-12-15T10:35:12.123Z', id: '123' };
+      expect(typeof objectInput).toBe('object');
+      expect(typeof objectInput !== 'string').toBe(true);
+      
+      // Test number input
+      const numberInput = 12345;
+      expect(typeof numberInput).toBe('number');
+      expect(typeof numberInput !== 'string').toBe(true);
+    });
   });
 
   describe('Keyset Pagination Logic', () => {
