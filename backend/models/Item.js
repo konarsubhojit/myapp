@@ -27,10 +27,10 @@ function buildSearchCondition(search) {
 }
 
 /**
- * Parse and validate cursor for active items
- * Format: "createdAt:id" (e.g., "2025-12-15T10:35:12.123Z:345")
+ * Parse and validate cursor for pagination
+ * Format: "timestamp:id" (e.g., "2025-12-15T10:35:12.123Z:345")
  * @param {string} cursor - Cursor string
- * @returns {{createdAt: Date, id: number} | null} Parsed cursor or null if invalid
+ * @returns {{timestamp: Date, id: number} | null} Parsed cursor or null if invalid
  */
 function parseCursor(cursor) {
   if (!cursor) return null;
@@ -39,17 +39,17 @@ function parseCursor(cursor) {
   const lastColonIndex = cursor.lastIndexOf(':');
   if (lastColonIndex === -1) return null;
   
-  const createdAtStr = cursor.substring(0, lastColonIndex);
+  const timestampStr = cursor.substring(0, lastColonIndex);
   const idStr = cursor.substring(lastColonIndex + 1);
   
-  const createdAt = new Date(createdAtStr);
+  const timestamp = new Date(timestampStr);
   const id = Number.parseInt(idStr, 10);
   
-  if (Number.isNaN(createdAt.getTime()) || Number.isNaN(id)) {
+  if (Number.isNaN(timestamp.getTime()) || Number.isNaN(id)) {
     return null;
   }
   
-  return { createdAt, id };
+  return { timestamp, id };
 }
 
 /**
@@ -296,12 +296,12 @@ const Item = {
       // Add cursor condition for keyset pagination
       if (cursorData) {
         // For ORDER BY created_at DESC, id DESC:
-        // We want items where (created_at, id) < (cursor_created_at, cursor_id)
+        // We want items where (created_at, id) < (cursor_timestamp, cursor_id)
         conditions.push(
           or(
-            lt(items.createdAt, cursorData.createdAt),
+            lt(items.createdAt, cursorData.timestamp),
             and(
-              eq(items.createdAt, cursorData.createdAt),
+              eq(items.createdAt, cursorData.timestamp),
               lt(items.id, cursorData.id)
             )
           )
@@ -375,13 +375,12 @@ const Item = {
       // Add cursor condition for keyset pagination
       if (cursorData) {
         // For ORDER BY deleted_at DESC, id DESC:
-        // We want items where (deleted_at, id) < (cursor_deleted_at, cursor_id)
-        // Note: cursor uses createdAt key name but contains deletedAt value
+        // We want items where (deleted_at, id) < (cursor_timestamp, cursor_id)
         conditions.push(
           or(
-            lt(items.deletedAt, cursorData.createdAt),
+            lt(items.deletedAt, cursorData.timestamp),
             and(
-              eq(items.deletedAt, cursorData.createdAt),
+              eq(items.deletedAt, cursorData.timestamp),
               lt(items.id, cursorData.id)
             )
           )

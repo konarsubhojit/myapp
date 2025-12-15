@@ -20,15 +20,15 @@ describe('Item Cursor Pagination', () => {
       
       expect(lastColonIndex).toBeGreaterThan(-1);
       
-      const createdAtStr = cursor.substring(0, lastColonIndex);
+      const timestampStr = cursor.substring(0, lastColonIndex);
       const idStr = cursor.substring(lastColonIndex + 1);
       
-      const createdAt = new Date(createdAtStr);
+      const timestamp = new Date(timestampStr);
       const id = Number.parseInt(idStr, 10);
       
-      expect(createdAt.toISOString()).toBe('2025-12-15T10:35:12.123Z');
+      expect(timestamp.toISOString()).toBe('2025-12-15T10:35:12.123Z');
       expect(id).toBe(123);
-      expect(Number.isNaN(createdAt.getTime())).toBe(false);
+      expect(Number.isNaN(timestamp.getTime())).toBe(false);
       expect(Number.isNaN(id)).toBe(false);
     });
 
@@ -45,10 +45,10 @@ describe('Item Cursor Pagination', () => {
     it('should detect invalid cursor format - invalid date', () => {
       const cursor = 'invalid-date:123';
       const lastColonIndex = cursor.lastIndexOf(':');
-      const createdAtStr = cursor.substring(0, lastColonIndex);
-      const createdAt = new Date(createdAtStr);
+      const timestampStr = cursor.substring(0, lastColonIndex);
+      const timestamp = new Date(timestampStr);
       
-      expect(Number.isNaN(createdAt.getTime())).toBe(true);
+      expect(Number.isNaN(timestamp.getTime())).toBe(true);
     });
 
     it('should detect invalid cursor format - invalid id', () => {
@@ -65,14 +65,14 @@ describe('Item Cursor Pagination', () => {
     it('should create correct WHERE condition for cursor', () => {
       // Simulating the cursor condition logic
       const cursor = {
-        createdAt: new Date('2025-12-15T10:35:12.123Z'),
+        timestamp: new Date('2025-12-15T10:35:12.123Z'),
         id: 100
       };
       
       // In SQL, this would be:
-      // WHERE (created_at, id) < (cursor_created_at, cursor_id)
+      // WHERE (created_at, id) < (cursor_timestamp, cursor_id)
       // Which expands to:
-      // WHERE created_at < cursor_created_at OR (created_at = cursor_created_at AND id < cursor_id)
+      // WHERE created_at < cursor_timestamp OR (created_at = cursor_timestamp AND id < cursor_id)
       
       const testItems = [
         { id: 99, createdAt: new Date('2025-12-15T10:35:12.123Z') },  // Same timestamp, lower id - should match
@@ -82,8 +82,8 @@ describe('Item Cursor Pagination', () => {
       ];
       
       const filtered = testItems.filter(item => {
-        return item.createdAt < cursor.createdAt || 
-               (item.createdAt.getTime() === cursor.createdAt.getTime() && item.id < cursor.id);
+        return item.createdAt < cursor.timestamp || 
+               (item.createdAt.getTime() === cursor.timestamp.getTime() && item.id < cursor.id);
       });
       
       expect(filtered).toHaveLength(2);
