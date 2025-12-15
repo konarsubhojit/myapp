@@ -743,4 +743,221 @@ describe('Order Model', () => {
       expect(result[0].orderId).toBe('ORD-002');
     });
   });
+
+  describe('findCursorPaginated', () => {
+    it('should return first page without cursor', async () => {
+      const mockOrders = [
+        {
+          id: 1,
+          orderId: 'ORD001',
+          customerName: 'John Doe',
+          customerId: 'CUST001',
+          totalPrice: '100.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-01'),
+        },
+        {
+          id: 2,
+          orderId: 'ORD002',
+          customerName: 'Jane Doe',
+          customerId: 'CUST002',
+          totalPrice: '150.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-02'),
+        },
+      ];
+
+      const mockOrderItems = [
+        { id: 1, orderId: 1, itemId: 1, name: 'Item 1', price: '50.00', quantity: 2 },
+        { id: 2, orderId: 2, itemId: 2, name: 'Item 2', price: '75.00', quantity: 2 },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(),
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => Promise.resolve(mockOrders)),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockOrderItems)),
+          })),
+        });
+
+      const result = await Order.findCursorPaginated({ limit: 10, cursor: null });
+
+      expect(result.orders).toHaveLength(2);
+      expect(result.pagination.limit).toBe(10);
+      expect(result.pagination.hasMore).toBe(false);
+      expect(result.pagination.nextCursor).toBeNull();
+    });
+
+    it('should return orders with nextCursor when hasMore is true', async () => {
+      // Return limit + 1 orders to indicate hasMore
+      const mockOrders = [
+        {
+          id: 1,
+          orderId: 'ORD001',
+          customerName: 'John Doe',
+          customerId: 'CUST001',
+          totalPrice: '100.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-01'),
+        },
+        {
+          id: 2,
+          orderId: 'ORD002',
+          customerName: 'Jane Doe',
+          customerId: 'CUST002',
+          totalPrice: '150.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-02'),
+        },
+        {
+          id: 3,
+          orderId: 'ORD003',
+          customerName: 'Bob Smith',
+          customerId: 'CUST003',
+          totalPrice: '200.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-03'),
+        },
+      ];
+
+      const mockOrderItems = [
+        { id: 1, orderId: 1, itemId: 1, name: 'Item 1', price: '50.00', quantity: 2 },
+        { id: 2, orderId: 2, itemId: 2, name: 'Item 2', price: '75.00', quantity: 2 },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(),
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => Promise.resolve(mockOrders)),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockOrderItems)),
+          })),
+        });
+
+      const result = await Order.findCursorPaginated({ limit: 2, cursor: null });
+
+      expect(result.orders).toHaveLength(2);
+      expect(result.pagination.limit).toBe(2);
+      expect(result.pagination.hasMore).toBe(true);
+      expect(result.pagination.nextCursor).toBeDefined();
+    });
+
+    it('should use cursor to paginate from specific point', async () => {
+      const cursor = Buffer.from(JSON.stringify({ 
+        createdAt: new Date('2024-01-02').toISOString(), 
+        id: 2 
+      })).toString('base64');
+
+      const mockOrders = [
+        {
+          id: 3,
+          orderId: 'ORD003',
+          customerName: 'Bob Smith',
+          customerId: 'CUST003',
+          totalPrice: '200.00',
+          status: 'pending',
+          createdAt: new Date('2024-01-03'),
+        },
+      ];
+
+      const mockOrderItems = [
+        { id: 3, orderId: 3, itemId: 3, name: 'Item 3', price: '100.00', quantity: 2 },
+      ];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => ({
+                limit: jest.fn(() => Promise.resolve(mockOrders)),
+              })),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockOrderItems)),
+          })),
+        });
+
+      const result = await Order.findCursorPaginated({ limit: 10, cursor });
+
+      expect(result.orders).toHaveLength(1);
+      expect(result.orders[0].orderId).toBe('ORD003');
+    });
+
+    it('should throw error for invalid cursor', async () => {
+      const invalidCursor = 'invalid-base64-cursor';
+
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => ({
+            orderBy: jest.fn(() => ({
+              limit: jest.fn(() => Promise.resolve([])),
+            })),
+          })),
+        })),
+      }));
+
+      await expect(Order.findCursorPaginated({ limit: 10, cursor: invalidCursor }))
+        .rejects.toThrow('Invalid cursor format');
+    });
+
+    it('should cap limit at 100', async () => {
+      const mockOrders = [];
+      const mockOrderItems = [];
+
+      mockDb.select = jest.fn()
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(),
+            orderBy: jest.fn(() => ({
+              limit: jest.fn((limit) => {
+                expect(limit).toBe(101); // Should request 101 to check hasMore
+                return Promise.resolve(mockOrders);
+              }),
+            })),
+          })),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn(() => ({
+            where: jest.fn(() => Promise.resolve(mockOrderItems)),
+          })),
+        });
+
+      const result = await Order.findCursorPaginated({ limit: 200, cursor: null });
+
+      expect(result.pagination.limit).toBe(100);
+    });
+
+    it('should return empty result when no orders found', async () => {
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(),
+          orderBy: jest.fn(() => ({
+            limit: jest.fn(() => Promise.resolve([])),
+          })),
+        })),
+      }));
+
+      const result = await Order.findCursorPaginated({ limit: 10, cursor: null });
+
+      expect(result.orders).toHaveLength(0);
+      expect(result.pagination.hasMore).toBe(false);
+      expect(result.pagination.nextCursor).toBeNull();
+    });
+  });
 });

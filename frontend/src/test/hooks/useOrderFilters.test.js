@@ -152,7 +152,12 @@ describe('useOrderFilters', () => {
   it('should sort orders by expected delivery date', () => {
     const { result } = renderHook(() => useOrderFilters(mockOrders));
 
-    // Default is already sorted by expectedDeliveryDate ASC, null dates are last
+    // Default is now sorted by createdAt DESC, so need to manually sort by expectedDeliveryDate
+    act(() => {
+      result.current.handleSort('expectedDeliveryDate');
+    });
+    
+    // Now sorted by expectedDeliveryDate ASC, null dates are last
     expect(result.current.sortedOrders[0].expectedDeliveryDate).toBe('2024-01-10');
     expect(result.current.sortedOrders[1].expectedDeliveryDate).toBe('2024-01-15');
     expect(result.current.sortedOrders[2].expectedDeliveryDate).toBeNull();

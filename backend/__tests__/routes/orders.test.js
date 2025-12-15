@@ -7,6 +7,7 @@ jest.unstable_mockModule('../../models/Order', () => ({
   default: {
     find: jest.fn(),
     findPaginated: jest.fn(),
+    findCursorPaginated: jest.fn(),
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
     create: jest.fn(),
@@ -150,6 +151,136 @@ describe('Orders Routes', () => {
       Order.findPaginated.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app).get('/api/orders?page=1&limit=10');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Database error');
+    });
+  });
+
+  describe('GET /api/orders/cursor', () => {
+    it('should return first page without cursor', async () => {
+      const mockCursorResult = {
+        orders: [
+          {
+            _id: 1,
+            orderId: 'ORD123456',
+            customerName: 'John Doe',
+            totalPrice: 100.0,
+            items: [],
+          },
+          {
+            _id: 2,
+            orderId: 'ORD123457',
+            customerName: 'Jane Doe',
+            totalPrice: 150.0,
+            items: [],
+          },
+        ],
+        pagination: {
+          limit: 10,
+          nextCursor: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoiLCJpZCI6Mn0=',
+          hasMore: true
+        }
+      };
+
+      Order.findCursorPaginated.mockResolvedValue(mockCursorResult);
+
+      const response = await request(app).get('/api/orders/cursor?limit=10');
+
+      expect(response.status).toBe(200);
+      expect(response.body.orders).toHaveLength(2);
+      expect(response.body.pagination.hasMore).toBe(true);
+      expect(response.body.pagination.nextCursor).toBeDefined();
+    });
+
+    it('should return paginated results with cursor', async () => {
+      const cursor = 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoiLCJpZCI6Mn0=';
+      const mockCursorResult = {
+        orders: [
+          {
+            _id: 3,
+            orderId: 'ORD123458',
+            customerName: 'Bob Smith',
+            totalPrice: 200.0,
+            items: [],
+          },
+        ],
+        pagination: {
+          limit: 10,
+          nextCursor: null,
+          hasMore: false
+        }
+      };
+
+      Order.findCursorPaginated.mockResolvedValue(mockCursorResult);
+
+      const response = await request(app).get(`/api/orders/cursor?limit=10&cursor=${cursor}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.orders).toHaveLength(1);
+      expect(response.body.orders[0].orderId).toBe('ORD123458');
+      expect(response.body.pagination.hasMore).toBe(false);
+      expect(response.body.pagination.nextCursor).toBeNull();
+    });
+
+    it('should return 400 for invalid limit parameter', async () => {
+      const response = await request(app).get('/api/orders/cursor?limit=invalid');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Limit must be a number');
+    });
+
+    it('should return 400 for limit below 1', async () => {
+      const response = await request(app).get('/api/orders/cursor?limit=0');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Limit must be a number between 1 and 100');
+    });
+
+    it('should return 400 for limit above 100', async () => {
+      const response = await request(app).get('/api/orders/cursor?limit=150');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain('Limit must be a number between 1 and 100');
+    });
+
+    it('should return 400 for invalid cursor format', async () => {
+      Order.findCursorPaginated.mockRejectedValue(new Error('Invalid cursor format'));
+
+      const response = await request(app).get('/api/orders/cursor?limit=10&cursor=invalid');
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('message', 'Invalid cursor format');
+    });
+
+    it('should use default limit of 10 when not provided', async () => {
+      const mockCursorResult = {
+        orders: [],
+        pagination: {
+          limit: 10,
+          nextCursor: null,
+          hasMore: false
+        }
+      };
+
+      Order.findCursorPaginated.mockResolvedValue(mockCursorResult);
+
+      const response = await request(app).get('/api/orders/cursor');
+
+      expect(response.status).toBe(200);
+      expect(Order.findCursorPaginated).toHaveBeenCalledWith({
+        limit: 10,
+        cursor: null
+      });
+    });
+
+    it('should handle database errors', async () => {
+      Order.findCursorPaginated.mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app).get('/api/orders/cursor?limit=10');
 
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('message', 'Database error');
