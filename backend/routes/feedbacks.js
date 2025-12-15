@@ -188,7 +188,7 @@ router.post('/', asyncHandler(async (req, res) => {
 /**
  * Validate and build update data for feedback update
  * @param {Object} requestBody - Request body with potential updates
- * @returns {Object} Object with updateData and any validation error
+ * @returns {Object} Returns {updateData: Object} on success or {error: string} on validation failure
  */
 function validateAndBuildFeedbackUpdateData(requestBody) {
   const { rating, comment, productQuality, deliveryExperience, isPublic, responseText } = requestBody;
