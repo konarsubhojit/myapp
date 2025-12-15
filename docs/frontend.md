@@ -181,8 +181,8 @@ The application uses custom hooks to encapsulate business logic, with two types:
 | `useItemForm` | Item creation/editing form logic |
 | `useImageProcessing` | Image upload and compression |
 | `useOrderDetails` | Legacy: Fetch and manage order details |
-| `useOrderPagination` | Legacy: Order list pagination |
-| `useOrderFilters` | Order filtering and search |
+| `useOrderPagination` | Order infinite scroll with cursor pagination |
+| `useOrderFilters` | Order filtering and sorting (client-side) |
 | `usePriorityOrders` | Legacy: Fetch urgent orders for notifications |
 | `useSalesAnalytics` | Legacy: Sales report data fetching |
 | `useSalesAnalyticsOptimized` | Optimized sales analytics |
@@ -249,18 +249,24 @@ Set payment details (total, advance, balance)
 Submit → POST /api/orders → Show success notification → Clear form
 ```
 
-### 3. View Order History Flow
+### 3. View Order History Flow (Infinite Scroll)
 ```
 Navigate to "Order History"
   ↓
-Fetch orders (GET /api/orders?page=1&limit=10)
+Fetch first page (GET /api/orders/cursor?limit=10)
   ↓
-Display orders in table/cards
-  ├─ Apply filters (status, date range, customer)
-  ├─ Search by order ID/customer
+Display orders in newest-first order (createdAt DESC)
+  ├─ Scroll to bottom → Automatically load more
+  │   ↓
+  │   Fetch next page (GET /api/orders/cursor?limit=10&cursor=<nextCursor>)
+  │   ↓
+  │   Append orders to bottom (no re-sorting)
+  ├─ Apply client-side filters (status, customer name, etc.)
+  ├─ Search by order ID/customer (client-side on loaded orders)
+  ├─ Click column header → Sort loaded orders (disables infinite scroll)
   └─ Click order → Show OrderDetails modal
       ├─ View details
-      ├─ Edit order → PUT /api/orders/:id
+      ├─ Edit order → PUT /api/orders/:id → Cache invalidates → Auto-refresh
       └─ Duplicate order → Navigate to Create Order with prefilled data
 ```
 
@@ -353,11 +359,51 @@ The `services/api.ts` file provides a centralized API client with:
 - `DELETE /api/items/:id/permanent` - Delete image from soft-deleted item
 
 #### Orders
-- `GET /api/orders?page=1&limit=10&status=X&startDate=Y` - Paginated orders with filters
+- `GET /api/orders/cursor?limit=10&cursor=<base64>` - Cursor pagination (infinite scroll, recommended)
+- `GET /api/orders?page=1&limit=10&status=X&startDate=Y` - Offset pagination (legacy)
 - `GET /api/orders/priority` - Urgent orders (priority ≥ 3, delivery soon)
 - `POST /api/orders` - Create order
 - `GET /api/orders/:id` - Get order details
 - `PUT /api/orders/:id` - Update order
+
+**Cursor Pagination for Order History:**
+
+The order history uses **cursor-based pagination** for infinite scroll to prevent the "jumping orders" issue and ensure stable ordering.
+
+**How it works:**
+1. Initial load: `GET /api/orders/cursor?limit=10` (no cursor)
+2. Response includes `nextCursor` and `hasMore` flag
+3. Load more: `GET /api/orders/cursor?limit=10&cursor=<nextCursor>`
+4. Repeat until `hasMore = false`
+
+**Implementation:**
+```typescript
+// In useOrderPagination hook
+const { orders, hasMore, loadMore } = useOrderPagination();
+
+// loadMore() calls:
+const result = await getOrdersCursorPaginated({ 
+  limit: 10, 
+  cursor: nextCursor 
+});
+
+// Append new orders without re-sorting
+setOrders(prev => [...prev, ...result.orders]);
+setNextCursor(result.pagination.nextCursor);
+setHasMore(result.pagination.hasMore);
+```
+
+**Benefits:**
+- **No jumping**: Newly loaded orders always append to bottom
+- **Stable ordering**: `createdAt DESC` matches backend pagination
+- **No duplicates**: Cursor ensures exact continuation from last item
+- **Performance**: Uses composite DB index for fast queries
+
+**Default Sorting:**
+- Frontend default: `createdAt DESC` (aligns with backend)
+- Users can manually sort by other fields (disables infinite scroll)
+- Manual sorting applies to already-loaded orders only
+
 
 #### Feedback
 - `GET /api/feedbacks?page=1&limit=10` - Paginated feedback
@@ -582,7 +628,7 @@ sequenceDiagram
     Note over QueryClient: Next query fetch will get fresh data
 ```
 
-### Order History with Pagination
+### Order History with Cursor Pagination (Infinite Scroll)
 
 ```mermaid
 sequenceDiagram
@@ -592,34 +638,46 @@ sequenceDiagram
     participant useOrderFilters
     participant API
     participant Backend
+    participant DB
 
     User->>OrderHistory: Navigate to Order History
-    OrderHistory->>useOrderPagination: Initialize (page=1, limit=10)
-    OrderHistory->>useOrderFilters: Initialize filters
+    OrderHistory->>useOrderPagination: Initialize
+    OrderHistory->>useOrderFilters: Initialize (default: createdAt DESC)
     
-    useOrderPagination->>API: getOrders({ page: 1, limit: 10 })
-    API->>Backend: GET /api/orders?page=1&limit=10
-    Backend->>API: Return { data: [...], pagination: {...} }
+    useOrderPagination->>API: getOrdersCursorPaginated({ limit: 10, cursor: null })
+    API->>Backend: GET /api/orders/cursor?limit=10
+    Backend->>DB: SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 11
+    DB->>Backend: Return 11 orders (limit+1 to check hasMore)
+    Backend->>Backend: Take first 10, encode cursor from last item
+    Backend->>API: Return { orders: [...10], pagination: { nextCursor, hasMore: true } }
     API->>useOrderPagination: Return paginated orders
     useOrderPagination->>OrderHistory: Update orders state
-    OrderHistory->>User: Display orders
+    OrderHistory->>User: Display orders (newest first)
 
-    User->>OrderHistory: Apply filter (status=completed)
-    OrderHistory->>useOrderFilters: setStatus('completed')
-    useOrderFilters->>useOrderPagination: Trigger re-fetch with filters
-    useOrderPagination->>API: getOrders({ page: 1, limit: 10, status: 'completed' })
-    API->>Backend: GET /api/orders?page=1&limit=10&status=completed
-    Backend->>API: Return filtered orders
-    API->>OrderHistory: Update orders
+    User->>OrderHistory: Scroll to bottom
+    OrderHistory->>OrderHistory: Trigger "Load More"
+    OrderHistory->>useOrderPagination: loadMore()
+    useOrderPagination->>API: getOrdersCursorPaginated({ limit: 10, cursor: nextCursor })
+    API->>Backend: GET /api/orders/cursor?limit=10&cursor=<base64>
+    Backend->>Backend: Decode cursor: { createdAt, id }
+    Backend->>DB: SELECT * WHERE (created_at, id) < (cursor) ORDER BY ... LIMIT 11
+    DB->>Backend: Return next 11 orders
+    Backend->>API: Return { orders: [...10], pagination: { nextCursor, hasMore } }
+    API->>useOrderPagination: Return next page
+    useOrderPagination->>useOrderPagination: Append orders (no re-sorting)
+    useOrderPagination->>OrderHistory: Update orders state
+    OrderHistory->>User: Display appended orders
+
+    Note over User,OrderHistory: Client-side filtering/sorting
+    User->>OrderHistory: Apply filter (e.g., status=completed)
+    OrderHistory->>useOrderFilters: Filter loaded orders client-side
+    useOrderFilters->>OrderHistory: Return filtered subset
     OrderHistory->>User: Display filtered orders
-
-    User->>OrderHistory: Click "Next Page"
-    OrderHistory->>useOrderPagination: setPage(2)
-    useOrderPagination->>API: getOrders({ page: 2, limit: 10, status: 'completed' })
-    API->>Backend: GET /api/orders?page=2&limit=10&status=completed
-    Backend->>API: Return page 2 orders
-    API->>OrderHistory: Update orders
-    OrderHistory->>User: Display page 2
+    
+    User->>OrderHistory: Click column header to sort
+    OrderHistory->>useOrderFilters: Sort loaded orders client-side
+    useOrderFilters->>OrderHistory: Return sorted orders
+    OrderHistory->>User: Display sorted orders (infinite scroll disabled)
 ```
 
 ### Priority Notification Flow
