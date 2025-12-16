@@ -6,7 +6,7 @@ import { getDatabase } from '@/lib/db/connection';
 import { orders, orderReminderState, digestRuns, notificationRecipients } from '@/lib/db/schema';
 import { createLogger } from '@/lib/utils/logger';
 import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } from '@/lib/utils/digestBuckets';
-import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from '@/lib/emailService';
+import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from '@/lib/services/emailService';
 
 const logger = createLogger('DigestService');
 
