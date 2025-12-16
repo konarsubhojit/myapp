@@ -4,6 +4,8 @@ A full-stack application for managing orders with React frontend and Node.js/Pos
 
 > 📚 **For complete documentation**, see [Documentation Index](./docs/README.md)
 
+> 🚀 **NEW: Next.js Version Available!** See [`/next`](./next/README.md) folder for a modern Next.js 15 implementation with Server-Side Rendering and improved performance.
+
 ## Quick Start
 
 ### Prerequisites
@@ -69,7 +71,7 @@ npm run frontend
 │   ├── routes/       # API endpoints
 │   ├── db/           # Database schema
 │   └── __tests__/    # Backend tests
-├── frontend/         # React application
+├── frontend/         # React/Vite application
 │   ├── src/
 │   │   ├── components/  # React components
 │   │   ├── hooks/       # Custom hooks
@@ -77,6 +79,11 @@ npm run frontend
 │   │   ├── services/    # API client
 │   │   └── test/        # Frontend tests
 │   └── ...
+├── next/            # Next.js 15 version (NEW!)
+│   ├── app/         # Next.js App Router
+│   ├── components/  # React components
+│   ├── lib/         # API client & utilities
+│   └── types/       # TypeScript types
 └── docs/            # Additional documentation
 ```
 
