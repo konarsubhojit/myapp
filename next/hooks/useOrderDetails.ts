@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getOrder, updateOrder } from '@/lib/api/client';
-import type { Order, OrderEditForm, UpdateOrderData, OrderSource, OrderStatus, PaymentStatus, ConfirmationStatus, DeliveryStatus } from '@/types';
+import type { Order, OrderId, OrderEditForm, UpdateOrderData, OrderSource, OrderStatus, PaymentStatus, ConfirmationStatus, DeliveryStatus } from '@/types';
 
 /**
  * Creates initial edit form state from order data
@@ -110,7 +110,8 @@ export const useOrderDetails = (
     setLoading(true);
     setError('');
     try {
-      const data = await getOrder(orderId);
+      const parsedId = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+      const data = await getOrder(parsedId as OrderId);
       setOrder(data);
       setEditForm(createEditFormFromOrder(data));
     } catch (err) {
@@ -161,7 +162,8 @@ export const useOrderDetails = (
         actualDeliveryDate: editForm.actualDeliveryDate || undefined
       };
 
-      const updatedOrder = await updateOrder(orderId, updateData);
+      const parsedId = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+      const updatedOrder = await updateOrder(parsedId as OrderId, updateData);
       setOrder(updatedOrder);
       setIsEditing(false);
       if (onOrderUpdated) onOrderUpdated();

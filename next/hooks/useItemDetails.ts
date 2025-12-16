@@ -97,7 +97,7 @@ export const useItemDetails = (
       // Fetch all items and find the specific one
       // This is consistent with how the app currently works
       const data = await getItems();
-      const foundItem = data.find((i: Item) => i._id === itemId);
+      const foundItem = data.items.find((i: Item) => i._id === itemId);
       
       if (!foundItem) {
         throw new Error('Item not found');

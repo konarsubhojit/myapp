@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { getOrdersCursorPaginated } from '@/lib/api/client';
+import { getOrders } from '@/lib/api/client';
 import type { Order } from '@/types';
 
 const ORDERS_PER_PAGE = 10; // Fixed page size for infinite scroll
@@ -37,24 +37,21 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
     setError('');
     
     try {
-      const result = await getOrdersCursorPaginated({ cursor, limit: ORDERS_PER_PAGE });
+      const result = await getOrders({ cursor, limit: ORDERS_PER_PAGE });
       
-      // Defensive check: ensure result.orders exists and is an array
-      const ordersData = result.orders || [];
+      const ordersData = result.items || [];
       if (!Array.isArray(ordersData)) {
-        throw new Error('Invalid response format: orders must be an array');
+        throw new Error('Invalid response format: items must be an array');
       }
       
       if (appendMode) {
-        // Append new orders for infinite scroll
         setOrders(prev => [...prev, ...ordersData]);
       } else {
-        // Replace orders for initial load
         setOrders(ordersData);
       }
       
-      setNextCursor(result.pagination?.nextCursor || null);
-      setHasMore(result.pagination?.hasMore || false);
+      setNextCursor(result.page.nextCursor);
+      setHasMore(result.page.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
       if (!appendMode) {

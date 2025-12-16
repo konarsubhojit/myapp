@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { getItemsPaginated } from '@/lib/api/client';
+import { getItems } from '@/lib/api/client';
 import type { Item } from '@/types';
 
 type AllowedLimit = 10 | 20 | 50;
@@ -28,16 +28,16 @@ interface ItemsDataResult {
  */
 export const useItemsData = (): ItemsDataResult => {
   const [items, setItems] = useState<Item[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
-  // Start with loading=true to prevent flash of "no items" on initial load
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
-  const fetchItems = useCallback(async (cursor: string | null, appendMode: boolean): Promise<void> => {
+  const fetchItems = useCallback(async (page: number = 1, appendMode: boolean = false): Promise<void> => {
     if (appendMode) {
       setLoadingMore(true);
     } else {
@@ -46,27 +46,24 @@ export const useItemsData = (): ItemsDataResult => {
     setError('');
     
     try {
-      const result = await getItemsPaginated({ 
+      const result = await getItems({ 
+        page,
         limit: ITEMS_PER_PAGE,
-        cursor,
-        search: search 
       });
       
-      // Defensive check: ensure result.items exists and is an array
       if (!result.items || !Array.isArray(result.items)) {
         throw new Error('Invalid response format: items must be an array');
       }
       
       if (appendMode) {
-        // Append new items for infinite scroll
         setItems(prev => [...prev, ...result.items]);
       } else {
-        // Replace items for initial load or search
         setItems(result.items);
       }
       
-      setNextCursor(result.page.nextCursor);
-      setHasMore(result.page.hasMore);
+      setCurrentPage(result.pagination.page);
+      setTotalPages(result.pagination.totalPages);
+      setHasMore(result.pagination.page < result.pagination.totalPages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch items');
       if (!appendMode) {
@@ -76,18 +73,17 @@ export const useItemsData = (): ItemsDataResult => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search]);
+  }, []);
 
-  // Initial fetch
   useEffect(() => {
-    fetchItems(null, false);
-  }, [search]); // Re-fetch from beginning when search changes
+    fetchItems(1, false);
+  }, [search, fetchItems]);
 
   const loadMore = useCallback((): void => {
-    if (!loadingMore && hasMore && nextCursor) {
-      fetchItems(nextCursor, true);
+    if (!loadingMore && hasMore) {
+      fetchItems(currentPage + 1, true);
     }
-  }, [loadingMore, hasMore, nextCursor, fetchItems]);
+  }, [loadingMore, hasMore, currentPage, fetchItems]);
 
   const handleSearch = (e: React.FormEvent): void => {
     e.preventDefault();
@@ -100,7 +96,7 @@ export const useItemsData = (): ItemsDataResult => {
   };
 
   const refetchItems = async (): Promise<void> => {
-    await fetchItems(null, false);
+    await fetchItems(1, false);
   };
 
   return {
