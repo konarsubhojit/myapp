@@ -5,7 +5,8 @@
   "scripts": {
     "backend": "cd backend && npm start",
     "frontend": "cd frontend && npm run dev",
-    "install:all": "cd backend && npm install && cd ../frontend && npm install"
+    "next": "cd next && npm run dev",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../next && npm install"
   },
   "repository": {
     "type": "git",
