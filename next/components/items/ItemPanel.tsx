@@ -36,9 +36,9 @@ import { useImageProcessing } from '@/hooks/useImageProcessing';
 import { useItemsData } from '@/hooks/useItemsData';
 import { useDeletedItems } from '@/hooks/useDeletedItems';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import ImageUploadField from './common/ImageUploadField';
-import ItemCard from './common/ItemCard';
-import ItemCardSkeleton from './common/ItemCardSkeleton';
+import ImageUploadField from '../common/ImageUploadField';
+import ItemCard from '../common/ItemCard';
+import ItemCardSkeleton from '../common/ItemCardSkeleton';
 import type { Item, ItemId } from '@/types';
 
 interface ItemPanelProps {

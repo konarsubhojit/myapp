@@ -15,7 +15,7 @@ import { createItem } from '@/lib/api/client'
 import { useNotification } from '@/contexts/NotificationContext'
 import { useItemForm } from '@/hooks/useItemForm'
 import { useImageProcessing } from '@/hooks/useImageProcessing'
-import ImageUploadField from './common/ImageUploadField'
+import ImageUploadField from '../common/ImageUploadField'
 import type { Item } from '@/types'
 
 interface CreateItemProps {

@@ -12,8 +12,8 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { getPriorityStatus } from '@/lib/utils/priorityUtils';
-import OrderDialogTitle from './common/OrderDialogTitle';
-import OrderDialogContent from './common/OrderDialogContent';
+import OrderDialogTitle from '../common/OrderDialogTitle';
+import OrderDialogContent from '../common/OrderDialogContent';
 import { generateFeedbackToken } from '@/lib/api/client';
 import type { OrderId } from '@/types';
 
@@ -60,7 +60,7 @@ function OrderDetails({ orderId, onClose, onOrderUpdated, onDuplicateOrder }: Or
       const tokenData = await generateFeedbackToken(order._id);
       
       // Generate feedback link with token
-      const feedbackAppUrl = import.meta.env.VITE_FEEDBACK_APP_URL || 'http://localhost:3001';
+      const feedbackAppUrl = process.env.NEXT_PUBLIC_FEEDBACK_APP_URL || 'http://localhost:3001';
       const feedbackLink = `${feedbackAppUrl}/?token=${tokenData.token}`;
       
       // Copy to clipboard
