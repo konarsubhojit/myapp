@@ -199,12 +199,8 @@ function getSingleItemMockData(options: RequestInit): Record<string, string> | R
   return isModifyingRequest ? { message: 'Success' } : {};
 }
 
-function getItemsEndpointMockData(url: string, dummyItems: Item[]): MockDataResult | Item[] {
-  const hasQueryParams = url.includes('?');
-  if (hasQueryParams) {
-    return getCursorPaginatedMockData(dummyItems);
-  }
-  return dummyItems;
+function getItemsEndpointMockData(url: string, dummyItems: Item[]): MockDataResult {
+  return getCursorPaginatedMockData(dummyItems);
 }
 
 function getMockDataForGuestMode(url: string, options: RequestInit): MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never> {
@@ -269,7 +265,8 @@ async function authFetch(url: string, options: RequestInit = {}): Promise<Respon
 export const getItems = async (): Promise<Item[]> => {
   const response = await authFetch(`${API_BASE_URL}/items`);
   if (!response.ok) throw new Error('Failed to fetch items');
-  return response.json();
+  const data = await response.json();
+  return data.items || data;
 };
 
 // Items API - Cursor-based pagination
