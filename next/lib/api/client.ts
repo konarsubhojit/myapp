@@ -169,7 +169,7 @@ export async function restoreItem(
   });
 }
 
-export async function permanentlyDeleteItemImage(
+export async function permanentlyDeleteItem(
   id: ItemId,
   token?: string
 ): Promise<void> {
@@ -252,6 +252,39 @@ export async function getFeedbacks(
     `/feedbacks${query ? `?${query}` : ''}`,
     { headers: getAuthHeaders(token) }
   );
+}
+
+export async function getFeedbacksPaginated(
+  params?: PaginationParams,
+  token?: string
+): Promise<PaginatedResult<Feedback>> {
+  return getFeedbacks(params, token);
+}
+
+export async function getFeedbackByOrderId(
+  orderId: OrderId,
+  token?: string
+): Promise<Feedback | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/feedbacks/order/${orderId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(token),
+      },
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Failed to fetch order feedback');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('404')) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function createFeedback(
