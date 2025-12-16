@@ -69,6 +69,31 @@ describe('API Service', () => {
 
         await expect(getItems()).rejects.toThrow('Failed to fetch items');
       });
+
+      it('should handle cursor-paginated response from backend', async () => {
+        const mockItems = [
+          { _id: 1, name: 'Item 1', price: 10 },
+          { _id: 2, name: 'Item 2', price: 20 },
+        ];
+        const mockCursorResponse = {
+          items: mockItems,
+          page: {
+            limit: 10,
+            nextCursor: null,
+            hasMore: false,
+          },
+        };
+
+        global.fetch.mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockCursorResponse,
+        });
+
+        const result = await getItems();
+
+        expect(result).toEqual(mockItems);
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
     });
 
     describe('getItemsPaginated', () => {
