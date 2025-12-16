@@ -1,11 +1,11 @@
-import type { ReactElement } from 'react'
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
-import HistoryIcon from '@mui/icons-material/History'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import AddCircleIcon from '@mui/icons-material/AddCircle'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import AssessmentIcon from '@mui/icons-material/Assessment'
-import FeedbackIcon from '@mui/icons-material/Feedback'
+import type { ReactElement } from 'react';
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import HistoryIcon from '@mui/icons-material/History';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import FeedbackIcon from '@mui/icons-material/Feedback';
 
 export interface NavigationRoute {
   id: string

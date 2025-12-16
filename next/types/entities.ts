@@ -205,21 +205,9 @@ export interface PaginatedFeedbacksResult {
   pagination: PaginationInfo;
 }
 
-// Cursor pagination types
-export interface CursorPaginationParams {
-  limit?: number;
-  cursor?: string | null;
-}
-
-export interface CursorPaginationInfo {
-  limit: number;
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
 export interface CursorPaginatedOrdersResult {
   orders: Order[];
-  pagination: CursorPaginationInfo;
+  pagination: CursorPageInfo;
 }
 
 // Feedback statistics
