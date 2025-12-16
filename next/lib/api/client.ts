@@ -116,11 +116,18 @@ export async function createItem(
     if (data.specialFeatures) formData.append('specialFeatures', data.specialFeatures);
     if (data.image) formData.append('image', data.image);
 
-    return fetchApi<Item>('/items', {
+    const response = await fetch(`${API_BASE_URL}/items`, {
       method: 'POST',
       headers: getAuthHeaders(token),
-      body: formData as any,
+      body: formData,
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   return fetchApi<Item>('/items', {

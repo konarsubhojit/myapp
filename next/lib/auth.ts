@@ -1,6 +1,12 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+interface GoogleProfile {
+  sub: string;
+  picture?: string;
+  [key: string]: unknown;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -13,7 +19,7 @@ export const authOptions: NextAuthOptions = {
       if (account && profile) {
         token.id = profile.sub;
         token.provider = account.provider;
-        token.picture = (profile as any).picture;
+        token.picture = (profile as GoogleProfile).picture;
       }
       return token;
     },
