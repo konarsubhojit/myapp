@@ -12,6 +12,7 @@ This document provides guidance for migrating the remaining components and featu
 - Material-UI v6 integration
 - Custom theme and styling
 - ESLint configuration
+- Code review fixes applied
 
 #### Authentication
 - NextAuth.js with Google OAuth
@@ -37,11 +38,15 @@ This document provides guidance for migrating the remaining components and featu
 - Priority utilities
 - Constants migrated
 
-### 🔧 In Progress / Todo
+#### Contexts ✅ NEW
+- **CurrencyContext** - Multi-currency support (INR, USD, EUR, GBP, JPY)
+- **NotificationContext** - Toast notifications with Material-UI
 
-#### Contexts
-- [ ] CurrencyContext - Needs migration
-- [ ] NotificationContext - Needs migration
+#### Navigation Components ✅ NEW
+- **NavigationDrawer** - Collapsible side navigation (mobile/desktop)
+- **TopNavigationBar** - Horizontal dropdown navigation for desktop
+
+### 🔧 In Progress / Todo
 
 #### Core Components
 The following components need to be migrated from `frontend/src/components/`:
@@ -49,31 +54,27 @@ The following components need to be migrated from `frontend/src/components/`:
 1. **Common Components**
    - [ ] Common UI components (buttons, dialogs, etc.)
    
-2. **Navigation**
-   - [ ] NavigationDrawer
-   - [ ] TopNavigationBar
+2. **Order Management** - Priority
+   - [ ] OrderForm - Create/edit orders with item selection
+   - [ ] OrderHistory - Order list with cursor pagination
+   - [ ] OrderDetails - Order details view/edit
+   - [ ] OrderDetailsPage - Full order management page
    
-3. **Order Management**
-   - [ ] OrderForm
-   - [ ] OrderHistory
-   - [ ] OrderDetails
-   - [ ] OrderDetailsPage
+3. **Item Management** - Priority
+   - [ ] CreateItem - Add items with image upload
+   - [ ] BrowseItems - Item catalog with search/filter
+   - [ ] ItemPanel - Item card component
+   - [ ] ItemDetailsPage - Full item details view
+   - [ ] ManageDeletedItems - Restore soft-deleted items
    
-4. **Item Management**
-   - [ ] CreateItem
-   - [ ] BrowseItems
-   - [ ] ItemPanel
-   - [ ] ItemDetailsPage
-   - [ ] ManageDeletedItems
+4. **Analytics & Feedback**
+   - [ ] SalesReport - Sales analytics dashboard
+   - [ ] FeedbackPanel - Customer feedback management
+   - [ ] FeedbackDialog - Feedback submission form
+   - [ ] PriorityNotificationPanel - Urgent orders indicator
    
-5. **Analytics & Feedback**
-   - [ ] SalesReport
-   - [ ] FeedbackPanel
-   - [ ] FeedbackDialog
-   - [ ] PriorityNotificationPanel
-   
-6. **Other**
-   - [ ] CurrencySelector
+5. **Other**
+   - [ ] CurrencySelector - Currency selection dropdown
 
 ## Migration Steps for Components
 
