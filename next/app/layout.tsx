@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ThemeRegistry from "@/lib/ThemeRegistry";
 import SessionProvider from "@/components/SessionProvider";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import "./globals.css";
 
 const inter = Inter({ 
@@ -28,9 +30,13 @@ export default function RootLayout({
       <body className={inter.variable}>
         <SessionProvider>
           <ThemeRegistry>
-            {children}
-            <Analytics />
-            <SpeedInsights />
+            <NotificationProvider>
+              <CurrencyProvider>
+                {children}
+                <Analytics />
+                <SpeedInsights />
+              </CurrencyProvider>
+            </NotificationProvider>
           </ThemeRegistry>
         </SessionProvider>
       </body>
