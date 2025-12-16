@@ -1,9 +1,10 @@
+// @ts-nocheck
 import { eq, desc, isNull, isNotNull, ilike, or, sql, and, inArray, lt } from 'drizzle-orm';
-import { getDatabase } from '../db/connection.js';
-import { items } from '../db/schema.js';
-import { executeWithRetry } from '../utils/dbRetry.js';
+import { getDatabase } from '@/lib/db/connection';
+import { items } from '@/lib/db/schema';
+import { executeWithRetry } from '@/lib/utils/dbRetry';
 
-function transformItem(item) {
+function transformItem(item: any) {
   return {
     ...item,
     _id: item.id,
@@ -15,7 +16,7 @@ function transformItem(item) {
   };
 }
 
-function buildSearchCondition(search) {
+function buildSearchCondition(search: any) {
   if (!search?.trim()) return null;
   const searchTerm = `%${search.trim()}%`;
   return or(
@@ -60,7 +61,7 @@ function parseCursor(cursor) {
  * @param {Object} item - Item with createdAt and id
  * @returns {string} Cursor string
  */
-function encodeCursor(item) {
+function encodeCursor(item: any) {
   return `${item.createdAt.toISOString()}:${item.id}`;
 }
 

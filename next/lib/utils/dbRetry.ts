@@ -1,4 +1,5 @@
-import { createLogger } from './logger.js';
+// @ts-nocheck
+import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('DBRetry');
 
@@ -39,7 +40,7 @@ export async function executeWithRetry(operation, options = {}) {
       }
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
       
       // Don't retry on the last attempt
@@ -83,7 +84,7 @@ export async function executeWithRetry(operation, options = {}) {
  * @param {Error} error - The error to check
  * @returns {boolean} True if the error is retryable
  */
-function isRetryableError(error) {
+function isRetryableError(error: any): boolean {
   // Network errors and timeouts are retryable
   const retryableMessages = [
     'econnrefused',

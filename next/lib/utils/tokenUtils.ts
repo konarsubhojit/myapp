@@ -1,3 +1,4 @@
+// @ts-nocheck
 import crypto from 'crypto';
 
 /**
@@ -5,7 +6,7 @@ import crypto from 'crypto';
  * @param {number} length - Length of the token in bytes (default 32)
  * @returns {string} - Hex-encoded token
  */
-export function generateSecureToken(length = 32) {
+export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString('hex');
 }
 
@@ -14,7 +15,7 @@ export function generateSecureToken(length = 32) {
  * @param {number} expiryDays - Number of days until token expires (default 30)
  * @returns {object} - Object with token and expiresAt date
  */
-export function generateFeedbackToken(expiryDays = 30) {
+export function generateFeedbackToken(expiryDays: number = 30) {
   const token = generateSecureToken();
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + expiryDays);

@@ -1,9 +1,9 @@
 import { createClient } from 'redis';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('RedisClient');
 
-let redisClient = null;
+let redisClient: any = null;
 let isConnecting = false;
 
 /**
@@ -47,7 +47,7 @@ export async function getRedisClient() {
     });
 
     // Event handlers
-    redisClient.on('error', (err) => {
+    redisClient.on('error', (err: any) => {
       logger.error('Redis client error', err);
     });
 
@@ -67,7 +67,7 @@ export async function getRedisClient() {
     logger.info('Redis connection successful');
     
     return redisClient;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to connect to Redis', error);
     redisClient = null;
     return null;
@@ -85,7 +85,7 @@ export async function closeRedisClient() {
       await redisClient.quit();
       logger.info('Redis connection closed');
       redisClient = null;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error closing Redis connection', error);
       // Force disconnect on error
       try {

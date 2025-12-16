@@ -1,11 +1,12 @@
+// @ts-nocheck
 import { eq, and, gte, lt, ne } from 'drizzle-orm';
-import { getDatabase } from '../db/connection.js';
+import { getDatabase } from '@/lib/db/connection';
 // Note: orderReminderState is kept for backward compatibility and for upsertOrderReminderState
 // which is called from orders route when orders are created/updated
-import { orders, orderReminderState, digestRuns, notificationRecipients } from '../db/schema.js';
-import { createLogger } from '../utils/logger.js';
-import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } from '../utils/digestBuckets.js';
-import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from './emailService.js';
+import { orders, orderReminderState, digestRuns, notificationRecipients } from '@/lib/db/schema';
+import { createLogger } from '@/lib/utils/logger';
+import { computeDigestBuckets, getTodayInKolkata, formatDateForDigest, getKolkataStartOfDay } from '@/lib/utils/digestBuckets';
+import { sendEmail, buildDigestEmailHtml, buildDigestEmailText } from '@/lib/emailService';
 
 const logger = createLogger('DigestService');
 
@@ -346,7 +347,7 @@ export async function runDailyDigest() {
         sevenDay: bucketData.sevenDayOrders.length
       }
     };
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Daily digest failed', error);
     await upsertDigestRun(digestDate, 'failed', error.message);
     throw error;

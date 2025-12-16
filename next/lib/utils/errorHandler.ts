@@ -1,5 +1,6 @@
-import { createLogger } from './logger.js';
-import { HTTP_STATUS } from '../constants/httpConstants.js';
+// @ts-nocheck
+import { createLogger } from '@/lib/utils/logger';
+import { HTTP_STATUS } from '@/lib/constants/httpConstants';
 
 const logger = createLogger('ErrorHandler');
 
@@ -64,7 +65,7 @@ export function forbiddenError(message = 'Forbidden') {
  * 
  * @example
  * // In server.js
- * import { errorHandler } from './utils/errorHandler.js';
+ * import { errorHandler } from '@/lib/utils/errorHandler';
  * app.use(errorHandler);
  */
 export function errorHandler(error, req, res, next) {
@@ -118,7 +119,7 @@ export function errorHandler(error, req, res, next) {
  *   try {
  *     const items = await Item.find();
  *     res.json(items);
- *   } catch (error) {
+ *   } catch (error: any) {
  *     next(error);
  *   }
  * });

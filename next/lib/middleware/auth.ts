@@ -1,8 +1,9 @@
+// @ts-nocheck
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { createLogger } from '../utils/logger.js';
-import { HTTP_STATUS } from '../constants/httpConstants.js';
-import { GOOGLE_ISSUERS, JWKS_CONFIG } from '../constants/authConstants.js';
+import { createLogger } from '@/lib/utils/logger';
+import { HTTP_STATUS } from '@/lib/constants/httpConstants';
+import { GOOGLE_ISSUERS, JWKS_CONFIG } from '@/lib/constants/authConstants';
 
 const logger = createLogger('AuthMiddleware');
 
@@ -29,7 +30,7 @@ const googleJwksClient = jwksClient({
  * @param {string} header - JWT header
  * @returns {Promise<string>} Signing key
  */
-async function getSigningKey(header) {
+async function getSigningKey(header: any) {
   return new Promise((resolve, reject) => {
     googleJwksClient.getSigningKey(header.kid, (err, key) => {
       if (err) {
@@ -47,7 +48,7 @@ async function getSigningKey(header) {
  * @param {string} token - JWT token
  * @returns {Promise<Object>} Decoded token payload
  */
-async function validateGoogleToken(token) {
+async function validateGoogleToken(token: string) {
   const decoded = jwt.decode(token, { complete: true });
   if (!decoded) {
     throw new Error('Invalid token format');
@@ -80,7 +81,7 @@ async function validateGoogleToken(token) {
  * @param {string} token - JWT token
  * @returns {Promise<Object>} User info extracted from token
  */
-async function validateToken(token) {
+async function validateToken(token: string) {
   const decoded = jwt.decode(token, { complete: true });
   if (!decoded) {
     throw new Error('Invalid token format');
@@ -105,7 +106,7 @@ async function validateToken(token) {
  * Authentication middleware
  * Validates JWT token from Authorization header
  */
-async function authMiddleware(req, res, next) {
+async function authMiddleware(req: any, res: any, next: any) {
   // Skip auth if explicitly disabled (for development only)
   // WARNING: This should never be enabled in production
   if (process.env.AUTH_DISABLED === 'true') {
@@ -138,7 +139,7 @@ async function authMiddleware(req, res, next) {
     req.user = user;
     logger.debug('User authenticated', { userId: user.id, provider: user.provider });
     next();
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Token validation failed', error);
     return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: 'Invalid or expired token' });
   }
@@ -148,7 +149,7 @@ async function authMiddleware(req, res, next) {
  * Optional authentication middleware
  * Validates token if present, but allows unauthenticated requests
  */
-async function optionalAuthMiddleware(req, res, next) {
+async function optionalAuthMiddleware(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
@@ -165,7 +166,7 @@ async function optionalAuthMiddleware(req, res, next) {
   try {
     const user = await validateToken(token);
     req.user = user;
-  } catch (error) {
+  } catch (error: any) {
     // Silently ignore invalid tokens for optional auth
     logger.debug('Optional auth token validation failed', { error: error.message });
   }

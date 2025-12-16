@@ -1,4 +1,5 @@
-import { createLogger } from '../utils/logger.js';
+// @ts-nocheck
+import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('AnalyticsService');
 

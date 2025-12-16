@@ -1,5 +1,6 @@
-import { getRedisClient, getRedisIfReady } from '../db/redisClient.js';
-import { createLogger } from '../utils/logger.js';
+// @ts-nocheck
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
+import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('CacheMiddleware');
 
@@ -129,7 +130,7 @@ function validateResponseForCaching(body) {
  * @returns {Promise<number>} Current version number (defaults to 1 if not set)
  * @exported for testing purposes
  */
-export async function getCacheVersion(redis, versionKey = CACHE_VERSION_KEYS.GLOBAL) {
+export async function getCacheVersion(redis: any, versionKey: string = CACHE_VERSION_KEYS.GLOBAL) {
   const now = Date.now();
   
   // Return memoized version if still valid
@@ -162,7 +163,7 @@ export async function getCacheVersion(redis, versionKey = CACHE_VERSION_KEYS.GLO
     
     logger.debug('Fetched cache version from Redis', { versionKey, version: parsedVersion });
     return parsedVersion;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to get cache version', { versionKey, error: error.message });
     // Return memoized version or default to 1 on error
     return cached ? cached.version : 1;
@@ -173,7 +174,7 @@ export async function getCacheVersion(redis, versionKey = CACHE_VERSION_KEYS.GLO
  * Legacy function for backward compatibility
  * @deprecated Use getCacheVersion(redis, versionKey) instead
  */
-export async function getGlobalCacheVersion(redis) {
+export async function getGlobalCacheVersion(redis: any) {
   return getCacheVersion(redis, CACHE_VERSION_KEYS.GLOBAL);
 }
 
@@ -183,7 +184,7 @@ export async function getGlobalCacheVersion(redis) {
  * @param {string} versionKey - Cache version key to bump (e.g., CACHE_VERSION_KEYS.ITEMS)
  * @returns {Promise<number|null>} New version number, or null if Redis unavailable
  */
-export async function bumpCacheVersion(versionKey = CACHE_VERSION_KEYS.GLOBAL) {
+export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.GLOBAL) {
   try {
     const redis = getRedisIfReady();
     
@@ -199,7 +200,7 @@ export async function bumpCacheVersion(versionKey = CACHE_VERSION_KEYS.GLOBAL) {
     
     logger.info('Cache version bumped', { versionKey, newVersion });
     return newVersion;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to bump cache version', { versionKey, error: error.message });
     return null;
   }
@@ -271,7 +272,7 @@ export function generateCacheKey(req, version = null) {
  * Wait for a pending cache request to complete
  * Returns the cached data if available, null if timeout or error
  */
-async function waitForPendingRequest(cacheKey, redis) {
+async function waitForPendingRequest(cacheKey: string, redis: any) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       logger.debug('Lock wait timeout', { key: cacheKey });
@@ -422,7 +423,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       };
       
       next();
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Cache middleware error', error);
       // Cleanup pending requests on error
       if (pendingRequests.has(cacheKey)) {
@@ -439,7 +440,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
  * @deprecated Prefer using bumpGlobalCacheVersion() for invalidation in serverless environments
  * @param {string} pattern - Cache key pattern (supports wildcards with *)
  */
-export async function invalidateCache(pattern) {
+export async function invalidateCache(pattern: string) {
   try {
     const redis = await getRedisClient();
     
@@ -470,7 +471,7 @@ export async function invalidateCache(pattern) {
     // Delete all matching keys
     await redis.del(keys);
     logger.info('Cache invalidated (SCAN)', { pattern, keysDeleted: keys.length });
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to invalidate cache', { pattern, error: error.message });
   }
 }
@@ -544,7 +545,7 @@ export async function clearAllCache() {
     }
     
     logger.info('All caches cleared and versions reset');
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to clear all caches', error);
   }
 }

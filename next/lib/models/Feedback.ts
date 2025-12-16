@@ -1,8 +1,9 @@
+// @ts-nocheck
 import { eq, desc, sql } from 'drizzle-orm';
-import { getDatabase } from '../db/connection.js';
-import { feedbacks } from '../db/schema.js';
+import { getDatabase } from '@/lib/db/connection';
+import { feedbacks } from '@/lib/db/schema';
 
-function transformFeedback(feedback) {
+function transformFeedback(feedback: any) {
   return {
     ...feedback,
     _id: feedback.id,

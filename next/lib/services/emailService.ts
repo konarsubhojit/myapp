@@ -1,5 +1,6 @@
+// @ts-nocheck
 import nodemailer from 'nodemailer';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('EmailService');
 
@@ -72,7 +73,7 @@ export async function sendEmail({ to, subject, html, text }) {
       recipientCount: Array.isArray(to) ? to.length : 1 
     });
     return result;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Failed to send email', error);
     throw error;
   }

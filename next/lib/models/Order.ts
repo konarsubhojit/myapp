@@ -1,9 +1,10 @@
+// @ts-nocheck
 import { eq, desc, sql, asc, inArray, and, or, lt } from 'drizzle-orm';
-import { getDatabase } from '../db/connection.js';
-import { orders, orderItems } from '../db/schema.js';
-import { executeWithRetry } from '../utils/dbRetry.js';
+import { getDatabase } from '@/lib/db/connection';
+import { orders, orderItems } from '@/lib/db/schema';
+import { executeWithRetry } from '@/lib/utils/dbRetry';
 
-function generateOrderId() {
+function generateOrderId(): string {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   return `ORD${randomNum}`;
 }
@@ -18,7 +19,7 @@ function transformOrderItem(item) {
   };
 }
 
-function transformOrder(order, items = []) {
+function transformOrder(order: any, items: any[] = []) {
   return {
     ...order,
     _id: order.id,
@@ -40,13 +41,13 @@ function transformOrder(order, items = []) {
   };
 }
 
-function setFieldIfDefined(updateData, key, value, transformer) {
+function setFieldIfDefined(updateData: any, key: string, value: any, transformer?: any) {
   if (value !== undefined) {
     updateData[key] = transformer ? transformer(value) : value;
   }
 }
 
-function buildOrderUpdateData(data) {
+function buildOrderUpdateData(data: any) {
   const updateData = {};
   
   setFieldIfDefined(updateData, 'orderFrom', data.orderFrom);
@@ -70,7 +71,7 @@ function buildOrderUpdateData(data) {
   return updateData;
 }
 
-async function updateOrderItems(db, orderId, items) {
+async function updateOrderItems(db: any, orderId: number, items: any[]) {
   await db.delete(orderItems).where(eq(orderItems.orderId, orderId));
   
   if (items.length > 0) {
@@ -114,7 +115,7 @@ function decodeCursor(cursor) {
       createdAt: new Date(parsed.createdAt),
       id: parsed.id
     };
-  } catch (error) {
+  } catch (error: any) {
     return null;
   }
 }

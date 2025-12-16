@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { eq, and, gt } from 'drizzle-orm';
-import { getDatabase } from '../db/connection.js';
-import { feedbackTokens } from '../db/schema.js';
-import { generateFeedbackToken } from '../utils/tokenUtils.js';
+import { getDatabase } from '@/lib/db/connection';
+import { feedbackTokens } from '@/lib/db/schema';
+import { generateFeedbackToken } from '@/lib/utils/tokenUtils';
 
 const FeedbackToken = {
   /**

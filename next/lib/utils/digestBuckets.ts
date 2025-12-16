@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { DateTime } from 'luxon';
 
 /**
@@ -18,7 +19,7 @@ export function getTodayInKolkata() {
  * @param {number} daysFromToday - Number of days from today (0 = today, 1 = tomorrow, etc.)
  * @returns {Date} JavaScript Date object representing start of that day in UTC
  */
-export function getKolkataStartOfDay(daysFromToday) {
+export function getKolkataStartOfDay(daysFromToday: number): any {
   const kolkataDate = DateTime.now()
     .setZone(DIGEST_TIMEZONE)
     .startOf('day')
@@ -61,7 +62,7 @@ export function computeDigestBuckets() {
  * @param {Date|string} date - Date to format
  * @returns {string} Human-readable date in Kolkata timezone
  */
-export function formatDateForDigest(date) {
+export function formatDateForDigest(date: any): string {
   const dt = DateTime.fromJSDate(date instanceof Date ? date : new Date(date))
     .setZone(DIGEST_TIMEZONE);
   

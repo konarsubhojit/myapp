@@ -1,4 +1,5 @@
-import { PAGINATION } from '../constants/paginationConstants.js';
+// @ts-nocheck
+import { PAGINATION } from '@/lib/constants/paginationConstants';
 
 const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 

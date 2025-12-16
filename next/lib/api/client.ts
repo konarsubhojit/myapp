@@ -53,7 +53,7 @@ async function fetchApi<T>(
     }
 
     return await response.json();
-  } catch (error) {
+  } catch (error: any) {
     console.error('API request failed:', error);
     throw error;
   }
@@ -279,7 +279,7 @@ export async function getFeedbackByOrderId(
     }
     
     return await response.json();
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof Error && error.message.includes('404')) {
       return null;
     }
