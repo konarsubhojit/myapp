@@ -89,7 +89,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
       setDuplicateLoading(true);
       setError('');
       try {
-        const order = await getOrder(duplicateOrderId);
+        const order = await getOrder(parseInt(duplicateOrderId, 10) as OrderId);
         setDuplicatedFrom(order.orderId);
         
         // Pre-fill form with order data (except payment info which should be fresh)

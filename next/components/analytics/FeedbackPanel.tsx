@@ -15,7 +15,7 @@ import {
   Divider
 } from '@mui/material';
 import { getFeedbacksPaginated, getFeedbackStats } from '@/lib/api/client';
-import PaginationControls from './common/PaginationControls';
+import PaginationControls from '../common/PaginationControls';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { Feedback, FeedbackStats, PaginationInfo } from '@/types';
 
@@ -37,7 +37,7 @@ const FeedbackPanel = () => {
     try {
       setLoading(true);
       const data = await getFeedbacksPaginated({ page: paginationData.page, limit: ITEMS_PER_PAGE });
-      setFeedbacks(data.feedbacks || []);
+      setFeedbacks(data.items || []);
       setPaginationData(data.pagination || {
         page: 1,
         limit: ITEMS_PER_PAGE,

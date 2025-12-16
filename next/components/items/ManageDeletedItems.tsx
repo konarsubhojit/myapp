@@ -20,7 +20,7 @@ import { useCurrency } from '@/contexts/CurrencyContext'
 import { useNotification } from '@/contexts/NotificationContext'
 import { useDeletedItems } from '@/hooks/useDeletedItems'
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
-import ItemCardSkeleton from './common/ItemCardSkeleton'
+import ItemCardSkeleton from '../common/ItemCardSkeleton'
 import type { Item, ItemId } from '@/types'
 
 interface ManageDeletedItemsProps {

@@ -15,10 +15,10 @@ import { useOrderPagination } from '@/hooks/useOrderPagination';
 import { useOrderFilters } from '@/hooks/useOrderFilters';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import OrderDetailsPage from './OrderDetailsPage';
-import OrderFiltersSection from './common/OrderFiltersSection';
-import OrderHistoryTableHeader from './common/OrderHistoryTableHeader';
-import OrderHistoryTableRow from './common/OrderHistoryTableRow';
-import OrderRowSkeleton from './common/OrderRowSkeleton';
+import OrderFiltersSection from '../common/OrderFiltersSection';
+import OrderHistoryTableHeader from '../common/OrderHistoryTableHeader';
+import OrderHistoryTableRow from '../common/OrderHistoryTableRow';
+import OrderRowSkeleton from '../common/OrderRowSkeleton';
 import type { OrderId, Order } from '@/types';
 
 interface OrderHistoryProps {

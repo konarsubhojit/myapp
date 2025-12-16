@@ -20,7 +20,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { useItemDetails, type ItemEditForm } from '@/hooks/useItemDetails';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
-import ImageUploadField from './common/ImageUploadField';
+import ImageUploadField from '../common/ImageUploadField';
 import type { ItemId } from '@/types';
 
 interface ItemDetailsPageProps {

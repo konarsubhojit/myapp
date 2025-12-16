@@ -22,10 +22,10 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { useOrderDetails } from '@/hooks/useOrderDetails';
 import { getPriorityStatus } from '@/lib/utils/priorityUtils';
 import { getOrderPriorityColor } from '@/lib/utils/orderUtils';
-import CustomerInfoSection from './common/CustomerInfoSection';
-import OrderInfoSection from './common/OrderInfoSection';
-import PaymentInfoSection from './common/PaymentInfoSection';
-import OrderItemsTable from './common/OrderItemsTable';
+import CustomerInfoSection from '../common/CustomerInfoSection';
+import OrderInfoSection from '../common/OrderInfoSection';
+import PaymentInfoSection from '../common/PaymentInfoSection';
+import OrderItemsTable from '../common/OrderItemsTable';
 import { generateFeedbackToken } from '@/lib/api/client';
 import type { OrderId, OrderEditForm } from '@/types';
 
@@ -70,7 +70,7 @@ function OrderDetailsPage({ orderId, onBack, onOrderUpdated, onDuplicateOrder }:
       setGeneratingToken(true);
       const tokenData = await generateFeedbackToken(order._id);
       
-      const feedbackAppUrl = import.meta.env.VITE_FEEDBACK_APP_URL || 'http://localhost:3001';
+      const feedbackAppUrl = process.env.NEXT_PUBLIC_FEEDBACK_APP_URL || 'http://localhost:3001';
       const feedbackLink = `${feedbackAppUrl}/?token=${tokenData.token}`;
       
       navigator.clipboard.writeText(feedbackLink).then(() => {
