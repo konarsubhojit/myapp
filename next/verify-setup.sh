@@ -41,7 +41,9 @@ check_var() {
     if [ -z "$var_value" ]; then
         echo "❌ $var_name is not set"
         all_good=false
-    elif [[ "$var_value" == *"your-"* ]] || [[ "$var_value" == *"generate-with"* ]]; then
+    elif [[ "$var_value" == "your-secret-here-generate-with-openssl" ]] || \
+         [[ "$var_value" == "your-google-client-id.apps.googleusercontent.com" ]] || \
+         [[ "$var_value" == "your-google-client-secret" ]]; then
         echo "⚠️  $var_name needs to be configured (still has placeholder value)"
         all_good=false
     else

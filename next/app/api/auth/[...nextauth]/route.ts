@@ -19,11 +19,11 @@ if (process.env.NODE_ENV !== 'test') {
     console.error('❌ Missing required environment variables:', missingVars.join(', '));
     console.error('📝 Please copy .env.example to .env and configure the values');
     console.error('💡 See QUICKSTART.md for detailed setup instructions');
-  }
-
-  if (!process.env.NEXTAUTH_URL) {
-    console.warn('⚠️  NEXTAUTH_URL is not set - this will cause redirect_uri mismatch errors');
-    console.warn('   Set NEXTAUTH_URL=http://localhost:3000 in your .env file');
+    
+    if (missingVars.includes('NEXTAUTH_URL')) {
+      console.error('⚠️  NEXTAUTH_URL must be set to prevent redirect_uri mismatch errors');
+      console.error('   Example: NEXTAUTH_URL=http://localhost:3000');
+    }
   }
 }
 
