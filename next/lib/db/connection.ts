@@ -17,14 +17,14 @@ if (!global.neonDb) {
 let cached = global.neonDb;
 
 export function getDatabase() {
-  const uri = process.env.NEON_DATABASE_URL;
+  const uri = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
   if (cached && cached.db) {
     return cached.db;
   }
 
   if (!uri) {
-    throw new Error('NEON_DATABASE_URL environment variable is not set');
+    throw new Error('NEON_DATABASE_URL and DATABASE_URL environment variable is not set');
   }
 
   logger.debug('Creating new database connection', {});
