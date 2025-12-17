@@ -115,10 +115,59 @@ rm -rf .next node_modules
 npm install
 ```
 
-### NextAuth configuration issues
-- Ensure `NEXTAUTH_URL` matches your app URL (http://localhost:3000 for local dev)
-- Verify `NEXTAUTH_SECRET` is set
-- Check Google OAuth redirect URIs in Google Cloud Console
+### Google OAuth "redirect_uri_mismatch" Error
+
+This is the most common authentication issue. Follow these steps:
+
+**1. Verify Environment Variables**
+```bash
+# Make sure .env file exists
+cp .env.example .env
+
+# Edit .env and ensure these are set correctly:
+# NEXTAUTH_URL=http://localhost:3000 (for local dev)
+# GOOGLE_CLIENT_ID=your-client-id
+# GOOGLE_CLIENT_SECRET=your-client-secret
+```
+
+**2. Configure Google Cloud Console**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to: APIs & Services → Credentials
+3. Select your OAuth 2.0 Client ID
+4. Under "Authorized redirect URIs", add:
+   - For local development: `http://localhost:3000/api/auth/callback/google`
+   - For production: `https://yourdomain.com/api/auth/callback/google`
+5. Click "Save"
+
+**3. Important Notes**
+- The redirect URI must match **exactly** (including protocol, port, and path)
+- Changes in Google Cloud Console may take a few minutes to propagate
+- `NEXTAUTH_URL` must match your application's actual URL
+- For production, always use `https://`
+
+**4. Verify Configuration**
+```bash
+# Check that NEXTAUTH_URL is set
+echo $NEXTAUTH_URL  # Should output: http://localhost:3000
+
+# Restart the dev server after changing .env
+npm run dev
+```
+
+### url.parse() Deprecation Warning
+
+If you see this warning:
+```
+DeprecationWarning: `url.parse()` behavior is not standardized...
+```
+
+This is a known issue in next-auth@4.24.13 dependencies and does **not** affect functionality. It will be resolved in future versions of NextAuth. You can safely ignore this warning.
+
+### Other NextAuth configuration issues
+- Ensure `NEXTAUTH_URL` matches your app URL exactly
+- Verify `NEXTAUTH_SECRET` is set (generate with `openssl rand -base64 32`)
+- Never commit `.env` file to version control
+- Use environment variables in production (Vercel, etc.)
 
 ### Build errors
 ```bash
