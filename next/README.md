@@ -33,6 +33,9 @@ npm install
 # Configure environment variables
 cp .env.example .env
 # Edit .env with your credentials
+
+# Verify your setup (optional but recommended)
+./verify-setup.sh
 ```
 
 ### Run Development Server

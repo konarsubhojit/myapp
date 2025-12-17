@@ -38,6 +38,13 @@ To generate `NEXTAUTH_SECRET`:
 openssl rand -base64 32
 ```
 
+**Verify your setup** (optional but recommended):
+```bash
+./verify-setup.sh
+```
+
+This script will check if all required environment variables are properly configured.
+
 ### Step 3: Start the Backend
 
 In a separate terminal:
