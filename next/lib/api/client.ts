@@ -362,8 +362,7 @@ export async function getPublicFeedbacks(): Promise<Feedback[]> {
 // ==================== ANALYTICS API ====================
 
 export async function getSalesAnalytics(
-  statusFilter: 'completed' | 'all' = 'completed',
-  token?: string
+  statusFilter: 'completed' | 'all' = 'completed'
 ): Promise<SalesAnalyticsResponse> {
   const queryParams = new URLSearchParams();
   queryParams.append('statusFilter', statusFilter);
@@ -371,7 +370,7 @@ export async function getSalesAnalytics(
   const query = queryParams.toString();
   return fetchApi<SalesAnalyticsResponse>(
     `/analytics/sales${query ? `?${query}` : ''}`,
-    { headers: getAuthHeaders(token) }
+    { headers: {} }
   );
 }
 
