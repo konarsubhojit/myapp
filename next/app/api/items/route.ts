@@ -5,26 +5,11 @@ import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
-import { PAGINATION } from '@/lib/constants/paginationConstants';
+import { parsePaginationParams } from '@/lib/utils/pagination';
 // @ts-ignore
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemsAPI');
-
-const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
-
-/**
- * Parse and validate cursor pagination parameters from query string
- */
-function parseCursorParams(searchParams: URLSearchParams) {
-  const parsedLimit = Number.parseInt(searchParams.get('limit') || '', 10);
-  
-  return {
-    limit: ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT,
-    cursor: searchParams.get('cursor') || null as string | null,
-    search: searchParams.get('search') || ''
-  };
-}
 
 async function uploadImage(image: string) {
   const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -50,28 +35,34 @@ async function uploadImage(image: string) {
 }
 
 /**
- * GET /api/items - Get all items with cursor pagination
+ * GET /api/items - Get all items with offset pagination
  */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const { limit, cursor, search } = parseCursorParams(searchParams);
+    
+    // Convert URLSearchParams to object for parsePaginationParams
+    const query = {
+      page: searchParams.get('page') || '',
+      limit: searchParams.get('limit') || '',
+      search: searchParams.get('search') || ''
+    };
+    const { page, limit, search } = parsePaginationParams(query);
     
     logger.debug('GET /api/items request', { 
-      hasCursorParam: !!searchParams.get('cursor'),
-      hasLimitParam: searchParams.has('limit'),
-      limitValue: searchParams.get('limit'),
-      hasSearchParam: !!searchParams.get('search'),
-      searchLength: searchParams.get('search')?.length
+      page,
+      limit,
+      hasSearchParam: !!search,
+      searchLength: search.length
     });
     
-    // @ts-ignore - cursor type mismatch between URLSearchParams and model
-    const result = await Item.findCursor({ limit, cursor, search });
+    // Use offset-based pagination (matches frontend expectations)
+    const result = await Item.findPaginated({ page, limit, search });
     
-    logger.debug('Returning cursor-paginated response', { 
+    logger.debug('Returning paginated items', { 
       itemCount: result.items.length,
-      hasMore: result.page.hasMore,
-      nextCursor: result.page.nextCursor ? 'present' : 'null'
+      page: result.pagination.page,
+      total: result.pagination.total
     });
     
     return NextResponse.json(result, {

@@ -13,15 +13,16 @@ export async function GET(request: NextRequest) {
   try {
     logger.debug('GET /api/orders/priority request');
     
-    const result = await Order.findPriorityOrders();
+    const orders = await Order.findPriorityOrders();
+    
+    // Ensure we always return an array (defensive programming)
+    const ordersArray = Array.isArray(orders) ? orders : [];
     
     logger.debug('Returning priority orders', {
-      urgentCount: result.urgent.length,
-      upcomingCount: result.upcoming.length,
-      overdueCount: result.overdue.length
+      orderCount: ordersArray.length
     });
     
-    return NextResponse.json(result, {
+    return NextResponse.json(ordersArray, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
       }
