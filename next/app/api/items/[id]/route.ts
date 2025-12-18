@@ -5,6 +5,8 @@ import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
+import { invalidateItemCache } from '@/lib/middleware/cache';
+// @ts-ignore
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemByIdAPI');
@@ -130,6 +132,9 @@ export async function PUT(
     // Delete old image if needed
     await deleteOldImage(imageResult.oldImageUrl);
     
+    // Invalidate item cache after update
+    await invalidateItemCache();
+    
     logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
     
     return NextResponse.json(updatedItem);
@@ -158,6 +163,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    
+    // Invalidate item cache after deletion
+    await invalidateItemCache();
     
     logger.info('Item soft deleted', { itemId: id });
     

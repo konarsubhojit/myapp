@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
+// @ts-ignore
+import { invalidateItemCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemRestoreAPI');
 
@@ -22,6 +24,9 @@ export async function POST(
         { status: 404 }
       );
     }
+    
+    // Invalidate item cache after restoration
+    await invalidateItemCache();
     
     logger.info('Item restored', { itemId: id });
     

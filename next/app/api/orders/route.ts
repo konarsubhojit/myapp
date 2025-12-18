@@ -6,7 +6,11 @@ import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
-import { parsePaginationParams } from '@/lib/utils/pagination';
+import { withCache } from '@/lib/middleware/nextCache';
+// @ts-ignore
+import { invalidateOrderCache } from '@/lib/middleware/cache';
+// @ts-ignore
+import { PAGINATION } from '@/lib/constants/paginationConstants';
 // @ts-ignore
 import {
   VALID_ORDER_STATUSES,
@@ -19,6 +23,20 @@ import {
 } from '@/lib/constants/orderConstants';
 
 const logger = createLogger('OrdersAPI');
+
+const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
+
+/**
+ * Parse and validate cursor pagination parameters from query string
+ */
+function parseCursorParams(searchParams: URLSearchParams) {
+  const parsedLimit = Number.parseInt(searchParams.get('limit') || '', 10);
+  
+  return {
+    limit: ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT,
+    cursor: searchParams.get('cursor') || null as string | null
+  };
+}
 
 function validateRequiredFields(orderFrom: any, customerName: any, customerId: any, items: any) {
   if (!orderFrom || !customerName || !customerId) {
@@ -54,23 +72,34 @@ function validateDeliveryDate(expectedDeliveryDate: any) {
 
 /**
  * GET /api/orders - List orders with cursor pagination
+ * Wrapped with Redis caching (5 minutes TTL)
  */
-export async function GET(request: NextRequest) {
+async function getOrdersHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const { page, limit } = parsePaginationParams(searchParams);
+    const { limit, cursor } = parseCursorParams(searchParams);
     
-    logger.debug('GET /api/orders request', { page, limit });
-    
-    const result = await Order.findPaginated({ page, limit });
-    
-    logger.debug('Returning paginated orders', {
-      orderCount: result.orders.length,
-      page: result.pagination.page,
-      total: result.pagination.total
+    logger.debug('GET /api/orders request', { 
+      hasCursorParam: !!searchParams.get('cursor'),
+      hasLimitParam: searchParams.has('limit'),
+      limitValue: searchParams.get('limit')
     });
     
-    return NextResponse.json(result, {
+    // Use cursor-based pagination for stable infinite scroll
+    // @ts-ignore - cursor type mismatch between URLSearchParams and model
+    const result = await Order.findCursorPaginated({ limit, cursor });
+    
+    logger.debug('Returning cursor-paginated orders', {
+      orderCount: result.orders.length,
+      hasMore: result.pagination.hasMore,
+      nextCursor: result.pagination.nextCursor ? 'present' : 'null'
+    });
+    
+    // Transform to match frontend expectations: {orders: [], page: {}}
+    return NextResponse.json({
+      orders: result.orders,
+      page: result.pagination
+    }, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
       }
@@ -83,6 +112,9 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (5 minutes TTL)
+export const GET = withCache(getOrdersHandler, 300);
 
 /**
  * POST /api/orders - Create a new order
@@ -189,6 +221,9 @@ export async function POST(request: NextRequest) {
     };
 
     const newOrder = await Order.create(orderData);
+    
+    // Invalidate order cache after creation
+    await invalidateOrderCache();
     
     logger.info('Order created', { orderId: newOrder._id, orderIdStr: newOrder.orderId });
     

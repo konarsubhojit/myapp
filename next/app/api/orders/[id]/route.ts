@@ -4,6 +4,8 @@ import Order from '@/lib/models/Order';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
+import { invalidateOrderCache } from '@/lib/middleware/cache';
+// @ts-ignore
 import {
   VALID_ORDER_STATUSES,
   VALID_PAYMENT_STATUSES,
@@ -131,6 +133,9 @@ export async function PUT(
         { status: 404 }
       );
     }
+    
+    // Invalidate order cache after update
+    await invalidateOrderCache();
     
     logger.info('Order updated', { orderId: id });
     

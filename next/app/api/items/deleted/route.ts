@@ -5,42 +5,41 @@ import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
-import { PAGINATION } from '@/lib/constants/paginationConstants';
+import { parsePaginationParams } from '@/lib/utils/pagination';
+// @ts-ignore
+import { withCache } from '@/lib/middleware/nextCache';
 
 const logger = createLogger('ItemsDeletedAPI');
 
-const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
-
-function parseCursorParams(searchParams: URLSearchParams) {
-  const parsedLimit = Number.parseInt(searchParams.get('limit') || '', 10);
-  
-  return {
-    limit: ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT,
-    cursor: searchParams.get('cursor') || null as string | null,
-    search: searchParams.get('search') || ''
-  };
-}
-
 /**
- * GET /api/items/deleted - Get soft-deleted items with cursor pagination
+ * GET /api/items/deleted - Get soft-deleted items with offset pagination
+ * Wrapped with Redis caching (24 hours TTL)
  */
-export async function GET(request: NextRequest) {
+async function getDeletedItemsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const { limit, cursor, search } = parseCursorParams(searchParams);
+    
+    // Convert URLSearchParams to object for parsePaginationParams
+    const query = {
+      page: searchParams.get('page') || '',
+      limit: searchParams.get('limit') || '',
+      search: searchParams.get('search') || ''
+    };
+    const { page, limit, search } = parsePaginationParams(query);
     
     logger.debug('GET /api/items/deleted request', { 
-      hasCursorParam: !!searchParams.get('cursor'),
-      hasLimitParam: searchParams.has('limit'),
-      hasSearchParam: !!searchParams.get('search')
+      page,
+      limit,
+      hasSearchParam: !!search
     });
     
-    // @ts-ignore
-    const result = await Item.findDeletedCursor({ limit, cursor, search });
+    // Use offset-based pagination (matches frontend expectations)
+    const result = await Item.findDeletedPaginated({ page, limit, search });
     
-    logger.debug('Returning cursor-paginated deleted items', {
+    logger.debug('Returning paginated deleted items', {
       itemCount: result.items.length,
-      hasMore: result.page.hasMore
+      page: result.pagination.page,
+      total: result.pagination.total
     });
     
     return NextResponse.json(result, {
@@ -56,3 +55,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (24 hours TTL)
+export const GET = withCache(getDeletedItemsHandler, 86400);
