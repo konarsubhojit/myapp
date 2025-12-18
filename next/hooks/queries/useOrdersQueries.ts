@@ -19,15 +19,16 @@ export function useOrdersAll(
 
 /**
  * Query hook for fetching paginated orders
+ * Uses cursor-based pagination
  */
 export function useOrdersPaginated(
-  page: number,
   limit: number,
+  cursor?: string | null,
   options?: Omit<UseQueryOptions<CursorPaginatedResult<Order>, Error>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<CursorPaginatedResult<Order>, Error> {
   return useQuery({
-    queryKey: queryKeys.ordersPaginated({ page, limit }),
-    queryFn: () => api.getOrdersPaginated({ page, limit }),
+    queryKey: queryKeys.ordersPaginated({ page: cursor ? parseInt(cursor, 10) : 1, limit }),
+    queryFn: () => api.getOrders({ limit, cursor }),
     ...options,
   });
 }

@@ -11,4 +11,4 @@ export {
 export { useCreateOrder, useUpdateOrder } from './useOrdersMutations';
 
 // Feedbacks mutations
-export { useCreateFeedback, useUpdateFeedback, useGenerateFeedbackToken } from './useFeedbacksMutations';
+export { useCreateFeedback, useUpdateFeedback, useDeleteFeedback, useGenerateFeedbackToken } from './useFeedbacksMutations';

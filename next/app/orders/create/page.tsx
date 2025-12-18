@@ -1,34 +1,19 @@
 'use client';
 
-import { useState, useCallback, useEffect, Suspense } from 'react';
+import { useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CircularProgress, Box, Typography } from '@mui/material';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import OrderForm from '@/components/orders/OrderForm';
-import { getItems } from '@/lib/api/client';
+import { useItems } from '@/hooks';
 import type { Item } from '@/types';
 
 function CreateOrderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [items, setItems] = useState<Item[]>([]);
-  const [itemsLoading, setItemsLoading] = useState<boolean>(true);
+  const { data, isLoading: itemsLoading } = useItems();
+  const items: Item[] = data?.items ?? [];
   const duplicateOrderId = searchParams.get('duplicateOrderId');
-
-  useEffect(() => {
-    const fetchItems = async (): Promise<void> => {
-      try {
-        setItemsLoading(true);
-        const result = await getItems({ page: 1, limit: 1000 });
-        setItems(result.items);
-      } catch (error) {
-        console.error('Error fetching items:', error);
-      } finally {
-        setItemsLoading(false);
-      }
-    };
-    fetchItems();
-  }, []);
 
   const handleOrderCreated = useCallback((): void => {
     router.push('/orders/history');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Box,
@@ -9,19 +9,17 @@ import {
   Typography,
   IconButton,
   Avatar,
-  Chip,
   Tooltip,
   useMediaQuery,
   useTheme,
   CircularProgress,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
-import PreviewIcon from '@mui/icons-material/Preview';
 import MenuIcon from '@mui/icons-material/Menu';
 import { signOut } from 'next-auth/react';
 
 // Components
-import NavigationDrawer, { DRAWER_WIDTH } from '@/components/NavigationDrawer';
+import NavigationDrawer from '@/components/NavigationDrawer';
 import TopNavigationBar from '@/components/TopNavigationBar';
 import OrderForm from '@/components/orders/OrderForm';
 import OrderHistory from '@/components/orders/OrderHistory';
@@ -36,8 +34,8 @@ import PriorityNotificationPanel from '@/components/analytics/PriorityNotificati
 import { NAVIGATION_ROUTES } from '@/constants/navigation';
 import type { Item, OrderId } from '@/types';
 
-// API
-import { getItems } from '@/lib/api/client';
+// Hooks
+import { useItems } from '@/hooks';
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0';
 
@@ -46,32 +44,16 @@ export default function DashboardContent() {
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
   const isMdDown = useMediaQuery(muiTheme.breakpoints.down('md'));
+  
+  const { data, isLoading: itemsLoading } = useItems();
+  const items: Item[] = data?.items ?? [];
 
   const [currentRoute, setCurrentRoute] = useState<string>(NAVIGATION_ROUTES.CREATE_ORDER);
-  const [items, setItems] = useState<Item[]>([]);
-  const [itemsLoading, setItemsLoading] = useState<boolean>(true);
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0);
   const [duplicateOrderId, setDuplicateOrderId] = useState<string | null>(null);
   const [selectedOrderIdFromPriority, setSelectedOrderIdFromPriority] = useState<OrderId | null>(null);
   const [copiedItem, setCopiedItem] = useState<Item | null>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
-
-  // Fetch items on mount
-  const fetchItems = useCallback(async (): Promise<void> => {
-    try {
-      setItemsLoading(true);
-      const result = await getItems({ page: 1, limit: 1000 });
-      setItems(result.items);
-    } catch (error) {
-      console.error('Error fetching items:', error);
-    } finally {
-      setItemsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
 
   const handleOrderCreated = useCallback((): void => {
     setOrderHistoryKey(prev => prev + 1);
@@ -120,8 +102,9 @@ export default function DashboardContent() {
   }, []);
 
   const handleItemsChange = useCallback((): void => {
-    fetchItems();
-  }, [fetchItems]);
+    // Items are automatically refetched via React Query
+    // No manual refetch needed
+  }, []);
 
   if (itemsLoading) {
     return (

@@ -64,20 +64,21 @@ export default function AuthenticatedLayout({
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
   const [guestMode, setGuestMode] = useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   const currentRoute = ROUTE_TO_NAV_MAP[pathname] || NAVIGATION_ROUTES.CREATE_ORDER;
 
-  // Check for guest mode
+  // Check for guest mode and handle authentication in a single effect
   useEffect(() => {
     const isGuest = sessionStorage.getItem('guestMode') === 'true';
     setGuestMode(isGuest);
-  }, []);
-
-  useEffect(() => {
-    if (status === 'unauthenticated' && !guestMode) {
+    setIsInitialized(true);
+    
+    // Only redirect if not guest and not authenticated
+    if (status === 'unauthenticated' && !isGuest) {
       router.push('/login');
     }
-  }, [status, guestMode, router]);
+  }, [status, router]);
 
   const handleNavigate = useCallback((routeId: string): void => {
     const path = NAV_TO_ROUTE_MAP[routeId];
@@ -103,7 +104,7 @@ export default function AuthenticatedLayout({
     router.push(`/orders/history?orderId=${orderId}`);
   }, [router]);
 
-  if (status === 'loading' && !guestMode) {
+  if ((status === 'loading' || !isInitialized) && !guestMode) {
     return (
       <Box
         display="flex"
@@ -121,7 +122,7 @@ export default function AuthenticatedLayout({
     );
   }
 
-  if (!session && !guestMode) {
+  if (!session && !guestMode && isInitialized) {
     return null;
   }
 

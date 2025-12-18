@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import * as api from '@/lib/api/client';
 import type { Order, CreateOrderData, UpdateOrderData, OrderId } from '@/types';
-import { parseOrderId } from '@/types/brandedIds';
 
 /**
  * Mutation hook for creating an order

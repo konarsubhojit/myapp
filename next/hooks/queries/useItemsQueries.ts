@@ -26,7 +26,7 @@ export function useItemsPaginated(
   options?: Omit<UseQueryOptions<PaginatedResult<Item>, Error>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<PaginatedResult<Item>, Error> {
   return useQuery({
-    queryKey: queryKeys.itemsCursor({ limit }),
+    queryKey: queryKeys.itemsCursor({ limit, cursor: String(page) }),
     queryFn: () => api.getItems({ page, limit }),
     ...options,
   });
@@ -41,9 +41,10 @@ export function useDeletedItemsQuery(
   search?: string,
   options?: Omit<UseQueryOptions<PaginatedResult<Item>, Error>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<PaginatedResult<Item>, Error> {
+  const page = cursor ? parseInt(cursor, 10) : 1;
   return useQuery({
     queryKey: queryKeys.deletedItems({ limit, cursor, search }),
-    queryFn: () => api.getDeletedItems({ page: 1, limit }),
+    queryFn: () => api.getDeletedItems({ page, limit }),
     ...options,
   });
 }

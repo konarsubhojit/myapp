@@ -1,50 +1,33 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useCallback, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CircularProgress, Box, Typography } from '@mui/material';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import CreateItem from '@/components/items/CreateItem';
-import { getItems } from '@/lib/api/client';
+import { useItems } from '@/hooks';
 import type { Item, ItemId } from '@/types';
 
 function CreateItemContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const copyFromId = searchParams.get('copyFrom');
-  const [copiedItem, setCopiedItem] = useState<Item | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-
-  useEffect(() => {
-    const loadCopiedItem = async () => {
-      if (!copyFromId) return;
-      
-      try {
-        setLoading(true);
-        const result = await getItems({ page: 1, limit: 1000 });
-        const item = result.items.find(i => i.id === parseInt(copyFromId, 10) as ItemId);
-        if (item) {
-          setCopiedItem(item);
-        }
-      } catch (error) {
-        console.error('Error loading item to copy:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadCopiedItem();
-  }, [copyFromId]);
+  const { data, isLoading } = useItems();
+  
+  const copiedItem = useMemo(() => {
+    if (!copyFromId || !data?.items) return null;
+    return data.items.find(i => i.id === parseInt(copyFromId, 10) as ItemId) || null;
+  }, [copyFromId, data?.items]);
 
   const handleItemCreated = useCallback((): void => {
     router.push('/items/browse');
   }, [router]);
 
   const handleCancelCopy = useCallback((): void => {
-    setCopiedItem(null);
     router.push('/items/create');
   }, [router]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box
         display="flex"
@@ -56,7 +39,7 @@ function CreateItemContent() {
       >
         <CircularProgress size={48} />
         <Typography variant="body1" color="text.secondary">
-          Loading item...
+          Loading items...
         </Typography>
       </Box>
     );
