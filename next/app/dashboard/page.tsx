@@ -7,9 +7,8 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Container,
-  Paper,
 } from '@mui/material';
+import DashboardContent from './DashboardContent';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -43,19 +42,5 @@ export default function DashboardPage() {
     return null;
   }
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Welcome to Kiyon Store
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Hello, {session.user?.name || session.user?.email}!
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          This is the dashboard page. The full Next.js application is being built.
-        </Typography>
-      </Paper>
-    </Container>
-  );
+  return <DashboardContent />;
 }

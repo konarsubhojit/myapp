@@ -14,3 +14,8 @@ export type { ItemData, CustomerData, SourceData, RangeAnalytics } from './useSa
 export { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, getUrgencyLevel } from './usePriorityOrders';
 export type { OrderWithPriority } from './usePriorityOrders';
 export { useInfiniteScroll } from './useInfiniteScroll';
+export { useItemDetails } from './useItemDetails';
+
+// React Query hooks
+export * from './queries';
+export * from './mutations';
