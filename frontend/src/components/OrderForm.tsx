@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, ChangeEvent, FormEvent } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -142,21 +142,23 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
     loadOrderForDuplication();
   }, [duplicateOrderId, items]);
 
-  const handleAddItem = () => {
+  // PERFORMANCE OPTIMIZATION: Memoize callbacks to prevent unnecessary re-renders
+  const handleAddItem = useCallback(() => {
     setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
-  };
+  }, [orderItems]);
 
-  const handleRemoveItem = (index: number) => {
+  const handleRemoveItem = useCallback((index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
-  };
+  }, [orderItems]);
 
-  const handleItemChange = (index: number, field: keyof OrderFormItem, value: string | number | '') => {
+  const handleItemChange = useCallback((index: number, field: keyof OrderFormItem, value: string | number | '') => {
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
     setOrderItems(updated);
-  };
+  }, [orderItems]);
 
-  const calculateTotal = (): number => {
+  // PERFORMANCE OPTIMIZATION: Memoize total calculation to avoid recomputation on every render
+  const totalPrice = useMemo(() => {
     return orderItems.reduce((total, orderItem) => {
       const item = items.find((i) => String(i._id) === String(orderItem.itemId));
       const qty = typeof orderItem.quantity === 'number' ? orderItem.quantity : parseInt(String(orderItem.quantity), 10);
@@ -165,7 +167,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
       }
       return total;
     }, 0);
-  };
+  }, [orderItems, items]);
 
   const getMinOrderDate = (): string => {
     const today = new Date();
@@ -268,7 +270,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
     setPriority(Number.parseInt(e.target.value, 10));
   };
 
-  const estimatedTotal = calculateTotal();
+  const estimatedTotal = totalPrice;
 
   if (duplicateLoading) {
     return (
