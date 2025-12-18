@@ -99,6 +99,8 @@ const Item = {
 
   /**
    * Bulk fetch items by IDs to avoid N+1 query problem
+   * PERFORMANCE OPTIMIZATION: Fetches multiple items in a single query
+   * instead of making individual queries for each item ID
    * @param {number[]} ids - Array of item IDs to fetch
    * @returns {Promise<Map<number, Object>>} Map of item ID to item object
    */
@@ -117,10 +119,12 @@ const Item = {
         return new Map();
       }
       
+      // Single query fetches all items at once
       const result = await db.select()
         .from(items)
         .where(inArray(items.id, numericIds));
       
+      // Build Map for O(1) lookup by item ID
       const itemMap = new Map();
       for (const item of result) {
         itemMap.set(item.id, transformItem(item));

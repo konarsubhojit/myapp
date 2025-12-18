@@ -125,10 +125,10 @@ const Order = {
       const db = getDatabase();
       const ordersResult = await db.select().from(orders).orderBy(desc(orders.createdAt));
       
-      // Fix N+1 query problem: Fetch all items in ONE query instead of looping
-      // This optimization reduces 101 queries to 2 queries for 100 orders (98% reduction)
-      // Before: 1 query for orders + N queries for items = O(n+1)
-      // After: 1 query for orders + 1 query for all items = O(2)
+      // PERFORMANCE OPTIMIZATION: Bulk fetch all order items in a single query
+      // This prevents N+1 query problem where we'd make 1 query per order
+      // Reduces database round trips from O(n+1) to O(2) for n orders
+      // Example: For 100 orders, reduces from 101 queries to just 2 queries (98% reduction)
       if (ordersResult.length === 0) {
         return [];
       }
@@ -138,7 +138,7 @@ const Order = {
         .from(orderItems)
         .where(inArray(orderItems.orderId, orderIds));
       
-      // Group items by orderId for efficient lookup
+      // Group items by orderId for O(1) lookup during transformation
       const itemsByOrderId = allItems.reduce((acc, item) => {
         if (!acc[item.orderId]) acc[item.orderId] = [];
         acc[item.orderId].push(item);
@@ -182,7 +182,8 @@ const Order = {
         };
       }
       
-      // Bulk fetch items for all orders (avoids N+1)
+      // PERFORMANCE OPTIMIZATION: Bulk fetch items to avoid N+1 queries
+      // Fetches all items for paginated orders in a single query instead of one per order
       const orderIds = ordersResult.map(o => o.id);
       const allItems = await db.select()
         .from(orderItems)
@@ -262,7 +263,8 @@ const Order = {
         };
       }
       
-      // Bulk fetch items for all orders (avoids N+1)
+      // PERFORMANCE OPTIMIZATION: Bulk fetch items to avoid N+1 queries
+      // Uses inArray to fetch all items in a single database round trip
       const orderIds = ordersToReturn.map(o => o.id);
       const allItems = await db.select()
         .from(orderItems)
@@ -338,10 +340,9 @@ const Order = {
           desc(orders.priority)
         );
       
-      // Fix N+1 query problem: Fetch all items in ONE query instead of looping with Promise.all
-      // This optimization reduces queries from O(n+1) to O(2) for better performance
-      // Before: 1 query for orders + N queries for items (one per order)
-      // After: 1 query for orders + 1 query for all items
+      // PERFORMANCE OPTIMIZATION: Bulk fetch all order items in a single query
+      // This prevents N+1 query problem for priority orders
+      // Reduces database queries from O(n+1) to O(2) for n priority orders
       if (ordersResult.length === 0) {
         return [];
       }

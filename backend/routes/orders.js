@@ -399,8 +399,6 @@ router.post('/', asyncHandler(async (req, res) => {
     throw badRequestError(paymentValidation.error);
   }
 
-  await invalidateOrderCache();
-
   const newOrder = await Order.create({
     orderFrom,
     customerName,
@@ -421,6 +419,7 @@ router.post('/', asyncHandler(async (req, res) => {
     actualDeliveryDate: actualDeliveryDateValidation.parsedDate
   });
 
+  // Invalidate cache after creation to bust stale data
   await invalidateOrderCache();
 
   if (newOrder.expectedDeliveryDate) {
@@ -582,14 +581,14 @@ async function validatePaymentAmountIfProvided(paidAmountResult, itemsResult, ex
 }
 
 async function performOrderUpdate(orderId, updateData) {
-  await invalidateOrderCache();
-  
   const updatedOrder = await Order.findByIdAndUpdate(orderId, updateData);
   if (!updatedOrder) {
     throw notFoundError('Order');
   }
   
+  // Invalidate cache after update to bust stale data
   await invalidateOrderCache();
+  
   return updatedOrder;
 }
 
