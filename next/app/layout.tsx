@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import ThemeRegistry from "@/lib/ThemeRegistry";
 import SessionProvider from "@/components/SessionProvider";
+import QueryProvider from "@/components/QueryProvider";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import "./globals.css";
@@ -29,15 +30,17 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.variable}>
         <SessionProvider>
-          <ThemeRegistry>
-            <NotificationProvider>
-              <CurrencyProvider>
-                {children}
-                <Analytics />
-                <SpeedInsights />
-              </CurrencyProvider>
-            </NotificationProvider>
-          </ThemeRegistry>
+          <QueryProvider>
+            <ThemeRegistry>
+              <NotificationProvider>
+                <CurrencyProvider>
+                  {children}
+                  <Analytics />
+                  <SpeedInsights />
+                </CurrencyProvider>
+              </NotificationProvider>
+            </ThemeRegistry>
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>
