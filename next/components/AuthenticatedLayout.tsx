@@ -14,9 +14,11 @@ import {
   useMediaQuery,
   useTheme,
   CircularProgress,
+  Chip,
 } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
+import PreviewIcon from '@mui/icons-material/Preview';
 import { signOut } from 'next-auth/react';
 import NavigationDrawer from '@/components/NavigationDrawer';
 import TopNavigationBar from '@/components/TopNavigationBar';
@@ -61,14 +63,21 @@ export default function AuthenticatedLayout({
   const isMdDown = useMediaQuery(muiTheme.breakpoints.down('md'));
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
+  const [guestMode, setGuestMode] = useState<boolean>(false);
 
   const currentRoute = ROUTE_TO_NAV_MAP[pathname] || NAVIGATION_ROUTES.CREATE_ORDER;
 
+  // Check for guest mode
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    const isGuest = sessionStorage.getItem('guestMode') === 'true';
+    setGuestMode(isGuest);
+  }, []);
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && !guestMode) {
       router.push('/login');
     }
-  }, [status, router]);
+  }, [status, guestMode, router]);
 
   const handleNavigate = useCallback((routeId: string): void => {
     const path = NAV_TO_ROUTE_MAP[routeId];
@@ -82,14 +91,19 @@ export default function AuthenticatedLayout({
   }, []);
 
   const handleLogout = useCallback(async (): Promise<void> => {
-    await signOut({ callbackUrl: '/login' });
-  }, []);
+    if (guestMode) {
+      sessionStorage.removeItem('guestMode');
+      router.push('/login');
+    } else {
+      await signOut({ callbackUrl: '/login' });
+    }
+  }, [guestMode, router]);
 
   const handleViewOrderFromPriority = useCallback((orderId: OrderId): void => {
     router.push(`/orders/history?orderId=${orderId}`);
   }, [router]);
 
-  if (status === 'loading') {
+  if (status === 'loading' && !guestMode) {
     return (
       <Box
         display="flex"
@@ -107,7 +121,7 @@ export default function AuthenticatedLayout({
     );
   }
 
-  if (!session) {
+  if (!session && !guestMode) {
     return null;
   }
 
@@ -202,11 +216,29 @@ export default function AuthenticatedLayout({
 
             {/* Right Section: User Info and Actions */}
             <Box display="flex" alignItems="center" gap={1} flexShrink={0}>
-              <PriorityNotificationPanel 
-                onNavigateToPriority={() => router.push('/orders/history')} 
-                onViewOrder={handleViewOrderFromPriority} 
-              />
-              {session?.user?.image ? (
+              {!guestMode && (
+                <PriorityNotificationPanel 
+                  onNavigateToPriority={() => router.push('/orders/history')} 
+                  onViewOrder={handleViewOrderFromPriority} 
+                />
+              )}
+              {guestMode && (
+                <Chip 
+                  icon={<PreviewIcon />} 
+                  label={isMobile ? "Guest" : "Guest Mode"} 
+                  size="small"
+                  sx={{ 
+                    bgcolor: '#f0f4ff', 
+                    color: '#5568d3',
+                    border: '1px solid #cbd5e1',
+                    fontWeight: 500,
+                    '& .MuiChip-icon': {
+                      color: '#5568d3'
+                    }
+                  }}
+                />
+              )}
+              {session?.user?.image && !guestMode ? (
                 <Avatar 
                   src={session.user.image} 
                   alt={session.user?.name || 'User'}
@@ -214,10 +246,10 @@ export default function AuthenticatedLayout({
                 />
               ) : (
                 <Avatar sx={{ width: 32, height: 32, bgcolor: '#5568d3', color: '#ffffff', fontSize: '0.875rem', fontWeight: 600 }}>
-                  {(session?.user?.name || session?.user?.email || 'U')[0]?.toUpperCase() ?? 'U'}
+                  {guestMode ? 'G' : (session?.user?.name || session?.user?.email || 'U')[0]?.toUpperCase() ?? 'U'}
                 </Avatar>
               )}
-              {!isMobile && (
+              {!isMobile && !guestMode && (
                 <Typography variant="body2" sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155', fontWeight: 500 }}>
                   {session?.user?.name || session?.user?.email}
                 </Typography>
