@@ -95,9 +95,9 @@ async function getOrdersHandler(request: NextRequest) {
       nextCursor: result.pagination.nextCursor ? 'present' : 'null'
     });
     
-    // Transform to match frontend expectations: {orders: [], page: {}}
+    // Transform to match frontend expectations: {items: [], page: {}}
     return NextResponse.json({
-      orders: result.orders,
+      items: result.orders,
       page: result.pagination
     }, {
       headers: {
