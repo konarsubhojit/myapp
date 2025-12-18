@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
-export default function HomePage() {
+export default function OrdersPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.push('/orders/create');
+    router.push('/orders/history');
   }, [router]);
 
   return (
@@ -27,4 +27,3 @@ export default function HomePage() {
     </Box>
   );
 }
-

@@ -3,10 +3,10 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 /**
- * Next.js middleware to protect API routes
+ * Next.js proxy to protect API routes
  * This runs before API route handlers
  */
-export async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip authentication for public routes
@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
 }
 
 /**
- * Configure which routes this middleware applies to
+ * Configure which routes this proxy applies to
  */
 export const config = {
   matcher: [

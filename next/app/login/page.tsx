@@ -6,7 +6,7 @@ import GoogleIcon from '@mui/icons-material/Google';
 
 export default function LoginPage() {
   const handleGoogleSignIn = async () => {
-    await signIn('google', { callbackUrl: '/dashboard' });
+    await signIn('google', { callbackUrl: '/orders/create' });
   };
 
   return (
