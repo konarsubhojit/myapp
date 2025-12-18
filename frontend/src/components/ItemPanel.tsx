@@ -1,4 +1,4 @@
-import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { useState, useEffect, useMemo, useCallback, ChangeEvent, FormEvent } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -161,11 +161,11 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   // Combined error from multiple sources
   const error = formError || imageError || activeError || editImageError;
   
-  // Set error across all error sources to ensure consistency
-  const setError = (err: string) => {
+  // PERFORMANCE OPTIMIZATION: Memoize error setter to prevent unnecessary re-renders
+  const setError = useCallback((err: string) => {
     setFormError(err);
     setActiveError(err);
-  };
+  }, [setFormError, setActiveError]);
 
   // Update URL when state changes (removed pagination params for infinite scroll)
   useEffect(() => {
@@ -175,14 +175,15 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     updateUrl(params);
   }, [activeSearch, showDeleted, updateUrl]);
 
-  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  // PERFORMANCE OPTIMIZATION: Memoize callbacks to prevent unnecessary re-renders
+  const handleImageChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       await handleImageChangeRaw(file);
     }
-  };
+  }, [handleImageChangeRaw]);
 
-  const handleEditImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleEditImageChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     await handleEditImageChangeRaw(file);
@@ -190,7 +191,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       ...prev,
       removeImage: false
     }) : null);
-  };
+  }, [handleEditImageChangeRaw]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -223,7 +224,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     }
   };
 
-  const handleDelete = async (id: ItemId, itemName: string) => {
+  const handleDelete = useCallback(async (id: ItemId, itemName: string) => {
     if (!globalThis.confirm(`Are you sure you want to delete "${itemName}"? This item can be restored later.`)) {
       return;
     }
@@ -240,9 +241,9 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       setError(errorMessage);
       showError(errorMessage);
     }
-  };
+  }, [onItemsChange, fetchActiveItems, showDeleted, fetchDeletedItems, showSuccess, showError, setError]);
 
-  const handleRestore = async (id: ItemId, itemName: string) => {
+  const handleRestore = useCallback(async (id: ItemId, itemName: string) => {
     try {
       await restoreItem(id);
       onItemsChange();
@@ -254,9 +255,9 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       setError(errorMessage);
       showError(errorMessage);
     }
-  };
+  }, [onItemsChange, fetchActiveItems, fetchDeletedItems, showSuccess, showError, setError]);
 
-  const handlePermanentDelete = async (id: ItemId, itemName: string, hasImage: boolean) => {
+  const handlePermanentDelete = useCallback(async (id: ItemId, itemName: string, hasImage: boolean) => {
     const message = hasImage 
       ? `Are you sure you want to permanently remove the image for "${itemName}"? This action cannot be undone. The item record will be kept for historical orders.`
       : `This item "${itemName}" has no image to remove.`;
@@ -279,9 +280,9 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       setError(errorMessage);
       showError(errorMessage);
     }
-  };
+  }, [fetchDeletedItems, showSuccess, showError, setError]);
 
-  const handleEdit = (item: Item) => {
+  const handleEdit = useCallback((item: Item) => {
     setEditingItem({
       ...item,
       editName: item.name,
@@ -294,24 +295,21 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     setEditImage('');
     setEditImagePreview(item.imageUrl || '');
     setShowEditModal(true);
-  };
+  }, [setEditImage, setEditImagePreview]);
 
-  // Copy item - pre-fill the create form with existing item data
-  const handleCopy = (item: Item) => {
+  const handleCopy = useCallback((item: Item) => {
     setFormFromItem(item);
     resetImage();
     setError('');
-    // Scroll to top of the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [setFormFromItem, resetImage, setError]);
 
-  // Cancel copy mode and clear form
-  const handleCancelCopy = () => {
+  const handleCancelCopy = useCallback(() => {
     resetForm();
     resetImage();
     const fileInput = document.getElementById('itemImage') as HTMLInputElement | null;
     if (fileInput) fileInput.value = '';
-  };
+  }, [resetForm, resetImage]);
 
   const clearEditImageWrapper = () => {
     clearEditImage();
