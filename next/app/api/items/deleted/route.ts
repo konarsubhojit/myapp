@@ -6,13 +6,16 @@ import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
 import { parsePaginationParams } from '@/lib/utils/pagination';
+// @ts-ignore
+import { withCache } from '@/lib/middleware/nextCache';
 
 const logger = createLogger('ItemsDeletedAPI');
 
 /**
  * GET /api/items/deleted - Get soft-deleted items with offset pagination
+ * Wrapped with Redis caching (24 hours TTL)
  */
-export async function GET(request: NextRequest) {
+async function getDeletedItemsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
@@ -52,3 +55,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (24 hours TTL)
+export const GET = withCache(getDeletedItemsHandler, 86400);

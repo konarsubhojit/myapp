@@ -7,6 +7,10 @@ import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
 import { parsePaginationParams } from '@/lib/utils/pagination';
 // @ts-ignore
+import { withCache } from '@/lib/middleware/nextCache';
+// @ts-ignore
+import { invalidateItemCache } from '@/lib/middleware/cache';
+// @ts-ignore
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemsAPI');
@@ -36,8 +40,9 @@ async function uploadImage(image: string) {
 
 /**
  * GET /api/items - Get all items with offset pagination
+ * Wrapped with Redis caching (24 hours TTL)
  */
-export async function GET(request: NextRequest) {
+async function getItemsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     
@@ -78,6 +83,9 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (24 hours TTL)
+export const GET = withCache(getItemsHandler, 86400);
 
 /**
  * POST /api/items - Create a new item
@@ -126,11 +134,10 @@ export async function POST(request: NextRequest) {
       imageUrl
     });
 
+    // Invalidate item cache after creation
+    await invalidateItemCache();
+
     logger.info('Item created', { itemId: item.id });
-    
-    // Invalidate cache
-    // In Next.js, we can use revalidateTag or revalidatePath
-    // For now, we'll just return the response
     
     return NextResponse.json(item, { status: 201 });
   } catch (error: any) {

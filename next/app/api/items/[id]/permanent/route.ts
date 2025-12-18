@@ -4,6 +4,8 @@ import { del } from '@vercel/blob';
 import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
+// @ts-ignore
+import { invalidateItemCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemPermanentAPI');
 
@@ -46,6 +48,9 @@ export async function DELETE(
 
     // Clear the imageUrl from the item record (keep the item for historical orders)
     await Item.permanentlyRemoveImage(id);
+    
+    // Invalidate item cache after permanent removal
+    await invalidateItemCache();
     
     logger.info('Item image permanently removed', { itemId: id });
     

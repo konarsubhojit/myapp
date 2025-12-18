@@ -6,7 +6,9 @@ import Item from '@/lib/models/Item';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 // @ts-ignore
-import { cacheMiddleware } from '@/lib/middleware/cache';
+import { withCache } from '@/lib/middleware/nextCache';
+// @ts-ignore
+import { invalidateOrderCache } from '@/lib/middleware/cache';
 // @ts-ignore
 import { PAGINATION } from '@/lib/constants/paginationConstants';
 // @ts-ignore
@@ -70,8 +72,9 @@ function validateDeliveryDate(expectedDeliveryDate: any) {
 
 /**
  * GET /api/orders - List orders with cursor pagination
+ * Wrapped with Redis caching (5 minutes TTL)
  */
-export async function GET(request: NextRequest) {
+async function getOrdersHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const { limit, cursor } = parseCursorParams(searchParams);
@@ -109,6 +112,9 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (5 minutes TTL)
+export const GET = withCache(getOrdersHandler, 300);
 
 /**
  * POST /api/orders - Create a new order
@@ -215,6 +221,9 @@ export async function POST(request: NextRequest) {
     };
 
     const newOrder = await Order.create(orderData);
+    
+    // Invalidate order cache after creation
+    await invalidateOrderCache();
     
     logger.info('Order created', { orderId: newOrder._id, orderIdStr: newOrder.orderId });
     

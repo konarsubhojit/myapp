@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import Order from '@/lib/models/Order';
 // @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
+// @ts-ignore
+import { withCache } from '@/lib/middleware/nextCache';
 
 const logger = createLogger('PriorityOrdersAPI');
 
 /**
  * GET /api/orders/priority - Get priority orders based on delivery dates
+ * Wrapped with Redis caching (5 minutes TTL)
  */
-export async function GET(request: NextRequest) {
+async function getPriorityOrdersHandler(request: NextRequest) {
   try {
     logger.debug('GET /api/orders/priority request');
     
@@ -35,3 +38,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Export GET handler with caching (5 minutes TTL)
+export const GET = withCache(getPriorityOrdersHandler, 300);
