@@ -162,10 +162,11 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   const error = formError || imageError || activeError || editImageError;
   
   // PERFORMANCE OPTIMIZATION: Memoize error setter to prevent unnecessary re-renders
+  // Note: setFormError and setActiveError are stable useState setters
   const setError = useCallback((err: string) => {
     setFormError(err);
     setActiveError(err);
-  }, [setFormError, setActiveError]);
+  }, []); // Empty deps: useState setters are guaranteed stable
 
   // Update URL when state changes (removed pagination params for infinite scroll)
   useEffect(() => {

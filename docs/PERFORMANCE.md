@@ -172,7 +172,7 @@ const handleDelete = useCallback(async (id: ItemId, itemName: string) => {
 
 ### Performance Metrics
 
-- **Backend Tests**: 137 tests passing
+- **Backend Tests**: 452 tests passing
 - **Frontend Tests**: 468 tests passing
 - **Database Query Count**: Reduced by ~98% for order listings
 - **Redis Operations**: Reduced by ~50% for write operations
