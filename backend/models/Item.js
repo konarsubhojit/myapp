@@ -149,30 +149,32 @@ const Item = {
   },
 
   async findByIdAndUpdate(id, data) {
-    const db = getDatabase();
-    const numericId = Number.parseInt(id, 10);
-    if (Number.isNaN(numericId)) return null;
-    
-    const updateData = {};
-    if (data.name !== undefined) updateData.name = data.name.trim();
-    if (data.price !== undefined) updateData.price = data.price.toString();
-    if (data.color !== undefined) updateData.color = data.color?.trim() || null;
-    if (data.fabric !== undefined) updateData.fabric = data.fabric?.trim() || null;
-    if (data.specialFeatures !== undefined) updateData.specialFeatures = data.specialFeatures?.trim() || null;
-    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
-    
-    if (Object.keys(updateData).length === 0) {
-      return this.findById(id);
-    }
-    
-    const result = await db.update(items)
-      .set(updateData)
-      .where(eq(items.id, numericId))
-      .returning();
-    
-    if (result.length === 0) return null;
-    
-    return transformItem(result[0]);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isNaN(numericId)) return null;
+      
+      const updateData = {};
+      if (data.name !== undefined) updateData.name = data.name.trim();
+      if (data.price !== undefined) updateData.price = data.price.toString();
+      if (data.color !== undefined) updateData.color = data.color?.trim() || null;
+      if (data.fabric !== undefined) updateData.fabric = data.fabric?.trim() || null;
+      if (data.specialFeatures !== undefined) updateData.specialFeatures = data.specialFeatures?.trim() || null;
+      if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
+      
+      if (Object.keys(updateData).length === 0) {
+        return this.findById(id);
+      }
+      
+      const result = await db.update(items)
+        .set(updateData)
+        .where(eq(items.id, numericId))
+        .returning();
+      
+      if (result.length === 0) return null;
+      
+      return transformItem(result[0]);
+    }, { operationName: 'Item.findByIdAndUpdate' });
   },
 
   async findByIdAndDelete(id) {
