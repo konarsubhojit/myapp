@@ -109,10 +109,7 @@ function filterOrdersByStatus(orders, statusFilter) {
     return orders;
   }
   
-  return orders.filter(order => {
-    const status = order.status;
-    return status === 'completed' || status === null || status === undefined;
-  });
+  return orders.filter(order => order.status === 'completed');
 }
 
 /**

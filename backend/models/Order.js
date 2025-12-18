@@ -409,26 +409,28 @@ const Order = {
   },
 
   async findByIdAndUpdate(id, data) {
-    const db = getDatabase();
-    const numericId = Number.parseInt(id, 10);
-    if (Number.isNaN(numericId)) return null;
-    
-    const existingOrder = await db.select().from(orders).where(eq(orders.id, numericId));
-    if (existingOrder.length === 0) return null;
-    
-    const updateData = buildOrderUpdateData(data);
-    
-    if (Object.keys(updateData).length > 0) {
-      await db.update(orders)
-        .set(updateData)
-        .where(eq(orders.id, numericId));
-    }
-    
-    if (data.items && Array.isArray(data.items)) {
-      await updateOrderItems(db, numericId, data.items);
-    }
-    
-    return this.findById(numericId);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isNaN(numericId)) return null;
+      
+      const existingOrder = await db.select().from(orders).where(eq(orders.id, numericId));
+      if (existingOrder.length === 0) return null;
+      
+      const updateData = buildOrderUpdateData(data);
+      
+      if (Object.keys(updateData).length > 0) {
+        await db.update(orders)
+          .set(updateData)
+          .where(eq(orders.id, numericId));
+      }
+      
+      if (data.items && Array.isArray(data.items)) {
+        await updateOrderItems(db, numericId, data.items);
+      }
+      
+      return this.findById(numericId);
+    }, { operationName: 'Order.findByIdAndUpdate' });
   }
 };
 

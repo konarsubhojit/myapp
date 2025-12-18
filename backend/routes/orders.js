@@ -343,7 +343,7 @@ router.get('/cursor', cacheMiddleware(60), asyncHandler(async (req, res) => {
   res.json(result);
 }));
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', cacheMiddleware(60), asyncHandler(async (req, res) => {
   const { page, limit } = parsePaginationParams(req.query);
   
   const result = await Order.findPaginated({ page, limit });
