@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 // @ts-ignore
 import Order from '@/lib/models/Order';
 // @ts-ignore
@@ -95,9 +96,9 @@ async function getOrdersHandler(request: NextRequest) {
       nextCursor: result.pagination.nextCursor ? 'present' : 'null'
     });
     
-    // Transform to match frontend expectations: {orders: [], page: {}}
+    // Transform to match frontend expectations: {items: [], page: {}}
     return NextResponse.json({
-      orders: result.orders,
+      items: result.orders,
       page: result.pagination
     }, {
       headers: {
@@ -224,6 +225,10 @@ export async function POST(request: NextRequest) {
     
     // Invalidate order cache after creation
     await invalidateOrderCache();
+    
+    // Revalidate Next.js cache for orders pages
+    revalidatePath('/api/orders');
+    revalidatePath('/orders');
     
     logger.info('Order created', { orderId: newOrder._id, orderIdStr: newOrder.orderId });
     

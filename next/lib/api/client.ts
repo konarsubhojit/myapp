@@ -362,11 +362,16 @@ export async function getPublicFeedbacks(): Promise<Feedback[]> {
 // ==================== ANALYTICS API ====================
 
 export async function getSalesAnalytics(
-  token?: string
+  statusFilter: 'completed' | 'all' = 'completed'
 ): Promise<SalesAnalyticsResponse> {
-  return fetchApi<SalesAnalyticsResponse>('/analytics/sales', {
-    headers: getAuthHeaders(token),
-  });
+  const queryParams = new URLSearchParams();
+  queryParams.append('statusFilter', statusFilter);
+  
+  const query = queryParams.toString();
+  return fetchApi<SalesAnalyticsResponse>(
+    `/analytics/sales${query ? `?${query}` : ''}`,
+    { headers: {} }
+  );
 }
 
 // ==================== HEALTH CHECK ====================
