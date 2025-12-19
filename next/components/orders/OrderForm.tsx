@@ -159,9 +159,26 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
     
     // If changing item selection, reset designId
     if (field === 'itemId' && value !== updated[index].itemId) {
-      updated[index] = { ...updated[index], [field]: value, designId: undefined };
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = {
+        ...updated[index],
+        itemId: value as string,
+        designId: undefined
+      };
+    } else if (field === 'designId') {
+      updated[index] = {
+        ...updated[index],
+        designId: value as number | undefined
+      };
+    } else if (field === 'quantity') {
+      updated[index] = {
+        ...updated[index],
+        quantity: value as number | ''
+      };
+    } else if (field === 'customizationRequest') {
+      updated[index] = {
+        ...updated[index],
+        customizationRequest: value as string
+      };
     }
     
     setOrderItems(updated);

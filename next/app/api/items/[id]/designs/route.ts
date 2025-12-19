@@ -37,10 +37,11 @@ async function uploadImage(image: string, itemId: number) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const itemId = parseInt(params.id, 10);
+    const { id } = await params;
+    const itemId = parseInt(id, 10);
     
     if (isNaN(itemId)) {
       return NextResponse.json(
@@ -66,10 +67,11 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const itemId = parseInt(params.id, 10);
+    const { id } = await params;
+    const itemId = parseInt(id, 10);
     
     if (isNaN(itemId)) {
       return NextResponse.json(
