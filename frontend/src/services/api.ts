@@ -195,16 +195,32 @@ function getPagePaginatedMockData(url: string, dummyItems: Item[]): MockDataResu
   } as MockDataResult;
 }
 
-function getSingleItemMockData(options: RequestInit): Record<string, string> | Record<string, never> {
+function getSingleItemMockData(options: RequestInit): Item | Record<string, string> | Record<string, never> {
   const isModifyingRequest = options.method === 'PUT' || options.method === 'DELETE' || options.method === 'POST';
-  return isModifyingRequest ? { message: 'Success' } : {};
+  if (isModifyingRequest) {
+    return { message: 'Success' };
+  }
+  // Return mock item for GET requests
+  return {
+    _id: 1 as ItemId,
+    id: 1 as ItemId,
+    name: 'Guest Mode Item',
+    price: 0,
+    color: '',
+    fabric: '',
+    specialFeatures: '',
+    imageUrl: '',
+    createdAt: new Date().toISOString(),
+    deletedAt: null,
+    designs: []
+  };
 }
 
 function getItemsEndpointMockData(url: string, dummyItems: Item[]): MockDataResult {
   return getCursorPaginatedMockData(dummyItems);
 }
 
-function getMockDataForGuestMode(url: string, options: RequestInit): MockDataResult | Item[] | Order[] | Feedback[] | Record<string, string> | Record<string, never> {
+function getMockDataForGuestMode(url: string, options: RequestInit): MockDataResult | Item[] | Order[] | Feedback[] | Item | Record<string, string> | Record<string, never> {
   const dummyItems = generateDummyItems();
   
   const isCursorPaginated = url.includes('/items') && (url.includes('?cursor=') || url.includes('&cursor=') || url.includes('?limit=') || url.includes('&limit='));

@@ -190,7 +190,6 @@ function MultipleDesignUpload({
                       size="small"
                       color="error"
                       onClick={() => handleRemoveDesign(design.id)}
-                      disabled={designs.length === 1}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

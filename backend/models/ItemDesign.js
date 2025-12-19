@@ -140,7 +140,7 @@ const ItemDesign = {
       if (data.designName !== undefined) updateData.designName = data.designName.trim();
 
       if (Object.keys(updateData).length === 0) {
-        return this.findById(id);
+        return ItemDesign.findById(id);
       }
 
       const result = await db.update(itemDesigns)

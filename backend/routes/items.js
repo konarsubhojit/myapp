@@ -412,6 +412,11 @@ router.post('/:id/designs', asyncHandler(async (req, res) => {
     throw badRequestError(uploadError.message);
   }
   
+  // If this design is marked as primary, unset primary flag on all other designs first
+  if (isPrimary === true) {
+    await ItemDesign.updatePrimary(itemId, -1); // This will set all to false
+  }
+  
   const newDesign = await ItemDesign.create({
     itemId: Number.parseInt(itemId, 10),
     designName: designName.trim(),

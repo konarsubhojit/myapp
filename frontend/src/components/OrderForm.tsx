@@ -158,6 +158,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
   const handleItemChange = useCallback((index: number, field: keyof OrderFormItem, value: string | number | '' | null) => {
     const updated = [...orderItems];
     updated[index] = { ...updated[index], [field]: value };
+    setOrderItems(updated);
     
     if (field === 'itemId' && value) {
       const itemId = typeof value === 'string' ? parseInt(value, 10) : value;
@@ -181,9 +182,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
           });
       }
     }
-    
-    setOrderItems(updated);
-  }, [orderItems, itemDesigns, loadingDesigns]);
+  }, [itemDesigns, loadingDesigns]);
 
   // PERFORMANCE OPTIMIZATION: Memoize total calculation to avoid recomputation on every render
   const totalPrice = useMemo(() => {
