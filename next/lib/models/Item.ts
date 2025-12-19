@@ -35,24 +35,24 @@ function buildSearchCondition(search: any) {
  */
 function parseCursor(cursor) {
   if (!cursor) return null;
-  
+
   // Type check to prevent parameter tampering
   if (typeof cursor !== 'string') return null;
-  
+
   // Find the last colon to split timestamp from id
   const lastColonIndex = cursor.lastIndexOf(':');
   if (lastColonIndex === -1) return null;
-  
+
   const timestampStr = cursor.substring(0, lastColonIndex);
   const idStr = cursor.substring(lastColonIndex + 1);
-  
+
   const timestamp = new Date(timestampStr);
   const id = Number.parseInt(idStr, 10);
-  
+
   if (Number.isNaN(timestamp.getTime()) || Number.isNaN(id)) {
     return null;
   }
-  
+
   return { timestamp, id };
 }
 
@@ -90,10 +90,10 @@ const Item = {
       const db = getDatabase();
       const numericId = Number.parseInt(id, 10);
       if (Number.isNaN(numericId)) return null;
-      
+
       const result = await db.select().from(items).where(eq(items.id, numericId));
       if (result.length === 0) return null;
-      
+
       return transformItem(result[0]);
     }, { operationName: 'Item.findById' });
   },
@@ -108,81 +108,85 @@ const Item = {
       if (!ids || ids.length === 0) {
         return new Map();
       }
-      
+
       const db = getDatabase();
       const numericIds = ids
         .map(id => Number.parseInt(id, 10))
         .filter(id => !Number.isNaN(id));
-      
+
       if (numericIds.length === 0) {
         return new Map();
       }
-      
+
       const result = await db.select()
         .from(items)
         .where(inArray(items.id, numericIds));
-      
+
       const itemMap = new Map();
       for (const item of result) {
         itemMap.set(item.id, transformItem(item));
       }
-      
+
       return itemMap;
     }, { operationName: 'Item.findByIds' });
   },
 
   async create(data) {
-    const db = getDatabase();
-    const result = await db.insert(items).values({
-      name: data.name.trim(),
-      price: data.price.toString(),
-      color: data.color?.trim() || null,
-      fabric: data.fabric?.trim() || null,
-      specialFeatures: data.specialFeatures?.trim() || null,
-      imageUrl: data.imageUrl || null
-    }).returning();
-    
-    return transformItem(result[0]);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const result = await db.insert(items).values({
+        name: data.name.trim(),
+        price: data.price.toString(),
+        color: data.color?.trim() || null,
+        fabric: data.fabric?.trim() || null,
+        specialFeatures: data.specialFeatures?.trim() || null,
+        imageUrl: data.imageUrl || null
+      }).returning();
+
+      return transformItem(result[0]);
+    }, { operationName: 'Item.create' });
   },
 
   async findByIdAndUpdate(id, data) {
-    const db = getDatabase();
-    const numericId = Number.parseInt(id, 10);
-    if (Number.isNaN(numericId)) return null;
-    
-    const updateData = {};
-    if (data.name !== undefined) updateData.name = data.name.trim();
-    if (data.price !== undefined) updateData.price = data.price.toString();
-    if (data.color !== undefined) updateData.color = data.color?.trim() || null;
-    if (data.fabric !== undefined) updateData.fabric = data.fabric?.trim() || null;
-    if (data.specialFeatures !== undefined) updateData.specialFeatures = data.specialFeatures?.trim() || null;
-    if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
-    
-    if (Object.keys(updateData).length === 0) {
-      return this.findById(id);
-    }
-    
-    const result = await db.update(items)
-      .set(updateData)
-      .where(eq(items.id, numericId))
-      .returning();
-    
-    if (result.length === 0) return null;
-    
-    return transformItem(result[0]);
+    return executeWithRetry(async () => {
+      const db = getDatabase();
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isNaN(numericId)) return null;
+
+      const updateData = {};
+      if (data.name !== undefined) updateData.name = data.name.trim();
+      if (data.price !== undefined) updateData.price = data.price.toString();
+      if (data.color !== undefined) updateData.color = data.color?.trim() || null;
+      if (data.fabric !== undefined) updateData.fabric = data.fabric?.trim() || null;
+      if (data.specialFeatures !== undefined) updateData.specialFeatures = data.specialFeatures?.trim() || null;
+      if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
+
+      if (Object.keys(updateData).length === 0) {
+        return this.findById(id);
+      }
+
+      const result = await db.update(items)
+        .set(updateData)
+        .where(eq(items.id, numericId))
+        .returning();
+
+      if (result.length === 0) return null;
+
+      return transformItem(result[0]);
+    }, { operationName: 'Item.findByIdAndUpdate' });
   },
 
   async findByIdAndDelete(id) {
     const db = getDatabase();
     const numericId = Number.parseInt(id, 10);
     if (Number.isNaN(numericId)) return null;
-    
+
     const result = await db.update(items)
       .set({ deletedAt: new Date() })
       .where(eq(items.id, numericId))
       .returning();
     if (result.length === 0) return null;
-    
+
     return transformItem(result[0]);
   },
 
@@ -198,13 +202,13 @@ const Item = {
     const db = getDatabase();
     const numericId = Number.parseInt(id, 10);
     if (Number.isNaN(numericId)) return null;
-    
+
     const result = await db.update(items)
       .set({ deletedAt: null })
       .where(eq(items.id, numericId))
       .returning();
     if (result.length === 0) return null;
-    
+
     return transformItem(result[0]);
   },
 
@@ -212,24 +216,24 @@ const Item = {
     return executeWithRetry(async () => {
       const db = getDatabase();
       const offset = (page - 1) * limit;
-      
+
       const searchCondition = buildSearchCondition(search);
       const whereCondition = searchCondition 
         ? and(isNull(items.deletedAt), searchCondition)
         : isNull(items.deletedAt);
-      
+
       const countResult = await db.select({ count: sql`count(*)` })
         .from(items)
         .where(whereCondition);
       const total = Number.parseInt(countResult[0].count, 10);
-      
+
       const result = await db.select()
         .from(items)
         .where(whereCondition)
         .orderBy(desc(items.createdAt))
         .limit(limit)
         .offset(offset);
-      
+
       return {
         items: result.map(transformItem),
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
@@ -241,24 +245,24 @@ const Item = {
     return executeWithRetry(async () => {
       const db = getDatabase();
       const offset = (page - 1) * limit;
-      
+
       const searchCondition = buildSearchCondition(search);
       const whereCondition = searchCondition 
         ? and(isNotNull(items.deletedAt), searchCondition)
         : isNotNull(items.deletedAt);
-      
+
       const countResult = await db.select({ count: sql`count(*)` })
         .from(items)
         .where(whereCondition);
       const total = Number.parseInt(countResult[0].count, 10);
-      
+
       const result = await db.select()
         .from(items)
         .where(whereCondition)
         .orderBy(desc(items.deletedAt))
         .limit(limit)
         .offset(offset);
-      
+
       return {
         items: result.map(transformItem),
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
@@ -278,7 +282,7 @@ const Item = {
   async findCursor({ limit = 10, cursor = null, search = '' }) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      
+
       // Validate and parse cursor
       let cursorData = null;
       if (cursor) {
@@ -287,16 +291,16 @@ const Item = {
           throw new Error('Invalid cursor format. Expected format: "createdAt:id"');
         }
       }
-      
+
       // Build WHERE conditions
       const conditions = [isNull(items.deletedAt)];
-      
+
       // Add search condition
       const searchCondition = buildSearchCondition(search);
       if (searchCondition) {
         conditions.push(searchCondition);
       }
-      
+
       // Add cursor condition for keyset pagination
       if (cursorData) {
         // For ORDER BY created_at DESC, id DESC:
@@ -311,29 +315,29 @@ const Item = {
           )
         );
       }
-      
+
       const whereCondition = and(...conditions);
-      
+
       // Fetch limit + 1 to determine if there are more items
       const result = await db.select()
         .from(items)
         .where(whereCondition)
         .orderBy(desc(items.createdAt), desc(items.id))
         .limit(limit + 1);
-      
+
       // Determine if there are more items
       const hasMore = result.length > limit;
-      
+
       // Trim to requested limit
       const itemsToReturn = hasMore ? result.slice(0, limit) : result;
-      
+
       // Generate next cursor from last item
       let nextCursor = null;
       if (hasMore && itemsToReturn.length > 0) {
         const lastItem = itemsToReturn[itemsToReturn.length - 1];
         nextCursor = encodeCursor(lastItem);
       }
-      
+
       return {
         items: itemsToReturn.map(transformItem),
         page: {
@@ -357,7 +361,7 @@ const Item = {
   async findDeletedCursor({ limit = 10, cursor = null, search = '' }) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      
+
       // Validate and parse cursor (same format for both active and deleted)
       let cursorData = null;
       if (cursor) {
@@ -366,16 +370,16 @@ const Item = {
           throw new Error('Invalid cursor format. Expected format: "deletedAt:id"');
         }
       }
-      
+
       // Build WHERE conditions
       const conditions = [isNotNull(items.deletedAt)];
-      
+
       // Add search condition
       const searchCondition = buildSearchCondition(search);
       if (searchCondition) {
         conditions.push(searchCondition);
       }
-      
+
       // Add cursor condition for keyset pagination
       if (cursorData) {
         // For ORDER BY deleted_at DESC, id DESC:
@@ -390,29 +394,29 @@ const Item = {
           )
         );
       }
-      
+
       const whereCondition = and(...conditions);
-      
+
       // Fetch limit + 1 to determine if there are more items
       const result = await db.select()
         .from(items)
         .where(whereCondition)
         .orderBy(desc(items.deletedAt), desc(items.id))
         .limit(limit + 1);
-      
+
       // Determine if there are more items
       const hasMore = result.length > limit;
-      
+
       // Trim to requested limit
       const itemsToReturn = hasMore ? result.slice(0, limit) : result;
-      
+
       // Generate next cursor from last item
       let nextCursor = null;
       if (hasMore && itemsToReturn.length > 0) {
         const lastItem = itemsToReturn[itemsToReturn.length - 1];
         nextCursor = encodeDeletedCursor(lastItem);
       }
-      
+
       return {
         items: itemsToReturn.map(transformItem),
         page: {
@@ -428,13 +432,13 @@ const Item = {
     const db = getDatabase();
     const numericId = Number.parseInt(id, 10);
     if (Number.isNaN(numericId)) return null;
-    
+
     const result = await db.update(items)
       .set({ imageUrl: null })
       .where(eq(items.id, numericId))
       .returning();
     if (result.length === 0) return null;
-    
+
     return transformItem(result[0]);
   }
 };
