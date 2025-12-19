@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
@@ -21,7 +21,8 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { useItemDetails, type ItemEditForm } from '@/hooks/useItemDetails';
 import { useImageProcessing } from '@/hooks/useImageProcessing';
 import ImageUploadField from '../common/ImageUploadField';
-import type { ItemId } from '@/types';
+import DesignManager, { type DesignImage } from './DesignManager';
+import type { ItemId, ItemDesign } from '@/types';
 
 interface ItemDetailsPageProps {
   itemId: ItemId;
@@ -49,6 +50,12 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
     startEditing,
   } = useItemDetails(itemId, showSuccess, showError, onItemUpdated);
 
+  // Design management state
+  const [existingDesigns, setExistingDesigns] = useState<ItemDesign[]>([]);
+  const [newDesigns, setNewDesigns] = useState<DesignImage[]>([]);
+  const [designsLoading, setDesignsLoading] = useState(false);
+  const [designProcessing, setDesignProcessing] = useState(false);
+
   // Use image processing hook for edit form
   const {
     image: editImage,
@@ -60,6 +67,32 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
     handleImageChange: handleEditImageChangeRaw,
     clearImage: clearEditImage,
   } = useImageProcessing(showSuccess);
+
+  // Fetch existing designs when item loads or when entering edit mode
+  useEffect(() => {
+    const fetchDesigns = async () => {
+      if (!item?._id) return;
+      
+      setDesignsLoading(true);
+      try {
+        const response = await fetch(`/api/items/${item._id}/designs`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch designs');
+        }
+        const designs = await response.json();
+        setExistingDesigns(designs);
+      } catch (err) {
+        console.error('Error fetching designs:', err);
+        showError('Failed to load design variants');
+      } finally {
+        setDesignsLoading(false);
+      }
+    };
+
+    if (item) {
+      fetchDesigns();
+    }
+  }, [item, showError]);
 
   const handleEditImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -78,11 +111,97 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
     }
   };
 
+  const handleDesignDelete = async (designId: number) => {
+    try {
+      const response = await fetch(`/api/items/${itemId}/designs/${designId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete design');
+      }
+      
+      setExistingDesigns(prev => prev.filter(d => d.id !== designId));
+      showSuccess('Design deleted successfully');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete design');
+    }
+  };
+
+  const handleDesignPrimary = async (designId: number) => {
+    try {
+      const response = await fetch(`/api/items/${itemId}/designs/${designId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPrimary: true }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to set primary design');
+      }
+      
+      setExistingDesigns(prev => prev.map(d => ({
+        ...d,
+        isPrimary: d.id === designId
+      })));
+      showSuccess('Primary design updated');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update primary design');
+    }
+  };
+
   const handleSaveClick = async () => {
-    await handleSave(editImage);
-    // Clear the new image state after save
-    setEditImage('');
-    setNewImagePreview('');
+    try {
+      // Save the item changes first
+      await handleSave(editImage);
+      
+      // Upload new designs if any (in parallel for better performance)
+      if (newDesigns.length > 0 && item?._id) {
+        const uploadPromises = newDesigns.map(design =>
+          fetch(`/api/items/${item._id}/designs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              designName: design.name,
+              image: design.imageData,
+              isPrimary: design.isPrimary,
+              displayOrder: 0
+            })
+          }).then(async response => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ 
+                message: `Upload failed with HTTP ${response.status}` 
+              }));
+              throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
+            }
+            return response.json();
+          })
+        );
+
+        await Promise.all(uploadPromises);
+        
+        // Refresh designs after upload with error handling
+        try {
+          const response = await fetch(`/api/items/${item._id}/designs`);
+          if (response.ok) {
+            const designs = await response.json();
+            setExistingDesigns(designs);
+          }
+        } catch (err) {
+          console.error('Failed to refresh designs:', err);
+          // Don't show error to user as the designs were uploaded successfully
+        }
+        
+        showSuccess(`Item updated with ${newDesigns.length} new design${newDesigns.length > 1 ? 's' : ''}`);
+      }
+      
+      // Clear the new design and image state after save
+      setNewDesigns([]);
+      setEditImage('');
+      setNewImagePreview('');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to save changes');
+    }
   };
 
   if (loading) {
@@ -244,6 +363,29 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
               </Stack>
             </Box>
 
+            <Divider />
+
+            {/* Design Variants */}
+            {item && (
+              <Box>
+                {designsLoading ? (
+                  <Box display="flex" justifyContent="center" py={2}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : (
+                  <DesignManager
+                    itemId={item._id}
+                    existingDesigns={existingDesigns}
+                    newDesigns={newDesigns}
+                    onNewDesignsChange={setNewDesigns}
+                    onExistingDesignDelete={handleDesignDelete}
+                    onExistingDesignPrimary={handleDesignPrimary}
+                    onProcessing={setDesignProcessing}
+                  />
+                )}
+              </Box>
+            )}
+
             {editImageError && (
               <Alert severity="error">
                 {editImageError}
@@ -259,7 +401,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
             <Button 
               variant="contained"
               onClick={handleSaveClick}
-              disabled={saving || editImageProcessing}
+              disabled={saving || editImageProcessing || designProcessing}
               startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
             >
               {saving ? 'Saving...' : 'Save Changes'}

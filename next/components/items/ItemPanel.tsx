@@ -39,7 +39,8 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import ImageUploadField from '../common/ImageUploadField';
 import ItemCard from '../common/ItemCard';
 import ItemCardSkeleton from '../common/ItemCardSkeleton';
-import type { Item, ItemId } from '@/types';
+import DesignManager, { type DesignImage } from './DesignManager';
+import type { Item, ItemId, ItemDesign } from '@/types';
 
 interface ItemPanelProps {
   onItemsChange: () => void;
@@ -147,6 +148,12 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   // Edit mode state
   const [editingItem, setEditingItem] = useState<EditingItemState | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  
+  // Design management state for edit modal
+  const [existingDesigns, setExistingDesigns] = useState<ItemDesign[]>([]);
+  const [newDesigns, setNewDesigns] = useState<DesignImage[]>([]);
+  const [designsLoading, setDesignsLoading] = useState(false);
+  const [designProcessing, setDesignProcessing] = useState(false);
   
   // Use image processing hook for edit form
   const {
@@ -295,7 +302,28 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     });
     setEditImage('');
     setEditImagePreview(item.imageUrl || '');
+    setNewDesigns([]);
     setShowEditModal(true);
+    
+    // Fetch existing designs for this item
+    const fetchDesigns = async () => {
+      setDesignsLoading(true);
+      try {
+        const response = await fetch(`/api/items/${item._id}/designs`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch designs');
+        }
+        const designs = await response.json();
+        setExistingDesigns(designs);
+      } catch (err) {
+        console.error('Error fetching designs:', err);
+        showError('Failed to load design variants');
+      } finally {
+        setDesignsLoading(false);
+      }
+    };
+    
+    fetchDesigns();
   };
 
   // Copy item - pre-fill the create form with existing item data
@@ -323,6 +351,49 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
     }) : null);
     const fileInput = document.getElementById('editItemImage') as HTMLInputElement | null;
     if (fileInput) fileInput.value = '';
+  };
+
+  const handleDesignDelete = async (designId: number) => {
+    if (!editingItem) return;
+    
+    try {
+      const response = await fetch(`/api/items/${editingItem._id}/designs/${designId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete design');
+      }
+      
+      setExistingDesigns(prev => prev.filter(d => d.id !== designId));
+      showSuccess('Design deleted successfully');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to delete design');
+    }
+  };
+
+  const handleDesignPrimary = async (designId: number) => {
+    if (!editingItem) return;
+    
+    try {
+      const response = await fetch(`/api/items/${editingItem._id}/designs/${designId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPrimary: true }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to set primary design');
+      }
+      
+      setExistingDesigns(prev => prev.map(d => ({
+        ...d,
+        isPrimary: d.id === designId
+      })));
+      showSuccess('Primary design updated');
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to update primary design');
+    }
   };
 
   const handleEditSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -366,11 +437,43 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
 
       const itemName = editingItem.editName.trim();
       await updateItem(editingItem._id, updateData);
+      
+      // Upload new designs if any (in parallel for better performance)
+      if (newDesigns.length > 0) {
+        const uploadPromises = newDesigns.map(design =>
+          fetch(`/api/items/${editingItem._id}/designs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              designName: design.name,
+              image: design.imageData,
+              isPrimary: design.isPrimary,
+              displayOrder: 0
+            })
+          }).then(async response => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ 
+                message: `Upload failed with HTTP ${response.status}` 
+              }));
+              throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
+            }
+            return response.json();
+          })
+        );
+
+        await Promise.all(uploadPromises);
+        
+        showSuccess(`Item "${itemName}" updated with ${newDesigns.length} new design${newDesigns.length > 1 ? 's' : ''}`);
+      } else {
+        showSuccess(`Item "${itemName}" has been updated.`);
+      }
+      
       setShowEditModal(false);
       setEditingItem(null);
+      setNewDesigns([]);
+      setExistingDesigns([]);
       onItemsChange();
       fetchActiveItems();
-      showSuccess(`Item "${itemName}" has been updated.`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update item';
       setError(errorMessage);
@@ -383,6 +486,8 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   const closeEditModal = () => {
     setShowEditModal(false);
     setEditingItem(null);
+    setNewDesigns([]);
+    setExistingDesigns([]);
     setError('');
   };
 
@@ -810,6 +915,27 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                     onClearImage={clearEditImageWrapper}
                   />
                 </Box>
+
+                {/* Design Variants */}
+                {editingItem && (
+                  <Box>
+                    {designsLoading ? (
+                      <Box display="flex" justifyContent="center" py={2}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    ) : (
+                      <DesignManager
+                        itemId={editingItem._id}
+                        existingDesigns={existingDesigns}
+                        newDesigns={newDesigns}
+                        onNewDesignsChange={setNewDesigns}
+                        onExistingDesignDelete={handleDesignDelete}
+                        onExistingDesignPrimary={handleDesignPrimary}
+                        onProcessing={setDesignProcessing}
+                      />
+                    )}
+                  </Box>
+                )}
                 
                 {error && (
                   <Alert severity="error">
@@ -828,7 +954,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
             type="submit"
             form="edit-item-form"
             variant="contained"
-            disabled={loading}
+            disabled={loading || designProcessing}
             startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
             {loading ? 'Saving...' : 'Save Changes'}

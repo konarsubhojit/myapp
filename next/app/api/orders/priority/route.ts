@@ -25,11 +25,8 @@ async function getPriorityOrdersHandler(request: NextRequest) {
       orderCount: ordersArray.length
     });
     
-    return NextResponse.json(ordersArray, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
-      }
-    });
+    // No Cache-Control header - rely on Redis caching with version control
+    return NextResponse.json(ordersArray);
   } catch (error: any) {
     logger.error('GET /api/orders/priority error', error);
     return NextResponse.json(

@@ -41,7 +41,7 @@ async function uploadImage(image: string) {
 
 /**
  * GET /api/items - Get all items with offset pagination
- * Wrapped with Redis caching (24 hours TTL)
+ * Uses Redis caching with version control for proper invalidation
  */
 async function getItemsHandler(request: NextRequest) {
   try {
@@ -71,11 +71,8 @@ async function getItemsHandler(request: NextRequest) {
       total: result.pagination.total
     });
     
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200'
-      }
-    });
+    // No Cache-Control header - rely on Redis caching with version control
+    return NextResponse.json(result);
   } catch (error: any) {
     logger.error('GET /api/items error', error);
     return NextResponse.json(
@@ -85,16 +82,39 @@ async function getItemsHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with caching (24 hours TTL)
-export const GET = withCache(getItemsHandler, 86400);
+// Export GET handler with Redis caching (5 minutes TTL, invalidated on updates)
+export const GET = withCache(getItemsHandler, 300);
 
 /**
  * POST /api/items - Create a new item
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, price, color, fabric, specialFeatures, image } = body;
+    // Check Content-Type to determine if it's FormData or JSON
+    const contentType = request.headers.get('content-type') || '';
+    let name: string;
+    let price: string | number;
+    let color: string | undefined;
+    let fabric: string | undefined;
+    let specialFeatures: string | undefined;
+    let image: string | undefined;
+
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData
+      const formData = await request.formData();
+      // For required fields, let null/empty values be caught by validation later
+      name = (formData.get('name') as string | null) ?? '';
+      price = (formData.get('price') as string | null) ?? '';
+      // For optional fields, convert null to undefined
+      color = (formData.get('color') as string | null) || undefined;
+      fabric = (formData.get('fabric') as string | null) || undefined;
+      specialFeatures = (formData.get('specialFeatures') as string | null) || undefined;
+      image = (formData.get('image') as string | null) || undefined;
+    } else {
+      // Handle JSON
+      const body = await request.json();
+      ({ name, price, color, fabric, specialFeatures, image } = body);
+    }
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
@@ -103,7 +123,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedPrice = Number.parseFloat(price);
+    const parsedPrice = Number.parseFloat(String(price));
     if (price === undefined || price === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json(
         { message: 'Valid price is required' },
