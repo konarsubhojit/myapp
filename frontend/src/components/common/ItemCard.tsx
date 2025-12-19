@@ -63,7 +63,6 @@ function ItemCard({
           {formatPrice(item.price)}
         </Typography>
         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-          {item.color && <Chip label={item.color} size="small" variant="outlined" />}
           {item.fabric && <Chip label={item.fabric} size="small" variant="outlined" />}
         </Stack>
         {item.specialFeatures && (

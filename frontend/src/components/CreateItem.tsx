@@ -34,14 +34,12 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
   const {
     name,
     price,
-    color,
     fabric,
     specialFeatures,
     copiedFrom,
     error: formError,
     setName,
     setPrice,
-    setColor,
     setFabric,
     setSpecialFeatures,
     setError: setFormError,
@@ -166,7 +164,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
           }
         >
           <strong>📋 Creating variant of &quot;{copiedFrom}&quot;</strong> —
-          Modify the color, fabric, or features to create a new item variant.
+          Modify the fabric or features to create a new item variant.
         </Alert>
       </Collapse>
 
