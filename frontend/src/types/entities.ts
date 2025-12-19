@@ -18,7 +18,7 @@ export type DeliveryStatus = 'not_shipped' | 'shipped' | 'in_transit' | 'out_for
 // Transformed types from API
 export interface ItemDesign {
   id: number;
-  _id: number;
+  _id: number; // Alias for id - maintained for consistency with other entities (Item, Order, etc.) where backend adds _id
   itemId: number;
   designName: string;
   imageUrl: string;

@@ -254,7 +254,7 @@ describe('OrderForm', () => {
       });
     });
 
-    it.skip('should successfully create order with valid data', async () => {
+    it('should successfully create order with valid data', async () => {
       const user = userEvent.setup();
       const mockOrder = {
         _id: 'order1',

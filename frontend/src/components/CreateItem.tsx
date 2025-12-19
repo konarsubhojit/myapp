@@ -98,6 +98,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
       const newItem = await createItem(formData)
       
       // Upload designs if any
+      const designErrors: string[] = []
       if (designs.length > 0) {
         for (const design of designs) {
           try {
@@ -109,6 +110,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
             })
           } catch (designError) {
             console.error('Failed to upload design:', designError)
+            designErrors.push(design.name)
           }
         }
       }
@@ -120,7 +122,12 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
       const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
       onItemCreated()
-      showSuccess(`Item "${itemName}" has been added successfully.`)
+      
+      if (designErrors.length > 0) {
+        showError(`Item "${itemName}" created, but ${designErrors.length} design(s) failed to upload: ${designErrors.join(', ')}`)
+      } else {
+        showSuccess(`Item "${itemName}" has been added successfully.`)
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create item'
       setError(errorMessage)

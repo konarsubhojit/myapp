@@ -336,13 +336,23 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const includeDesigns = req.query.includeDesigns === 'true';
   
   const redisClient = getRedisIfReady();
-  const cacheKey = includeDesigns ? `item:${itemId}:with-designs` : `item:${itemId}`;
+  let cacheKey = null;
   
   if (redisClient) {
     try {
+      // Get cache version for items to ensure invalidation works
+      const versionKey = 'cache:v:items';
+      const versionStr = await redisClient.get(versionKey);
+      const version = versionStr ? Number.parseInt(versionStr, 10) : 1;
+      
+      // Use versioned cache key
+      cacheKey = includeDesigns 
+        ? `v${version}:GET:/api/items/${itemId}?includeDesigns=true`
+        : `v${version}:GET:/api/items/${itemId}`;
+      
       const cached = await redisClient.get(cacheKey);
       if (cached) {
-        logger.debug('Item cache hit', { itemId, includeDesigns });
+        logger.debug('Item cache hit', { itemId, includeDesigns, version });
         return res.json(JSON.parse(cached));
       }
     } catch (error) {
@@ -362,7 +372,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
     response = { ...item, designs };
   }
   
-  if (redisClient) {
+  if (redisClient && cacheKey) {
     try {
       await redisClient.setEx(cacheKey, 3600, JSON.stringify(response));
       logger.debug('Item cached', { itemId, includeDesigns });
@@ -412,18 +422,18 @@ router.post('/:id/designs', asyncHandler(async (req, res) => {
     throw badRequestError(uploadError.message);
   }
   
-  // If this design is marked as primary, unset primary flag on all other designs first
-  if (isPrimary === true) {
-    await ItemDesign.updatePrimary(itemId, -1); // This will set all to false
-  }
-  
   const newDesign = await ItemDesign.create({
     itemId: Number.parseInt(itemId, 10),
     designName: designName.trim(),
     imageUrl,
-    isPrimary: isPrimary || false,
+    isPrimary: false,
     displayOrder: displayOrder || 0
   });
+  
+  // If this design should be primary, set it after creation
+  if (isPrimary === true) {
+    await ItemDesign.updatePrimary(itemId, newDesign._id);
+  }
   
   await invalidateItemCache();
   

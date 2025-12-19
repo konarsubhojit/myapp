@@ -1,4 +1,4 @@
-import { useEffect, type ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -21,12 +21,21 @@ function DesignPicker({
   selectedDesignId, 
   onDesignSelect 
 }: DesignPickerProps): ReactElement {
+  // Use ref to track if we've auto-selected to prevent infinite loops
+  const hasAutoSelected = useRef(false);
+  
   useEffect(() => {
-    if (!selectedDesignId && designs.length > 0) {
+    if (!selectedDesignId && designs.length > 0 && !hasAutoSelected.current) {
       const primaryDesign = designs.find(d => d.isPrimary) || designs[0];
       onDesignSelect(primaryDesign.id);
+      hasAutoSelected.current = true;
     }
-  }, [designs, selectedDesignId, onDesignSelect]);
+    
+    // Reset auto-selection flag when designs change
+    if (designs.length === 0) {
+      hasAutoSelected.current = false;
+    }
+  }, [designs, selectedDesignId]); // Removed onDesignSelect from dependencies
 
   if (designs.length === 0) {
     return (

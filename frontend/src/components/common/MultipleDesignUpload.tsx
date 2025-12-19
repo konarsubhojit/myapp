@@ -14,6 +14,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import imageCompression from 'browser-image-compression';
+import { useNotification } from '../../contexts/NotificationContext';
 
 export interface DesignImage {
   id: string;
@@ -28,7 +29,7 @@ interface MultipleDesignUploadProps {
   onProcessing?: (processing: boolean) => void;
 }
 
-const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 function MultipleDesignUpload({ 
@@ -37,13 +38,14 @@ function MultipleDesignUpload({
   onProcessing 
 }: MultipleDesignUploadProps): ReactElement {
   const [processing, setProcessing] = useState(false);
+  const { showError } = useNotification();
 
   const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      alert(`File size should be less than ${MAX_FILE_SIZE_MB}MB`);
+      showError(`File size should be less than ${MAX_FILE_SIZE_MB}MB`);
       return;
     }
 
@@ -52,11 +54,14 @@ function MultipleDesignUpload({
 
     try {
       const options = {
-        maxSizeMB: 1,
+        maxSizeMB: 10,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
       };
-      const compressedFile = await imageCompression(file, options);
+      // Only compress if file is larger than 10MB
+      const compressedFile = file.size > MAX_FILE_SIZE 
+        ? await imageCompression(file, options)
+        : file;
       const base64 = await imageCompression.getDataUrlFromFile(compressedFile);
 
       const newDesign: DesignImage = {
@@ -69,7 +74,7 @@ function MultipleDesignUpload({
       onDesignsChange([...designs, newDesign]);
     } catch (error) {
       console.error('Image compression failed:', error);
-      alert('Failed to process image. Please try again.');
+      showError('Failed to process image. Please try again.');
     } finally {
       setProcessing(false);
       if (onProcessing) onProcessing(false);

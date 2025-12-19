@@ -156,9 +156,11 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
   }, [orderItems]);
 
   const handleItemChange = useCallback((index: number, field: keyof OrderFormItem, value: string | number | '' | null) => {
-    const updated = [...orderItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setOrderItems(updated);
+    setOrderItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
     
     if (field === 'itemId' && value) {
       const itemId = typeof value === 'string' ? parseInt(value, 10) : value;
