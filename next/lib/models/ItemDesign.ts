@@ -1,10 +1,27 @@
-// @ts-nocheck
 import { eq, desc, and } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db/connection';
 import { itemDesigns } from '@/lib/db/schema';
 import { executeWithRetry } from '@/lib/utils/dbRetry';
 
-function transformItemDesign(design: any) {
+interface ItemDesignData {
+  itemId: number;
+  designName: string;
+  imageUrl: string;
+  isPrimary?: boolean;
+  displayOrder?: number;
+}
+
+interface ItemDesignRow {
+  id: number;
+  itemId: number;
+  designName: string;
+  imageUrl: string;
+  isPrimary: boolean;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+function transformItemDesign(design: ItemDesignRow) {
   return {
     ...design,
     _id: design.id,
@@ -16,8 +33,8 @@ const ItemDesign = {
   async findByItemId(itemId: number) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      const numericId = Number.parseInt(itemId, 10);
-      if (Number.isNaN(numericId)) return [];
+      const numericId = parseInt(String(itemId), 10);
+      if (isNaN(numericId)) return [];
 
       const result = await db.select().from(itemDesigns)
         .where(eq(itemDesigns.itemId, numericId))
@@ -27,7 +44,7 @@ const ItemDesign = {
     }, { operationName: 'ItemDesign.findByItemId' });
   },
 
-  async create(data: any) {
+  async create(data: ItemDesignData) {
     return executeWithRetry(async () => {
       const db = getDatabase();
       
@@ -46,8 +63,8 @@ const ItemDesign = {
   async delete(id: number) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      const numericId = Number.parseInt(id, 10);
-      if (Number.isNaN(numericId)) return null;
+      const numericId = parseInt(String(id), 10);
+      if (isNaN(numericId)) return null;
 
       const result = await db.delete(itemDesigns)
         .where(eq(itemDesigns.id, numericId))
@@ -61,17 +78,15 @@ const ItemDesign = {
   async updatePrimary(itemId: number, designId: number) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      const numericItemId = Number.parseInt(itemId, 10);
-      const numericDesignId = Number.parseInt(designId, 10);
+      const numericItemId = parseInt(String(itemId), 10);
+      const numericDesignId = parseInt(String(designId), 10);
       
-      if (Number.isNaN(numericItemId) || Number.isNaN(numericDesignId)) return null;
+      if (isNaN(numericItemId) || isNaN(numericDesignId)) return null;
 
-      // First, set all designs for this item to non-primary
       await db.update(itemDesigns)
         .set({ isPrimary: false })
         .where(eq(itemDesigns.itemId, numericItemId));
 
-      // Then set the specified design as primary
       const result = await db.update(itemDesigns)
         .set({ isPrimary: true })
         .where(and(
@@ -88,8 +103,8 @@ const ItemDesign = {
   async updateDisplayOrder(id: number, displayOrder: number) {
     return executeWithRetry(async () => {
       const db = getDatabase();
-      const numericId = Number.parseInt(id, 10);
-      if (Number.isNaN(numericId)) return null;
+      const numericId = parseInt(String(id), 10);
+      if (isNaN(numericId)) return null;
 
       const result = await db.update(itemDesigns)
         .set({ displayOrder })

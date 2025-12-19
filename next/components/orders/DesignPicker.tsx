@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactElement } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -23,6 +23,14 @@ function DesignPicker({
   selectedDesignId, 
   onDesignSelect 
 }: DesignPickerProps): ReactElement {
+  // Auto-select primary design if no selection made
+  useEffect(() => {
+    if (!selectedDesignId && designs.length > 0) {
+      const primaryDesign = designs.find(d => d.isPrimary) || designs[0];
+      onDesignSelect(primaryDesign.id);
+    }
+  }, [designs, selectedDesignId, onDesignSelect]);
+
   if (designs.length === 0) {
     return (
       <Box 
@@ -40,12 +48,6 @@ function DesignPicker({
         </Typography>
       </Box>
     );
-  }
-
-  // Auto-select primary design if no selection made
-  if (!selectedDesignId && designs.length > 0) {
-    const primaryDesign = designs.find(d => d.isPrimary) || designs[0];
-    setTimeout(() => onDesignSelect(primaryDesign.id), 0);
   }
 
   return (
