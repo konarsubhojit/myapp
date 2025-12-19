@@ -107,10 +107,10 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       name = formData.get('name') as string;
       price = formData.get('price') as string;
-      color = formData.get('color') as string | undefined;
-      fabric = formData.get('fabric') as string | undefined;
-      specialFeatures = formData.get('specialFeatures') as string | undefined;
-      image = formData.get('image') as string | undefined;
+      color = (formData.get('color') as string | null) || undefined;
+      fabric = (formData.get('fabric') as string | null) || undefined;
+      specialFeatures = (formData.get('specialFeatures') as string | null) || undefined;
+      image = (formData.get('image') as string | null) || undefined;
     } else {
       // Handle JSON
       const body = await request.json();
