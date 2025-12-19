@@ -106,7 +106,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
       // If designs were added, upload them
       if (designs.length > 0 && createdItem._id) {
         for (const design of designs) {
-          await fetch(`/api/items/${createdItem._id}/designs`, {
+          const response = await fetch(`/api/items/${createdItem._id}/designs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -116,6 +116,11 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
               displayOrder: 0
             })
           })
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ message: 'Failed to upload design' }))
+            throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`)
+          }
         }
       }
       

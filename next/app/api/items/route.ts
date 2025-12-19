@@ -93,8 +93,29 @@ export const GET = withCache(getItemsHandler, 86400);
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { name, price, color, fabric, specialFeatures, image } = body;
+    // Check Content-Type to determine if it's FormData or JSON
+    const contentType = request.headers.get('content-type') || '';
+    let name: string;
+    let price: string | number;
+    let color: string | undefined;
+    let fabric: string | undefined;
+    let specialFeatures: string | undefined;
+    let image: string | undefined;
+
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData
+      const formData = await request.formData();
+      name = formData.get('name') as string;
+      price = formData.get('price') as string;
+      color = formData.get('color') as string | undefined;
+      fabric = formData.get('fabric') as string | undefined;
+      specialFeatures = formData.get('specialFeatures') as string | undefined;
+      image = formData.get('image') as string | undefined;
+    } else {
+      // Handle JSON
+      const body = await request.json();
+      ({ name, price, color, fabric, specialFeatures, image } = body);
+    }
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json(
@@ -103,7 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsedPrice = Number.parseFloat(price);
+    const parsedPrice = Number.parseFloat(String(price));
     if (price === undefined || price === null || Number.isNaN(parsedPrice) || parsedPrice < 0) {
       return NextResponse.json(
         { message: 'Valid price is required' },
