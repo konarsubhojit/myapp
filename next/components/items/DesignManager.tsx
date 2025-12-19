@@ -17,6 +17,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import imageCompression from 'browser-image-compression';
+import { useNotification } from '@/contexts/NotificationContext';
 import type { ItemDesign } from '@/types';
 
 export interface DesignImage {
@@ -48,6 +49,7 @@ function DesignManager({
   onExistingDesignPrimary,
   onProcessing 
 }: DesignManagerProps): ReactElement {
+  const { showError } = useNotification();
   const [processing, setProcessing] = useState(false);
   const [deletingDesigns, setDeletingDesigns] = useState<Set<number>>(new Set());
 
@@ -56,7 +58,7 @@ function DesignManager({
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      alert(`File size should be less than ${MAX_FILE_SIZE_MB}MB`);
+      showError(`File size should be less than ${MAX_FILE_SIZE_MB}MB`);
       return;
     }
 
@@ -82,7 +84,7 @@ function DesignManager({
       onNewDesignsChange([...newDesigns, newDesign]);
     } catch (error) {
       console.error('Image compression failed:', error);
-      alert('Failed to process image. Please try again.');
+      showError('Failed to process image. Please try again.');
     } finally {
       setProcessing(false);
       if (onProcessing) onProcessing(false);

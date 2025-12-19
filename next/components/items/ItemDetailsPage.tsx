@@ -155,10 +155,10 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
       // Save the item changes first
       await handleSave(editImage);
       
-      // Upload new designs if any
+      // Upload new designs if any (in parallel for better performance)
       if (newDesigns.length > 0 && item?._id) {
-        for (const design of newDesigns) {
-          const response = await fetch(`/api/items/${item._id}/designs`, {
+        const uploadPromises = newDesigns.map(design =>
+          fetch(`/api/items/${item._id}/designs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -167,21 +167,29 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
               isPrimary: design.isPrimary,
               displayOrder: 0
             })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ 
-              message: `Upload failed with HTTP ${response.status}` 
-            }));
-            throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
-          }
-        }
+          }).then(async response => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ 
+                message: `Upload failed with HTTP ${response.status}` 
+              }));
+              throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
+            }
+            return response.json();
+          })
+        );
+
+        await Promise.all(uploadPromises);
         
-        // Refresh designs after upload
-        const response = await fetch(`/api/items/${item._id}/designs`);
-        if (response.ok) {
-          const designs = await response.json();
-          setExistingDesigns(designs);
+        // Refresh designs after upload with error handling
+        try {
+          const response = await fetch(`/api/items/${item._id}/designs`);
+          if (response.ok) {
+            const designs = await response.json();
+            setExistingDesigns(designs);
+          }
+        } catch (err) {
+          console.error('Failed to refresh designs:', err);
+          // Don't show error to user as the designs were uploaded successfully
         }
         
         showSuccess(`Item updated with ${newDesigns.length} new design${newDesigns.length > 1 ? 's' : ''}`);

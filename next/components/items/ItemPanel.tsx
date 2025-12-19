@@ -438,10 +438,10 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       const itemName = editingItem.editName.trim();
       await updateItem(editingItem._id, updateData);
       
-      // Upload new designs if any
+      // Upload new designs if any (in parallel for better performance)
       if (newDesigns.length > 0) {
-        for (const design of newDesigns) {
-          const response = await fetch(`/api/items/${editingItem._id}/designs`, {
+        const uploadPromises = newDesigns.map(design =>
+          fetch(`/api/items/${editingItem._id}/designs`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -450,15 +450,18 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
               isPrimary: design.isPrimary,
               displayOrder: 0
             })
-          });
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ 
-              message: `Upload failed with HTTP ${response.status}` 
-            }));
-            throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
-          }
-        }
+          }).then(async response => {
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({ 
+                message: `Upload failed with HTTP ${response.status}` 
+              }));
+              throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
+            }
+            return response.json();
+          })
+        );
+
+        await Promise.all(uploadPromises);
         
         showSuccess(`Item "${itemName}" updated with ${newDesigns.length} new design${newDesigns.length > 1 ? 's' : ''}`);
       } else {
