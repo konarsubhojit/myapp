@@ -19,6 +19,19 @@ export const items = pgTable('items', {
   deletedAtIdx: index('items_deleted_at_idx').on(table.deletedAt)
 }));
 
+export const itemDesigns = pgTable('item_designs', {
+  id: serial('id').primaryKey(),
+  itemId: integer('item_id').notNull().references(() => items.id, { onDelete: 'cascade' }),
+  designName: text('design_name').notNull(),
+  imageUrl: text('image_url').notNull(),
+  isPrimary: boolean('is_primary').default(false).notNull(),
+  displayOrder: integer('display_order').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+}, (table) => ({
+  itemIdIdx: index('item_designs_item_id_idx').on(table.itemId),
+  isPrimaryIdx: index('item_designs_is_primary_idx').on(table.isPrimary)
+}));
+
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   orderId: text('order_id').notNull().unique(),
@@ -58,6 +71,7 @@ export const orderItems = pgTable('order_items', {
   id: serial('id').primaryKey(),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
   itemId: integer('item_id').notNull().references(() => items.id),
+  designId: integer('design_id').references(() => itemDesigns.id),
   name: text('name').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
   quantity: integer('quantity').notNull(),
