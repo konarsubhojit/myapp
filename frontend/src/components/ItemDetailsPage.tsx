@@ -21,6 +21,7 @@ import { useImageProcessing } from '../hooks/useImageProcessing';
 import ImageUploadField from './common/ImageUploadField';
 import DesignManager, { type DesignImage } from './items/DesignManager';
 import type { ItemId, ItemDesign } from '../types';
+import { getItemDesigns, deleteItemDesign, updateItemDesign, createItemDesign } from '../services/api';
 
 interface ItemDetailsPageProps {
   itemId: ItemId;
@@ -73,11 +74,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
       
       setDesignsLoading(true);
       try {
-        const response = await fetch(`/api/items/${item._id}/designs`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch designs');
-        }
-        const designs = await response.json();
+        const designs = await getItemDesigns(item._id);
         setExistingDesigns(designs);
       } catch (err) {
         console.error('Error fetching designs:', err);
@@ -111,14 +108,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
 
   const handleDesignDelete = async (designId: number) => {
     try {
-      const response = await fetch(`/api/items/${itemId}/designs/${designId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete design');
-      }
-      
+      await deleteItemDesign(itemId, designId);
       setExistingDesigns(prev => prev.filter(d => d.id !== designId));
       showSuccess('Design deleted successfully');
     } catch (err) {
@@ -128,16 +118,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
 
   const handleDesignPrimary = async (designId: number) => {
     try {
-      const response = await fetch(`/api/items/${itemId}/designs/${designId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPrimary: true }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to set primary design');
-      }
-      
+      await updateItemDesign(itemId, designId, { isPrimary: true });
       setExistingDesigns(prev => prev.map(d => ({
         ...d,
         isPrimary: d.id === designId
@@ -156,23 +137,11 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
       // Upload new designs if any
       if (newDesigns.length > 0 && item?._id) {
         const uploadPromises = newDesigns.map(design =>
-          fetch(`/api/items/${item._id}/designs`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              designName: design.name,
-              image: design.imageData,
-              isPrimary: design.isPrimary,
-              displayOrder: 0
-            })
-          }).then(async response => {
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({ 
-                message: `Upload failed with HTTP ${response.status}` 
-              }));
-              throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`);
-            }
-            return response.json();
+          createItemDesign(item._id, {
+            designName: design.name,
+            image: design.imageData,
+            isPrimary: design.isPrimary,
+            displayOrder: 0
           })
         );
 
@@ -180,11 +149,8 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
         
         // Refresh designs after upload
         try {
-          const response = await fetch(`/api/items/${item._id}/designs`);
-          if (response.ok) {
-            const designs = await response.json();
-            setExistingDesigns(designs);
-          }
+          const designs = await getItemDesigns(item._id);
+          setExistingDesigns(designs);
         } catch (err) {
           console.error('Failed to refresh designs:', err);
         }
