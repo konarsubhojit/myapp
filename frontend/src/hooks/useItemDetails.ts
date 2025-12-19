@@ -8,7 +8,6 @@ import type { Item, ItemId, UpdateItemData } from '../types';
 export interface ItemEditForm {
   name: string;
   price: string;
-  color: string;
   fabric: string;
   specialFeatures: string;
   removeImage: boolean;
@@ -20,7 +19,6 @@ export interface ItemEditForm {
 const createEditFormFromItem = (item: Item): ItemEditForm => ({
   name: item.name || '',
   price: String(item.price || 0),
-  color: item.color || '',
   fabric: item.fabric || '',
   specialFeatures: item.specialFeatures || '',
   removeImage: false,
@@ -82,7 +80,6 @@ export const useItemDetails = (
   const [editForm, setEditForm] = useState<ItemEditForm>({
     name: '',
     price: '',
-    color: '',
     fabric: '',
     specialFeatures: '',
     removeImage: false,
@@ -136,7 +133,6 @@ export const useItemDetails = (
       const updateData: UpdateItemData = {
         name: editForm.name.trim(),
         price: validation.parsedPrice!, // Safe because validation.valid is true
-        color: editForm.color.trim(),
         fabric: editForm.fabric.trim(),
         specialFeatures: editForm.specialFeatures.trim(),
       };

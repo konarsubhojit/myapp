@@ -53,6 +53,19 @@ export const itemDesigns = pgTable('item_designs', {
 
 #### New Components
 
+##### DesignManager (`frontend/src/components/items/DesignManager.tsx`)
+- Manage design variants during item editing
+- Upload new design images with compression
+- Delete existing designs
+- Set primary design
+- Real-time preview of existing and new designs
+- **Features:**
+  - Automatic image compression (max 1MB, max 1920px)
+  - First design automatically set as primary
+  - Delete individual designs
+  - Visual distinction between existing and new designs
+  - Edit design names for new designs
+
 ##### MultipleDesignUpload (`frontend/src/components/common/MultipleDesignUpload.tsx`)
 - Upload multiple design images with compression
 - Name each design variant
@@ -97,7 +110,12 @@ export const itemDesigns = pgTable('item_designs', {
 - Updated item name formatting (fabric only, no color)
 
 ##### ItemDetailsPage (`frontend/src/components/ItemDetailsPage.tsx`)
-- Removed color display from item details
+- Removed color field from edit form and display
+- Added DesignManager component for managing designs
+- Shows existing designs in view mode
+- Uploads new designs when saving item
+- Handles design deletion and primary design setting
+- Displays design variants with thumbnails in view mode
 
 ### 3. Type System Updates
 
@@ -134,18 +152,21 @@ New functions:
 
 ### 5. Color Field Removal
 
-As per requirements, the color field was deemed redundant after adding design variants:
+As per requirements, the color field was fully removed from the frontend while kept in backend/database for backward compatibility:
 
-**Removed from:**
-- CreateItem form
-- OrderForm item display
-- ItemPanel create/edit forms
-- ItemDetailsPage details view
-- Backend search condition in Item model
+**Removed from Frontend:**
+- CreateItem form (via useItemForm hook)
+- ItemDetailsPage edit form and display
+- BrowseItems search placeholder
+- ItemCard badge display
+- useItemForm hook (removed color state and setColor)
+- useItemDetails hook (removed color from ItemEditForm)
+- All frontend type definitions using Item interface
 
-**Kept in:**
-- Database schema (for backward compatibility)
-- Type definitions (for existing data)
+**Kept in Backend/Database:**
+- Database schema (for backward compatibility with existing data)
+- Backend Item model (color field still exists)
+- Backend API accepts color in requests (but frontend no longer sends it)
 
 This ensures existing orders with color data remain intact while new items use designs instead.
 
@@ -363,12 +384,17 @@ Potential improvements:
 - ✅ Modified: `backend/models/Item.js`
 
 ### Frontend
+- ✅ Created: `frontend/src/components/items/DesignManager.tsx`
 - ✅ Created: `frontend/src/components/common/MultipleDesignUpload.tsx`
 - ✅ Created: `frontend/src/components/common/DesignPicker.tsx`
 - ✅ Modified: `frontend/src/components/CreateItem.tsx`
 - ✅ Modified: `frontend/src/components/OrderForm.tsx`
 - ✅ Modified: `frontend/src/components/ItemPanel.tsx`
 - ✅ Modified: `frontend/src/components/ItemDetailsPage.tsx`
+- ✅ Modified: `frontend/src/components/BrowseItems.tsx`
+- ✅ Modified: `frontend/src/components/common/ItemCard.tsx`
+- ✅ Modified: `frontend/src/hooks/useItemForm.ts`
+- ✅ Modified: `frontend/src/hooks/useItemDetails.ts`
 - ✅ Modified: `frontend/src/services/api.ts`
 - ✅ Modified: `frontend/src/types/entities.ts`
 - ✅ Modified: `frontend/src/test/components/OrderForm.test.jsx`

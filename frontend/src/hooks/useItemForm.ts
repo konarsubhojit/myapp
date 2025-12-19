@@ -10,14 +10,12 @@ interface ValidationResult {
 interface UseItemFormResult {
   name: string;
   price: string;
-  color: string;
   fabric: string;
   specialFeatures: string;
   copiedFrom: string | null;
   error: string;
   setName: (name: string) => void;
   setPrice: (price: string) => void;
-  setColor: (color: string) => void;
   setFabric: (fabric: string) => void;
   setSpecialFeatures: (features: string) => void;
   setCopiedFrom: (name: string | null) => void;
@@ -34,7 +32,6 @@ interface UseItemFormResult {
 export const useItemForm = (): UseItemFormResult => {
   const [name, setName] = useState<string>('');
   const [price, setPrice] = useState<string>('');
-  const [color, setColor] = useState<string>('');
   const [fabric, setFabric] = useState<string>('');
   const [specialFeatures, setSpecialFeatures] = useState<string>('');
   const [copiedFrom, setCopiedFrom] = useState<string | null>(null);
@@ -56,7 +53,6 @@ export const useItemForm = (): UseItemFormResult => {
   const getFormData = (priceNum: number, image: string): CreateItemData => ({
     name: name.trim(),
     price: priceNum,
-    color: color.trim(),
     fabric: fabric.trim(),
     specialFeatures: specialFeatures.trim(),
     image: image,
@@ -65,7 +61,6 @@ export const useItemForm = (): UseItemFormResult => {
   const resetForm = (): void => {
     setName('');
     setPrice('');
-    setColor('');
     setFabric('');
     setSpecialFeatures('');
     setCopiedFrom(null);
@@ -75,7 +70,6 @@ export const useItemForm = (): UseItemFormResult => {
   const setFormFromItem = (item: Item): void => {
     setName(item.name);
     setPrice(String(item.price));
-    setColor(item.color || '');
     setFabric(item.fabric || '');
     setSpecialFeatures(item.specialFeatures || '');
     setCopiedFrom(item.name);
@@ -85,14 +79,12 @@ export const useItemForm = (): UseItemFormResult => {
   return {
     name,
     price,
-    color,
     fabric,
     specialFeatures,
     copiedFrom,
     error,
     setName,
     setPrice,
-    setColor,
     setFabric,
     setSpecialFeatures,
     setCopiedFrom,

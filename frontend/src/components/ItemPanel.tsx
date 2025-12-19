@@ -62,14 +62,12 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
   const {
     name,
     price,
-    color,
     fabric,
     specialFeatures,
     copiedFrom,
     error: formError,
     setName,
     setPrice,
-    setColor,
     setFabric,
     setSpecialFeatures,
     setError: setFormError,
@@ -443,18 +441,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              id="itemColor"
-              label="Color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="e.g., Red, Blue, Multi-color"
-              fullWidth
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               id="itemFabric"
               label="Fabric"
@@ -465,7 +452,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               id="itemSpecialFeatures"
               label="Special Features"

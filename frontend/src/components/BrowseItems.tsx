@@ -123,7 +123,7 @@ function BrowseItems({ onItemsChange, onCopyItem, initialSelectedItemId = null, 
       <Box component="form" onSubmit={handleSearch} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
         <TextField
           size="small"
-          placeholder="Search by name, color, fabric..."
+          placeholder="Search by name, fabric..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           sx={{ flexGrow: 1, minWidth: 200 }}

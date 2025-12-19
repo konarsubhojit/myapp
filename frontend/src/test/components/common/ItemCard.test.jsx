@@ -8,7 +8,6 @@ describe('ItemCard', () => {
     _id: '123',
     name: 'Test Item',
     price: 29.99,
-    color: 'Red',
     fabric: 'Cotton',
     specialFeatures: 'Handmade',
     imageUrl: 'https://example.com/image.jpg',
@@ -32,7 +31,6 @@ describe('ItemCard', () => {
 
     expect(screen.getByText('Test Item')).toBeInTheDocument();
     expect(screen.getByText('$29.99')).toBeInTheDocument();
-    expect(screen.getByText('Red')).toBeInTheDocument();
     expect(screen.getByText('Cotton')).toBeInTheDocument();
     expect(screen.getByText('Handmade')).toBeInTheDocument();
   });

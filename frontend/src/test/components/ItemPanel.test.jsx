@@ -78,7 +78,6 @@ describe('ItemPanel', () => {
         expect(screen.getByLabelText(/Item Name/i)).toBeInTheDocument();
       });
       expect(screen.getByLabelText(/Price/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Color/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Fabric/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/Special Features/i)).toBeInTheDocument();
     });
@@ -202,9 +201,6 @@ describe('ItemPanel', () => {
       const priceInput = screen.getByLabelText(/Price/i);
       await user.clear(priceInput);
       await user.type(priceInput, '150');
-      
-      const colorInput = screen.getByLabelText(/Color/i);
-      await user.type(colorInput, 'Green');
       
       // Submit the form
       const addButton = screen.getByRole('button', { name: /Add Item/i });
