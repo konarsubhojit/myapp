@@ -20,7 +20,6 @@ function buildSearchCondition(search) {
   const searchTerm = `%${search.trim()}%`;
   return or(
     ilike(items.name, searchTerm),
-    ilike(items.color, searchTerm),
     ilike(items.fabric, searchTerm),
     ilike(items.specialFeatures, searchTerm)
   );

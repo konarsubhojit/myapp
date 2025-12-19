@@ -77,6 +77,7 @@ async function updateOrderItems(db, orderId, items) {
     const orderItemsData = items.map(item => ({
       orderId: orderId,
       itemId: item.item,
+      designId: item.designId || null,
       name: item.name,
       price: item.price.toString(),
       quantity: item.quantity,
@@ -397,6 +398,7 @@ const Order = {
     const orderItemsData = data.items.map(item => ({
       orderId: newOrder.id,
       itemId: item.item,
+      designId: item.designId || null,
       name: item.name,
       price: item.price.toString(),
       quantity: item.quantity,

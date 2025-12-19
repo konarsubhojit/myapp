@@ -340,23 +340,13 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
           <Divider />
 
           {/* Additional Details */}
-          {(item.color || item.fabric || item.specialFeatures) && (
+          {(item.fabric || item.specialFeatures) && (
             <>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                   Additional Details
                 </Typography>
                 <Stack spacing={1.5} mt={1}>
-                  {item.color && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Color
-                      </Typography>
-                      <Typography variant="body1">
-                        {item.color}
-                      </Typography>
-                    </Box>
-                  )}
                   {item.fabric && (
                     <Box>
                       <Typography variant="caption" color="text.secondary">

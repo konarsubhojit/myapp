@@ -50,6 +50,19 @@ describe('OrderForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock getItem to return a basic item without designs
+    api.getItem = vi.fn().mockResolvedValue({
+      _id: 'item1',
+      id: 'item1',
+      name: 'Test Item 1',
+      price: 100,
+      fabric: 'Cotton',
+      specialFeatures: 'Handmade',
+      imageUrl: 'https://example.com/image1.jpg',
+      createdAt: new Date().toISOString(),
+      deletedAt: null,
+      designs: []
+    });
   });
 
   describe('Basic Rendering', () => {

@@ -23,16 +23,17 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { createOrder, getOrder } from '../services/api';
+import { createOrder, getOrder, getItem } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useNotification } from '../contexts/NotificationContext';
+import DesignPicker from './common/DesignPicker';
 import {
   ORDER_SOURCES,
   PAYMENT_STATUSES,
   CONFIRMATION_STATUSES,
   PRIORITY_LEVELS,
 } from '../constants/orderConstants';
-import type { Item, Order, OrderId, ItemId, OrderSource, PaymentStatus, ConfirmationStatus } from '../types';
+import type { Item, Order, OrderId, ItemId, OrderSource, PaymentStatus, ConfirmationStatus, ItemDesign } from '../types';
 
 interface OrderFormProps {
   items: Item[];
@@ -42,14 +43,14 @@ interface OrderFormProps {
 
 interface OrderFormItem {
   itemId: string;
+  designId?: number | null;
   quantity: number | '';
   customizationRequest: string;
 }
 
-// Format item display name with color and fabric info
+// Format item display name with fabric info
 const formatItemDisplayName = (item: Item): string => {
   const details: string[] = [];
-  if (item.color) details.push(item.color);
   if (item.fabric) details.push(item.fabric);
   
   if (details.length > 0) {
@@ -73,6 +74,8 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
   const [customerNotes, setCustomerNotes] = useState('');
   const [priority, setPriority] = useState(0);
   const [orderItems, setOrderItems] = useState<OrderFormItem[]>([]);
+  const [itemDesigns, setItemDesigns] = useState<Map<number, ItemDesign[]>>(new Map());
+  const [loadingDesigns, setLoadingDesigns] = useState<Set<number>>(new Set());
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [duplicateLoading, setDuplicateLoading] = useState(false);
@@ -121,6 +124,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
           
           return {
             itemId: matchedItem ? String(matchedItem._id) : '',
+            designId: orderItem.designId || null,
             quantity: orderItem.quantity || 1,
             customizationRequest: orderItem.customizationRequest || ''
           };
@@ -144,18 +148,43 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
 
   // PERFORMANCE OPTIMIZATION: Memoize callbacks to prevent unnecessary re-renders
   const handleAddItem = useCallback(() => {
-    setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
+    setOrderItems([...orderItems, { itemId: '', designId: null, quantity: 1, customizationRequest: '' }]);
   }, [orderItems]);
 
   const handleRemoveItem = useCallback((index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
   }, [orderItems]);
 
-  const handleItemChange = useCallback((index: number, field: keyof OrderFormItem, value: string | number | '') => {
-    const updated = [...orderItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setOrderItems(updated);
-  }, [orderItems]);
+  const handleItemChange = useCallback((index: number, field: keyof OrderFormItem, value: string | number | '' | null) => {
+    setOrderItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+    
+    if (field === 'itemId' && value) {
+      const itemId = typeof value === 'string' ? parseInt(value, 10) : value;
+      if (!itemDesigns.has(itemId) && !loadingDesigns.has(itemId)) {
+        setLoadingDesigns(prev => new Set(prev).add(itemId));
+        getItem(itemId, true)
+          .then(item => {
+            if (item.designs && item.designs.length > 0) {
+              setItemDesigns(prev => new Map(prev).set(itemId, item.designs || []));
+            }
+          })
+          .catch(err => {
+            console.error('Failed to load designs:', err);
+          })
+          .finally(() => {
+            setLoadingDesigns(prev => {
+              const next = new Set(prev);
+              next.delete(itemId);
+              return next;
+            });
+          });
+      }
+    }
+  }, [itemDesigns, loadingDesigns]);
 
   // PERFORMANCE OPTIMIZATION: Memoize total calculation to avoid recomputation on every render
   const totalPrice = useMemo(() => {
@@ -225,6 +254,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
         address: address.trim(),
         items: orderItems.map(item => ({
           itemId: item.itemId as unknown as ItemId,
+          designId: item.designId || null,
           quantity: typeof item.quantity === 'number' ? item.quantity : 1,
           customizationRequest: item.customizationRequest
         })),
@@ -579,10 +609,20 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
                           />
                         )}
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                          {selectedItem.color && <Chip label={`Color: ${selectedItem.color}`} size="small" variant="outlined" />}
                           {selectedItem.fabric && <Chip label={`Fabric: ${selectedItem.fabric}`} size="small" variant="outlined" />}
                           {selectedItem.specialFeatures && <Chip label={selectedItem.specialFeatures} size="small" variant="outlined" />}
                         </Stack>
+                      </Box>
+                    )}
+                    
+                    {/* Design Picker - shown when item has designs */}
+                    {selectedItem && itemDesigns.get(selectedItem._id) && itemDesigns.get(selectedItem._id)!.length > 0 && (
+                      <Box sx={{ mt: 2 }}>
+                        <DesignPicker
+                          designs={itemDesigns.get(selectedItem._id)!}
+                          selectedDesignId={orderItem.designId || undefined}
+                          onDesignSelect={(designId) => handleItemChange(index, 'designId', designId)}
+                        />
                       </Box>
                     )}
                     

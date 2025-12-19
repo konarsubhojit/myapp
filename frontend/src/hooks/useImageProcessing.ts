@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import imageCompression from 'browser-image-compression';
 
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5MB max upload size
-const TARGET_IMAGE_SIZE = 2 * 1024 * 1024; // Compress to 2MB max
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB max upload size before compression
+const TARGET_IMAGE_SIZE = 9 * 1024 * 1024; // Compress to under 9MB if needed
 
 // Image compression options
 const compressionOptions = {
-  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB
+  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB (9MB)
   maxWidthOrHeight: 1920,
   useWebWorker: true,
   fileType: 'image/jpeg' as const,
@@ -24,14 +24,14 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 // Compress image if needed
 const compressImage = async (file: File): Promise<string> => {
-  // If file is already small enough, just convert to base64
-  if (file.size <= TARGET_IMAGE_SIZE) {
-    return fileToBase64(file);
+  // If file is larger than 9MB, compress it
+  if (file.size > TARGET_IMAGE_SIZE) {
+    const compressedFile = await imageCompression(file, compressionOptions);
+    return fileToBase64(compressedFile);
   }
 
-  // Compress the image
-  const compressedFile = await imageCompression(file, compressionOptions);
-  return fileToBase64(compressedFile);
+  // Otherwise just convert to base64
+  return fileToBase64(file);
 };
 
 interface ValidationResult {
@@ -48,7 +48,7 @@ const validateImageFile = (file: File): ValidationResult => {
   }
 
   if (file.size > MAX_UPLOAD_SIZE) {
-    return { valid: false, error: 'Image size should be less than 5MB' };
+    return { valid: false, error: 'Image size should be less than 10MB' };
   }
 
   return { valid: true };
