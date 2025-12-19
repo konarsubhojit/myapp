@@ -36,11 +36,8 @@ export async function GET(
     
     logger.debug('Order retrieved', { orderId: id });
     
-    return NextResponse.json(order, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
-      }
-    });
+    // No Cache-Control header - rely on Redis caching with version control
+    return NextResponse.json(order);
   } catch (error: any) {
     logger.error('GET /api/orders/[id] error', error);
     return NextResponse.json(

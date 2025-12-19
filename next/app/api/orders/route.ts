@@ -100,10 +100,6 @@ async function getOrdersHandler(request: NextRequest) {
     return NextResponse.json({
       items: result.orders,
       page: result.pagination
-    }, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600'
-      }
     });
   } catch (error: any) {
     logger.error('GET /api/orders error', error);

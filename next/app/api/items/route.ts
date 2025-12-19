@@ -41,7 +41,7 @@ async function uploadImage(image: string) {
 
 /**
  * GET /api/items - Get all items with offset pagination
- * Wrapped with Redis caching (24 hours TTL)
+ * Uses Redis caching with version control for proper invalidation
  */
 async function getItemsHandler(request: NextRequest) {
   try {
@@ -71,11 +71,8 @@ async function getItemsHandler(request: NextRequest) {
       total: result.pagination.total
     });
     
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=43200'
-      }
-    });
+    // No Cache-Control header - rely on Redis caching with version control
+    return NextResponse.json(result);
   } catch (error: any) {
     logger.error('GET /api/items error', error);
     return NextResponse.json(
@@ -85,8 +82,8 @@ async function getItemsHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with caching (24 hours TTL)
-export const GET = withCache(getItemsHandler, 86400);
+// Export GET handler with Redis caching (5 minutes TTL, invalidated on updates)
+export const GET = withCache(getItemsHandler, 300);
 
 /**
  * POST /api/items - Create a new item

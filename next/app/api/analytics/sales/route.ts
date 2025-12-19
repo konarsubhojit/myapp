@@ -39,11 +39,8 @@ export async function GET(request: NextRequest) {
       rangeCount: Object.keys(analyticsData.analytics).length 
     });
 
-    return NextResponse.json(analyticsData, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
-      }
-    });
+    // No Cache-Control header - analytics data is dynamic
+    return NextResponse.json(analyticsData);
   } catch (error: any) {
     logger.error('GET /api/analytics/sales error', error);
     return NextResponse.json(

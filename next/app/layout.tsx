@@ -9,6 +9,10 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import "./globals.css";
 
+// Force dynamic rendering - no static generation or prerendering
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const inter = Inter({ 
   subsets: ["latin"],
   variable: "--font-inter",
