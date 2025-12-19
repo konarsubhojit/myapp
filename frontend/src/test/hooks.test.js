@@ -9,7 +9,6 @@ describe('useItemForm', () => {
     
     expect(result.current.name).toBe('');
     expect(result.current.price).toBe('');
-    expect(result.current.color).toBe('');
     expect(result.current.fabric).toBe('');
     expect(result.current.specialFeatures).toBe('');
     expect(result.current.copiedFrom).toBeNull();
@@ -69,7 +68,6 @@ describe('useItemForm', () => {
     act(() => {
       result.current.setName('Test Item');
       result.current.setPrice('10.99');
-      result.current.setColor('Red');
       result.current.setFabric('Cotton');
       result.current.setSpecialFeatures('Handmade');
     });
@@ -80,7 +78,6 @@ describe('useItemForm', () => {
     
     expect(result.current.name).toBe('');
     expect(result.current.price).toBe('');
-    expect(result.current.color).toBe('');
     expect(result.current.fabric).toBe('');
     expect(result.current.specialFeatures).toBe('');
   });
@@ -91,7 +88,6 @@ describe('useItemForm', () => {
     const item = {
       name: 'Test Item',
       price: 10.99,
-      color: 'Red',
       fabric: 'Cotton',
       specialFeatures: 'Handmade'
     };
@@ -102,7 +98,6 @@ describe('useItemForm', () => {
     
     expect(result.current.name).toBe('Test Item');
     expect(result.current.price).toBe('10.99');
-    expect(result.current.color).toBe('Red');
     expect(result.current.fabric).toBe('Cotton');
     expect(result.current.specialFeatures).toBe('Handmade');
     expect(result.current.copiedFrom).toBe('Test Item');
@@ -114,7 +109,6 @@ describe('useItemForm', () => {
     act(() => {
       result.current.setName('Test Item');
       result.current.setPrice('10.99');
-      result.current.setColor('Red');
       result.current.setFabric('Cotton');
       result.current.setSpecialFeatures('Handmade');
     });
@@ -124,7 +118,6 @@ describe('useItemForm', () => {
     expect(formData).toEqual({
       name: 'Test Item',
       price: 10.99,
-      color: 'Red',
       fabric: 'Cotton',
       specialFeatures: 'Handmade',
       image: 'base64image'
