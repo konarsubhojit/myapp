@@ -105,8 +105,10 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       // Handle FormData
       const formData = await request.formData();
-      name = (formData.get('name') as string | null) || '';
-      price = (formData.get('price') as string | null) || '';
+      // For required fields, let null/empty values be caught by validation later
+      name = (formData.get('name') as string | null) ?? '';
+      price = (formData.get('price') as string | null) ?? '';
+      // For optional fields, convert null to undefined
       color = (formData.get('color') as string | null) || undefined;
       fabric = (formData.get('fabric') as string | null) || undefined;
       specialFeatures = (formData.get('specialFeatures') as string | null) || undefined;

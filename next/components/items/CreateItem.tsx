@@ -119,7 +119,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
           
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({ 
-              message: `HTTP ${response.status}: ${response.statusText}` 
+              message: `Upload failed with HTTP ${response.status}: ${response.statusText}` 
             }))
             throw new Error(`Failed to upload design "${design.name}": ${errorData.message}`)
           }
