@@ -48,10 +48,9 @@ interface OrderFormItem {
   customizationRequest: string;
 }
 
-// Format item display name with color and fabric info
+// Format item display name with fabric info
 const formatItemDisplayName = (item: Item): string => {
   const details: string[] = [];
-  if (item.color) details.push(item.color);
   if (item.fabric) details.push(item.fabric);
   
   if (details.length > 0) {
@@ -609,7 +608,6 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
                           />
                         )}
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                          {selectedItem.color && <Chip label={`Color: ${selectedItem.color}`} size="small" variant="outlined" />}
                           {selectedItem.fabric && <Chip label={`Fabric: ${selectedItem.fabric}`} size="small" variant="outlined" />}
                           {selectedItem.specialFeatures && <Chip label={selectedItem.specialFeatures} size="small" variant="outlined" />}
                         </Stack>
@@ -617,10 +615,10 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
                     )}
                     
                     {/* Design Picker - shown when item has designs */}
-                    {selectedItem && itemDesigns.get(selectedItem._id)?.length > 0 && (
+                    {selectedItem && itemDesigns.get(selectedItem._id) && itemDesigns.get(selectedItem._id)!.length > 0 && (
                       <Box sx={{ mt: 2 }}>
                         <DesignPicker
-                          designs={itemDesigns.get(selectedItem._id) || []}
+                          designs={itemDesigns.get(selectedItem._id)!}
                           selectedDesignId={orderItem.designId || undefined}
                           onDesignSelect={(designId) => handleItemChange(index, 'designId', designId)}
                         />

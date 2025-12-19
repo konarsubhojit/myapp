@@ -46,7 +46,6 @@ interface ItemPanelProps {
 interface EditingItemState extends Item {
   editName: string;
   editPrice: string;
-  editColor: string;
   editFabric: string;
   editSpecialFeatures: string;
   removeImage: boolean;
@@ -288,7 +287,6 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       ...item,
       editName: item.name,
       editPrice: String(item.price),
-      editColor: item.color || '',
       editFabric: item.fabric || '',
       editSpecialFeatures: item.specialFeatures || '',
       removeImage: false
@@ -342,14 +340,12 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
       const updateData: {
         name: string;
         price: number;
-        color: string;
         fabric: string;
         specialFeatures: string;
         image?: string | null;
       } = {
         name: editingItem.editName.trim(),
         price: priceNum,
-        color: editingItem.editColor.trim(),
         fabric: editingItem.editFabric.trim(),
         specialFeatures: editingItem.editSpecialFeatures.trim()
       };
@@ -769,15 +765,6 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                   placeholder="Enter price"
                   fullWidth
                   required
-                />
-
-                <TextField
-                  id="editItemColor"
-                  label="Color"
-                  value={editingItem.editColor}
-                  onChange={(e) => setEditingItem(prev => prev ? ({ ...prev, editColor: e.target.value }) : null)}
-                  placeholder="e.g., Red, Blue, Multi-color"
-                  fullWidth
                 />
 
                 <TextField

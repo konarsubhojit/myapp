@@ -193,18 +193,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              id="itemColor"
-              label="Color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              placeholder="e.g., Red, Blue, Multi-color"
-              fullWidth
-            />
-          </Grid>
-
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               id="itemFabric"
               label="Fabric"
@@ -215,7 +204,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
             />
           </Grid>
 
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               id="itemSpecialFeatures"
               label="Special Features"
