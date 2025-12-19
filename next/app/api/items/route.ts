@@ -105,8 +105,8 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       // Handle FormData
       const formData = await request.formData();
-      name = formData.get('name') as string;
-      price = formData.get('price') as string;
+      name = (formData.get('name') as string | null) || '';
+      price = (formData.get('price') as string | null) || '';
       color = (formData.get('color') as string | null) || undefined;
       fabric = (formData.get('fabric') as string | null) || undefined;
       specialFeatures = (formData.get('specialFeatures') as string | null) || undefined;
