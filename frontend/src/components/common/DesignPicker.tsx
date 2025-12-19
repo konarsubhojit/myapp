@@ -26,9 +26,13 @@ function DesignPicker({
   
   useEffect(() => {
     if (!selectedDesignId && designs.length > 0 && !hasAutoSelected.current) {
-      const primaryDesign = designs.find(d => d.isPrimary) || designs[0];
-      onDesignSelect(primaryDesign.id);
-      hasAutoSelected.current = true;
+      const primaryDesign = designs.find(d => d.isPrimary);
+      const designToSelect = primaryDesign || designs[0];
+      
+      if (designToSelect) {
+        onDesignSelect(designToSelect.id);
+        hasAutoSelected.current = true;
+      }
     }
     
     // Reset auto-selection flag when designs change

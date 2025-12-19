@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import imageCompression from 'browser-image-compression';
 
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB max upload size
-const TARGET_IMAGE_SIZE = 10 * 1024 * 1024; // Keep at 10MB max
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB max upload size before compression
+const TARGET_IMAGE_SIZE = 9 * 1024 * 1024; // Compress to under 9MB if needed
 
 // Image compression options
 const compressionOptions = {
-  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB
+  maxSizeMB: TARGET_IMAGE_SIZE / (1024 * 1024), // Convert bytes to MB (9MB)
   maxWidthOrHeight: 1920,
   useWebWorker: true,
   fileType: 'image/jpeg' as const,
@@ -24,7 +24,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 // Compress image if needed
 const compressImage = async (file: File): Promise<string> => {
-  // If file is larger than 10MB, compress it to fit under 10MB
+  // If file is larger than 9MB, compress it
   if (file.size > TARGET_IMAGE_SIZE) {
     const compressedFile = await imageCompression(file, compressionOptions);
     return fileToBase64(compressedFile);

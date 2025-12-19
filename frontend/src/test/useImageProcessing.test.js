@@ -50,18 +50,18 @@ describe('useImageProcessing', () => {
       });
     });
 
-    it('should validate file size and reject files larger than 5MB', async () => {
+    it('should validate file size and reject files larger than 10MB', async () => {
       const { result } = renderHook(() => useImageProcessing());
 
-      const largeFile = new File(['x'.repeat(6 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' });
-      Object.defineProperty(largeFile, 'size', { value: 6 * 1024 * 1024 });
+      const largeFile = new File(['x'.repeat(11 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' });
+      Object.defineProperty(largeFile, 'size', { value: 11 * 1024 * 1024 });
 
       await act(async () => {
         await result.current.handleImageChange(largeFile);
       });
 
       await waitFor(() => {
-        expect(result.current.imageError).toBe('Image size should be less than 5MB');
+        expect(result.current.imageError).toBe('Image size should be less than 10MB');
         expect(result.current.imageProcessing).toBe(false);
       });
     });

@@ -54,14 +54,11 @@ function MultipleDesignUpload({
 
     try {
       const options = {
-        maxSizeMB: 10,
+        maxSizeMB: 9,
         maxWidthOrHeight: 1920,
         useWebWorker: true,
       };
-      // Only compress if file is larger than 10MB
-      const compressedFile = file.size > MAX_FILE_SIZE 
-        ? await imageCompression(file, options)
-        : file;
+      const compressedFile = await imageCompression(file, options);
       const base64 = await imageCompression.getDataUrlFromFile(compressedFile);
 
       const newDesign: DesignImage = {
