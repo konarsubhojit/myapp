@@ -8,12 +8,14 @@ import Grid from '@mui/material/Grid2'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Collapse from '@mui/material/Collapse'
+import Divider from '@mui/material/Divider'
 import AddIcon from '@mui/icons-material/Add'
-import { createItem } from '../services/api'
+import { createItem, createItemDesign } from '../services/api'
 import { useNotification } from '../contexts/NotificationContext'
 import { useItemForm } from '../hooks/useItemForm'
 import { useImageProcessing } from '../hooks/useImageProcessing'
 import ImageUploadField from './common/ImageUploadField'
+import MultipleDesignUpload, { type DesignImage } from './common/MultipleDesignUpload'
 import type { Item } from '../types'
 
 interface CreateItemProps {
@@ -25,6 +27,8 @@ interface CreateItemProps {
 function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps): ReactElement {
   const { showSuccess, showError } = useNotification()
   const [loading, setLoading] = useState(false)
+  const [designs, setDesigns] = useState<DesignImage[]>([])
+  const [designProcessing, setDesignProcessing] = useState(false)
 
   // Use item form hook
   const {
@@ -91,10 +95,28 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
     setLoading(true)
     try {
       const formData = getFormData(validation.priceNum!, image)
-      await createItem(formData)
+      const newItem = await createItem(formData)
+      
+      // Upload designs if any
+      if (designs.length > 0) {
+        for (const design of designs) {
+          try {
+            await createItemDesign(newItem._id, {
+              designName: design.name,
+              image: design.imageData,
+              isPrimary: design.isPrimary,
+              displayOrder: 0
+            })
+          } catch (designError) {
+            console.error('Failed to upload design:', designError)
+          }
+        }
+      }
+      
       const itemName = name.trim()
       resetForm()
       resetImage()
+      setDesigns([])
       const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
       onItemCreated()
@@ -111,6 +133,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
   const handleCancelCopy = () => {
     resetForm()
     resetImage()
+    setDesigns([])
     const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
     if (fileInput) fileInput.value = ''
     if (onCancelCopy) {
@@ -212,6 +235,15 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
               onClearImage={clearImage}
             />
           </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 2 }} />
+            <MultipleDesignUpload
+              designs={designs}
+              onDesignsChange={setDesigns}
+              onProcessing={setDesignProcessing}
+            />
+          </Grid>
         </Grid>
 
         {error && (
@@ -224,7 +256,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
           type="submit"
           variant="contained"
           size="large"
-          disabled={loading}
+          disabled={loading || designProcessing}
           startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
           sx={{ mt: 3 }}
         >

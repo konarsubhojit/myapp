@@ -1,6 +1,7 @@
 import type {
   Item,
   ItemId,
+  ItemDesign,
   Order,
   Feedback,
   CreateItemData,
@@ -351,6 +352,77 @@ export const permanentlyDeleteItem = async (id: number | string): Promise<{ mess
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to permanently delete item');
+  }
+  return response.json();
+};
+
+// Item Designs API
+export const getItem = async (id: number | string, includeDesigns = false): Promise<Item> => {
+  const params = new URLSearchParams();
+  if (includeDesigns) params.append('includeDesigns', 'true');
+  
+  const url = params.toString() 
+    ? `${API_BASE_URL}/items/${id}?${params}`
+    : `${API_BASE_URL}/items/${id}`;
+  
+  const response = await authFetch(url);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch item');
+  }
+  return response.json();
+};
+
+export const getItemDesigns = async (itemId: number | string): Promise<ItemDesign[]> => {
+  const response = await authFetch(`${API_BASE_URL}/items/${itemId}/designs`);
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch item designs');
+  }
+  return response.json();
+};
+
+export const createItemDesign = async (
+  itemId: number | string,
+  design: { designName: string; image: string; isPrimary?: boolean; displayOrder?: number }
+): Promise<ItemDesign> => {
+  const response = await authFetch(`${API_BASE_URL}/items/${itemId}/designs`, {
+    method: 'POST',
+    body: JSON.stringify(design),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to create design');
+  }
+  return response.json();
+};
+
+export const updateItemDesign = async (
+  itemId: number | string,
+  designId: number | string,
+  updates: { isPrimary?: boolean; displayOrder?: number }
+): Promise<ItemDesign> => {
+  const response = await authFetch(`${API_BASE_URL}/items/${itemId}/designs/${designId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to update design');
+  }
+  return response.json();
+};
+
+export const deleteItemDesign = async (
+  itemId: number | string,
+  designId: number | string
+): Promise<{ message: string }> => {
+  const response = await authFetch(`${API_BASE_URL}/items/${itemId}/designs/${designId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to delete design');
   }
   return response.json();
 };

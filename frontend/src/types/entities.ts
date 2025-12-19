@@ -16,6 +16,17 @@ export type ConfirmationStatus = 'unconfirmed' | 'pending_confirmation' | 'confi
 export type DeliveryStatus = 'not_shipped' | 'shipped' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned';
 
 // Transformed types from API
+export interface ItemDesign {
+  id: number;
+  _id: number;
+  itemId: number;
+  designName: string;
+  imageUrl: string;
+  isPrimary: boolean;
+  displayOrder: number;
+  createdAt: string;
+}
+
 export interface Item {
   id: ItemId;
   _id: ItemId;
@@ -27,12 +38,14 @@ export interface Item {
   imageUrl: string;
   createdAt: string;
   deletedAt: string | null;
+  designs?: ItemDesign[];
 }
 
 export interface OrderItem {
   id: OrderItemId;
   _id: OrderItemId;
   item: ItemId;
+  designId?: number | null;
   name: string;
   price: number;
   quantity: number;
@@ -107,6 +120,7 @@ export interface UpdateItemData {
 
 export interface CreateOrderItemData {
   itemId: ItemId | number;
+  designId?: number | null;
   quantity: number;
   customizationRequest?: string;
 }
@@ -290,6 +304,7 @@ export interface ValidationResult {
 // Order form item (for creating/editing orders)
 export interface OrderFormItem {
   itemId: ItemId | number;
+  designId?: number | null;
   name: string;
   price: number;
   quantity: number;
