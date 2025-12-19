@@ -15,6 +15,18 @@ export type ConfirmationStatus = 'unconfirmed' | 'pending_confirmation' | 'confi
 // Delivery status enum type
 export type DeliveryStatus = 'not_shipped' | 'shipped' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'returned';
 
+// Item Design variant
+export interface ItemDesign {
+  id: number;
+  _id: number;
+  itemId: ItemId;
+  designName: string;
+  imageUrl: string;
+  isPrimary: boolean;
+  displayOrder: number;
+  createdAt: string;
+}
+
 // Transformed types from API
 export interface Item {
   id: ItemId;
@@ -27,12 +39,14 @@ export interface Item {
   imageUrl: string;
   createdAt: string;
   deletedAt: string | null;
+  designs?: ItemDesign[];
 }
 
 export interface OrderItem {
   id: OrderItemId;
   _id: OrderItemId;
   item: ItemId;
+  designId?: number;
   name: string;
   price: number;
   quantity: number;
@@ -107,6 +121,7 @@ export interface UpdateItemData {
 
 export interface CreateOrderItemData {
   itemId: ItemId | number;
+  designId?: number;
   quantity: number;
   customizationRequest?: string;
 }

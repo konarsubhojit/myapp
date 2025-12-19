@@ -16,6 +16,7 @@ import { useNotification } from '@/contexts/NotificationContext'
 import { useItemForm } from '@/hooks/useItemForm'
 import { useImageProcessing } from '@/hooks/useImageProcessing'
 import ImageUploadField from '../common/ImageUploadField'
+import MultipleDesignUpload, { type DesignImage } from './MultipleDesignUpload'
 import type { Item } from '@/types'
 
 interface CreateItemProps {
@@ -27,6 +28,8 @@ interface CreateItemProps {
 function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps): ReactElement {
   const { showSuccess, showError } = useNotification()
   const [loading, setLoading] = useState(false)
+  const [designs, setDesigns] = useState<DesignImage[]>([])
+  const [designProcessing, setDesignProcessing] = useState(false)
 
   // Use item form hook
   const {
@@ -90,17 +93,40 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
       return
     }
 
+    if (designs.length === 0 && !image) {
+      setError('Please add at least one design variant or upload a main image')
+      return
+    }
+
     setLoading(true)
     try {
       const formData = getFormData(validation.priceNum!, image)
-      await createItem(formData)
+      const createdItem = await createItem(formData)
+      
+      // If designs were added, upload them
+      if (designs.length > 0 && createdItem._id) {
+        for (const design of designs) {
+          await fetch(`/api/items/${createdItem._id}/designs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              designName: design.name,
+              image: design.imageData,
+              isPrimary: design.isPrimary,
+              displayOrder: 0
+            })
+          })
+        }
+      }
+      
       const itemName = name.trim()
       resetForm()
       resetImage()
+      setDesigns([])
       const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
       onItemCreated()
-      showSuccess(`Item "${itemName}" has been added successfully.`)
+      showSuccess(`Item "${itemName}" has been added successfully with ${designs.length} design${designs.length > 1 ? 's' : ''}.`)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create item'
       setError(errorMessage)
@@ -113,6 +139,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
   const handleCancelCopy = () => {
     resetForm()
     resetImage()
+    setDesigns([])
     const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
     if (fileInput) fileInput.value = ''
     if (onCancelCopy) {
@@ -213,6 +240,17 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
               onImageChange={handleImageChange}
               onClearImage={clearImage}
             />
+            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+              This will be used as the fallback image. Add design variants below for better organization.
+            </Typography>
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <MultipleDesignUpload
+              designs={designs}
+              onDesignsChange={setDesigns}
+              onProcessing={setDesignProcessing}
+            />
           </Grid>
         </Grid>
 
@@ -226,7 +264,7 @@ function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps
           type="submit"
           variant="contained"
           size="large"
-          disabled={loading}
+          disabled={loading || designProcessing}
           startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
           sx={{ mt: 3 }}
         >

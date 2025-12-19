@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { eq, desc, isNull, isNotNull, ilike, or, sql, and, inArray, lt } from 'drizzle-orm';
 import { getDatabase } from '@/lib/db/connection';
-import { items } from '@/lib/db/schema';
+import { items, itemDesigns } from '@/lib/db/schema';
 import { executeWithRetry } from '@/lib/utils/dbRetry';
 
 function transformItem(item: any) {
@@ -12,8 +12,38 @@ function transformItem(item: any) {
     color: item.color || '',
     fabric: item.fabric || '',
     specialFeatures: item.specialFeatures || '',
-    imageUrl: item.imageUrl || ''
+    imageUrl: item.imageUrl || '',
+    designs: []
   };
+}
+
+async function enrichItemsWithDesigns(items: any[]) {
+  if (items.length === 0) return items;
+  
+  const db = getDatabase();
+  const itemIds = items.map(item => item.id);
+  
+  const designs = await db.select().from(itemDesigns)
+    .where(inArray(itemDesigns.itemId, itemIds))
+    .orderBy(desc(itemDesigns.isPrimary), itemDesigns.displayOrder);
+  
+  // Group designs by itemId
+  const designsByItemId = new Map();
+  for (const design of designs) {
+    if (!designsByItemId.has(design.itemId)) {
+      designsByItemId.set(design.itemId, []);
+    }
+    designsByItemId.get(design.itemId).push({
+      ...design,
+      _id: design.id
+    });
+  }
+  
+  // Attach designs to items
+  return items.map(item => ({
+    ...item,
+    designs: designsByItemId.get(item.id) || []
+  }));
 }
 
 function buildSearchCondition(search: any) {
@@ -81,7 +111,8 @@ const Item = {
       const result = await db.select().from(items)
         .where(isNull(items.deletedAt))
         .orderBy(desc(items.createdAt));
-      return result.map(transformItem);
+      const transformedItems = result.map(transformItem);
+      return enrichItemsWithDesigns(transformedItems);
     }, { operationName: 'Item.find' });
   },
 
@@ -94,7 +125,9 @@ const Item = {
       const result = await db.select().from(items).where(eq(items.id, numericId));
       if (result.length === 0) return null;
 
-      return transformItem(result[0]);
+      const transformedItem = transformItem(result[0]);
+      const enrichedItems = await enrichItemsWithDesigns([transformedItem]);
+      return enrichedItems[0];
     }, { operationName: 'Item.findById' });
   },
 
@@ -122,9 +155,12 @@ const Item = {
         .from(items)
         .where(inArray(items.id, numericIds));
 
+      const transformedItems = result.map(transformItem);
+      const enrichedItems = await enrichItemsWithDesigns(transformedItems);
+
       const itemMap = new Map();
-      for (const item of result) {
-        itemMap.set(item.id, transformItem(item));
+      for (const item of enrichedItems) {
+        itemMap.set(item.id, item);
       }
 
       return itemMap;
@@ -143,7 +179,9 @@ const Item = {
         imageUrl: data.imageUrl || null
       }).returning();
 
-      return transformItem(result[0]);
+      const transformedItem = transformItem(result[0]);
+      const enrichedItems = await enrichItemsWithDesigns([transformedItem]);
+      return enrichedItems[0];
     }, { operationName: 'Item.create' });
   },
 
@@ -172,7 +210,9 @@ const Item = {
 
       if (result.length === 0) return null;
 
-      return transformItem(result[0]);
+      const transformedItem = transformItem(result[0]);
+      const enrichedItems = await enrichItemsWithDesigns([transformedItem]);
+      return enrichedItems[0];
     }, { operationName: 'Item.findByIdAndUpdate' });
   },
 
@@ -234,8 +274,11 @@ const Item = {
         .limit(limit)
         .offset(offset);
 
+      const transformedItems = result.map(transformItem);
+      const enrichedItems = await enrichItemsWithDesigns(transformedItems);
+
       return {
-        items: result.map(transformItem),
+        items: enrichedItems,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
       };
     }, { operationName: 'Item.findPaginated' });
@@ -338,8 +381,11 @@ const Item = {
         nextCursor = encodeCursor(lastItem);
       }
 
+      const transformedItems = itemsToReturn.map(transformItem);
+      const enrichedItems = await enrichItemsWithDesigns(transformedItems);
+
       return {
-        items: itemsToReturn.map(transformItem),
+        items: enrichedItems,
         page: {
           limit,
           nextCursor,

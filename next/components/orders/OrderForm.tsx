@@ -34,6 +34,7 @@ import {
   CONFIRMATION_STATUSES,
   PRIORITY_LEVELS,
 } from '@/constants/orderConstants';
+import DesignPicker from './DesignPicker';
 import type { Item, Order, OrderId, ItemId, OrderSource, PaymentStatus, ConfirmationStatus } from '@/types';
 
 interface OrderFormProps {
@@ -44,6 +45,7 @@ interface OrderFormProps {
 
 interface OrderFormItem {
   itemId: string;
+  designId?: number;
   quantity: number | '';
   customizationRequest: string;
 }
@@ -145,16 +147,40 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
   }, [duplicateOrderId, items]);
 
   const handleAddItem = () => {
-    setOrderItems([...orderItems, { itemId: '', quantity: 1, customizationRequest: '' }]);
+    setOrderItems([...orderItems, { itemId: '', designId: undefined, quantity: 1, customizationRequest: '' }]);
   };
 
   const handleRemoveItem = (index: number) => {
     setOrderItems(orderItems.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, field: keyof OrderFormItem, value: string | number | '') => {
+  const handleItemChange = (index: number, field: keyof OrderFormItem, value: string | number | '' | undefined) => {
     const updated = [...orderItems];
-    updated[index] = { ...updated[index], [field]: value };
+    
+    // If changing item selection, reset designId
+    if (field === 'itemId' && value !== updated[index].itemId) {
+      updated[index] = {
+        ...updated[index],
+        itemId: value as string,
+        designId: undefined
+      };
+    } else if (field === 'designId') {
+      updated[index] = {
+        ...updated[index],
+        designId: value as number | undefined
+      };
+    } else if (field === 'quantity') {
+      updated[index] = {
+        ...updated[index],
+        quantity: value as number | ''
+      };
+    } else if (field === 'customizationRequest') {
+      updated[index] = {
+        ...updated[index],
+        customizationRequest: value as string
+      };
+    }
+    
     setOrderItems(updated);
   };
 
@@ -225,6 +251,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
         address: address.trim(),
         items: orderItems.map(item => ({
           itemId: item.itemId as unknown as ItemId,
+          designId: item.designId,
           quantity: typeof item.quantity === 'number' ? item.quantity : 1,
           customizationRequest: item.customizationRequest
         })),
@@ -569,20 +596,33 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
                     
                     {/* Item details preview when selected */}
                     {selectedItem && (
-                      <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {selectedItem.imageUrl && (
-                          <Box
-                            component="img"
-                            src={selectedItem.imageUrl}
-                            alt={selectedItem.name}
-                            sx={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 1 }}
-                          />
+                      <Box sx={{ mt: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
+                          {selectedItem.imageUrl && (
+                            <Box
+                              component="img"
+                              src={selectedItem.imageUrl}
+                              alt={selectedItem.name}
+                              sx={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 1 }}
+                            />
+                          )}
+                          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                            {selectedItem.color && <Chip label={`Color: ${selectedItem.color}`} size="small" variant="outlined" />}
+                            {selectedItem.fabric && <Chip label={`Fabric: ${selectedItem.fabric}`} size="small" variant="outlined" />}
+                            {selectedItem.specialFeatures && <Chip label={selectedItem.specialFeatures} size="small" variant="outlined" />}
+                          </Stack>
+                        </Box>
+                        
+                        {/* Design Picker */}
+                        {selectedItem.designs && selectedItem.designs.length > 0 && (
+                          <Box sx={{ mb: 2 }}>
+                            <DesignPicker
+                              designs={selectedItem.designs}
+                              selectedDesignId={orderItem.designId}
+                              onDesignSelect={(designId) => handleItemChange(index, 'designId', designId)}
+                            />
+                          </Box>
                         )}
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                          {selectedItem.color && <Chip label={`Color: ${selectedItem.color}`} size="small" variant="outlined" />}
-                          {selectedItem.fabric && <Chip label={`Fabric: ${selectedItem.fabric}`} size="small" variant="outlined" />}
-                          {selectedItem.specialFeatures && <Chip label={selectedItem.specialFeatures} size="small" variant="outlined" />}
-                        </Stack>
                       </Box>
                     )}
                     
