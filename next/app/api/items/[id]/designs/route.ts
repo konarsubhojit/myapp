@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
 import ItemDesign from '@/lib/models/ItemDesign';
 import { createLogger } from '@/lib/utils/logger';
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
+import { invalidateItemCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemDesignsAPI');
 
@@ -113,6 +115,13 @@ export async function POST(
       isPrimary: isPrimary || false,
       displayOrder: displayOrder || 0
     });
+    
+    // Invalidate item cache after design creation
+    await invalidateItemCache();
+    
+    // Revalidate Next.js cache for items pages
+    revalidatePath('/api/items');
+    revalidatePath('/items');
     
     logger.info('Design created', { designId: design.id, itemId });
     

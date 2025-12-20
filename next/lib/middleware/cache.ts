@@ -38,7 +38,9 @@ const localVersions = new Map<string, VersionMemo>();
 
 // Memoization TTL for cache version (in ms). Reduce this to minimize stale data risk.
 // Trade-off: Lower values increase Redis load but improve consistency.
-export const VERSION_MEMO_TTL_MS = 200; // 200ms memoization (minimizes staleness window)
+// 50ms provides good balance: fast enough for Redis lookups, ensures cache invalidation
+// is effective within human reaction time (user creating order then refreshing)
+export const VERSION_MEMO_TTL_MS = 50; // 50ms memoization
 
 // In-memory locks for preventing cache stampede
 // Maps cache key to a list of pending resolvers
@@ -185,8 +187,9 @@ export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.G
     
     const newVersion = await redis.incr(versionKey);
     
-    // Update local memoization eagerly
-    localVersions.set(versionKey, { version: newVersion, fetchedAt: Date.now() });
+    // Clear local memoization to force all subsequent requests to fetch the new version from Redis
+    // This ensures cache invalidation works correctly even when requests come within the memo TTL window
+    localVersions.delete(versionKey);
     
     logger.info('Cache version bumped', { versionKey, newVersion });
     return newVersion;

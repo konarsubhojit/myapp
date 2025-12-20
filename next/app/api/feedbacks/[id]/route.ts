@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import Feedback from '@/lib/models/Feedback';
 import { createLogger } from '@/lib/utils/logger';
 import { MAX_RESPONSE_LENGTH } from '@/lib/constants/feedbackConstants';
+import { invalidateFeedbackCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('FeedbackByIdAPI');
 
@@ -82,6 +84,13 @@ export async function PUT(
       );
     }
     
+    // Invalidate feedback cache after update
+    await invalidateFeedbackCache();
+    
+    // Revalidate Next.js cache for feedbacks pages
+    revalidatePath('/api/feedbacks');
+    revalidatePath('/feedback');
+    
     logger.info('Feedback updated', { feedbackId: id });
     
     return NextResponse.json(updatedFeedback);
@@ -120,6 +129,13 @@ export async function DELETE(
     
     const db = getDatabase();
     await db.delete(feedbacks).where(eq(feedbacks.id, Number.parseInt(id, 10)));
+    
+    // Invalidate feedback cache after deletion
+    await invalidateFeedbackCache();
+    
+    // Revalidate Next.js cache for feedbacks pages
+    revalidatePath('/api/feedbacks');
+    revalidatePath('/feedback');
     
     logger.info('Feedback deleted', { feedbackId: id });
     
