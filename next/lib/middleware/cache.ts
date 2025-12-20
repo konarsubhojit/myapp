@@ -52,7 +52,7 @@ const LOCK_TIMEOUT = 30000; // 30 seconds
  * Check if response is an error response
  */
 function isErrorResponse(body: unknown): boolean {
-  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return false;
   }
   
