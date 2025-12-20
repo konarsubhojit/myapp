@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import Order from '@/lib/models/Order';
 import { createLogger } from '@/lib/utils/logger';
 import { invalidateOrderCache } from '@/lib/middleware/cache';
@@ -124,10 +123,6 @@ export async function PUT(
     
     // Invalidate order cache after update
     await invalidateOrderCache();
-    
-    // Revalidate Next.js cache for orders pages
-    revalidatePath('/api/orders');
-    revalidatePath('/orders');
     
     logger.info('Order updated', { orderId: id });
     

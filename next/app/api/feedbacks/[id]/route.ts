@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import Feedback from '@/lib/models/Feedback';
 import { createLogger } from '@/lib/utils/logger';
 import { MAX_RESPONSE_LENGTH } from '@/lib/constants/feedbackConstants';
@@ -87,10 +86,6 @@ export async function PUT(
     // Invalidate feedback cache after update
     await invalidateFeedbackCache();
     
-    // Revalidate Next.js cache for feedbacks pages
-    revalidatePath('/api/feedbacks');
-    revalidatePath('/feedback');
-    
     logger.info('Feedback updated', { feedbackId: id });
     
     return NextResponse.json(updatedFeedback);
@@ -132,10 +127,6 @@ export async function DELETE(
     
     // Invalidate feedback cache after deletion
     await invalidateFeedbackCache();
-    
-    // Revalidate Next.js cache for feedbacks pages
-    revalidatePath('/api/feedbacks');
-    revalidatePath('/feedback');
     
     logger.info('Feedback deleted', { feedbackId: id });
     

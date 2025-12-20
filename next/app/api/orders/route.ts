@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import Order from '@/lib/models/Order';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
@@ -250,10 +249,6 @@ export async function POST(request: NextRequest) {
     
     // Invalidate order cache after creation
     await invalidateOrderCache();
-    
-    // Revalidate Next.js cache for orders pages
-    revalidatePath('/api/orders');
-    revalidatePath('/orders');
     
     logger.info('Order created', { orderId: newOrder._id, orderIdStr: newOrder.orderId });
     
