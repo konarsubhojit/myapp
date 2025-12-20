@@ -270,6 +270,7 @@ async function buildOrderItemsList(items) {
     }
     parsedItems.push({
       itemId: orderItem.itemId,
+      designId: orderItem.designId,
       quantity,
       customizationRequest: orderItem.customizationRequest || ''
     });
@@ -289,6 +290,7 @@ async function buildOrderItemsList(items) {
 
     orderItems.push({
       item: item._id,
+      designId: parsedItem.designId,
       name: item.name,
       price: item.price,
       quantity: parsedItem.quantity,
