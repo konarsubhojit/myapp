@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { del } from '@vercel/blob';
 import ItemDesign from '@/lib/models/ItemDesign';
 import { createLogger } from '@/lib/utils/logger';
@@ -48,10 +47,6 @@ export async function DELETE(
     // Invalidate item cache after design deletion
     await invalidateItemCache();
     
-    // Revalidate Next.js cache for items pages
-    revalidatePath('/api/items');
-    revalidatePath('/items');
-    
     logger.info('Design deleted', { designId: numericDesignId });
     
     return NextResponse.json({ message: 'Design deleted successfully' });
@@ -99,10 +94,6 @@ export async function PUT(
       // Invalidate item cache after design update
       await invalidateItemCache();
       
-      // Revalidate Next.js cache for items pages
-      revalidatePath('/api/items');
-      revalidatePath('/items');
-      
       logger.info('Design set as primary', { designId: numericDesignId, itemId });
       return NextResponse.json(updated);
     }
@@ -119,10 +110,6 @@ export async function PUT(
       
       // Invalidate item cache after design update
       await invalidateItemCache();
-      
-      // Revalidate Next.js cache for items pages
-      revalidatePath('/api/items');
-      revalidatePath('/items');
       
       logger.info('Design display order updated', { designId: numericDesignId, displayOrder });
       return NextResponse.json(updated);

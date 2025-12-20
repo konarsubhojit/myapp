@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
@@ -180,10 +179,6 @@ export async function POST(request: NextRequest) {
 
     // Invalidate item cache after creation
     await invalidateItemCache();
-
-    // Revalidate Next.js cache for items pages
-    revalidatePath('/api/items');
-    revalidatePath('/items');
 
     logger.info('Item created', { itemId: item.id });
     

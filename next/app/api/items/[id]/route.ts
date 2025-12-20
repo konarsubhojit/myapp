@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { put, del } from '@vercel/blob';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
@@ -162,10 +161,6 @@ export async function PUT(
     // Invalidate item cache after update
     await invalidateItemCache();
     
-    // Revalidate Next.js cache for items pages
-    revalidatePath('/api/items');
-    revalidatePath('/items');
-    
     logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
     
     return NextResponse.json(updatedItem);
@@ -197,10 +192,6 @@ export async function DELETE(
     
     // Invalidate item cache after deletion
     await invalidateItemCache();
-    
-    // Revalidate Next.js cache for items pages
-    revalidatePath('/api/items');
-    revalidatePath('/items');
     
     logger.info('Item soft deleted', { itemId: id });
     
