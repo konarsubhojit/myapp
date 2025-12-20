@@ -1,16 +1,16 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('RedisClient');
 
-let redisClient: any = null;
+let redisClient: RedisClientType | null = null;
 let isConnecting = false;
 
 /**
  * Get or create the Redis client instance
- * @returns {Promise<Object|null>} Redis client or null if Redis is not configured
+ * @returns {Promise<RedisClientType|null>} Redis client or null if Redis is not configured
  */
-export async function getRedisClient() {
+export async function getRedisClient(): Promise<RedisClientType | null> {
   // Return existing client if already connected
   if (redisClient && redisClient.isOpen) {
     return redisClient;
@@ -35,7 +35,7 @@ export async function getRedisClient() {
     redisClient = createClient({ 
       url: process.env.REDIS_URL,
       socket: {
-        reconnectStrategy: (retries) => {
+        reconnectStrategy: (retries: number) => {
           if (retries > 10) {
             logger.error('Redis reconnection failed after 10 attempts');
             return new Error('Redis reconnection failed');
@@ -47,7 +47,7 @@ export async function getRedisClient() {
     });
 
     // Event handlers
-    redisClient.on('error', (err: any) => {
+    redisClient.on('error', (err: Error) => {
       logger.error('Redis client error', err);
     });
 
@@ -67,7 +67,7 @@ export async function getRedisClient() {
     logger.info('Redis connection successful');
     
     return redisClient;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to connect to Redis', error);
     redisClient = null;
     return null;
@@ -79,13 +79,13 @@ export async function getRedisClient() {
 /**
  * Gracefully close the Redis connection
  */
-export async function closeRedisClient() {
+export async function closeRedisClient(): Promise<void> {
   if (redisClient) {
     try {
       await redisClient.quit();
       logger.info('Redis connection closed');
       redisClient = null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error closing Redis connection', error);
       // Force disconnect on error
       try {
@@ -102,16 +102,16 @@ export async function closeRedisClient() {
  * Check if Redis is connected and available
  * @returns {boolean} True if Redis is connected
  */
-export function isRedisConnected() {
+export function isRedisConnected(): boolean {
   return !!(redisClient && redisClient.isOpen);
 }
 
 /**
  * Get Redis client if it's already connected and ready (synchronous check)
  * This is useful for serverless environments to avoid connection overhead per request
- * @returns {Object|null} Redis client if ready, null otherwise
+ * @returns {RedisClientType|null} Redis client if ready, null otherwise
  */
-export function getRedisIfReady() {
+export function getRedisIfReady(): RedisClientType | null {
   // Return the redis client only if it exists and is open
   if (redisClient && redisClient.isOpen) {
     return redisClient;

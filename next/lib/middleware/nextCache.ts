@@ -1,5 +1,5 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
+import { RedisClientType } from 'redis';
 import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
 import { createLogger } from '@/lib/utils/logger';
 import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
@@ -7,7 +7,8 @@ import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 const logger = createLogger('NextCacheMiddleware');
 
 // Default cache TTL (Time To Live) in seconds
-const DEFAULT_TTL = 300; // 5 minutes
+// Using 3 days (259200s) for small project with infrequent updates
+const DEFAULT_TTL = 259200; // 3 days
 
 // Map URL patterns to cache version keys
 const CACHE_VERSION_MAP: Record<string, string> = {
