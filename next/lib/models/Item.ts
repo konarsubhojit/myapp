@@ -386,7 +386,7 @@ const Item = {
 
       return {
         items: enrichedItems,
-        page: {
+        pagination: {
           limit,
           nextCursor,
           hasMore
@@ -465,7 +465,7 @@ const Item = {
 
       return {
         items: itemsToReturn.map(transformItem),
-        page: {
+        pagination: {
           limit,
           nextCursor,
           hasMore

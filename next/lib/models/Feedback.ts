@@ -40,7 +40,7 @@ const Feedback = {
       .offset(offset);
     
     return {
-      feedbacks: feedbacksResult.map(transformFeedback),
+      items: feedbacksResult.map(transformFeedback),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
     };
   },

@@ -80,10 +80,10 @@ async function getOrdersHandler(request: NextRequest) {
       nextCursor: result.pagination.nextCursor ? 'present' : 'null'
     });
     
-    // Transform to match frontend expectations: {items: [], page: {}}
+    // Standardized response format: {items: [], pagination: {}}
     return NextResponse.json({
       items: result.orders,
-      page: result.pagination
+      pagination: result.pagination
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch orders';
@@ -96,8 +96,9 @@ async function getOrdersHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with caching (5 minutes TTL)
-export const GET = withCache(getOrdersHandler, 300);
+// Export GET handler with caching and stale-while-revalidate
+// 5 minutes fresh, serve stale for 10 minutes while revalidating
+export const GET = withCache(getOrdersHandler, 300, { staleWhileRevalidate: 600 });
 
 /**
  * POST /api/orders - Create a new order

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const result = await Feedback.findPaginated({ page, limit });
     
     logger.debug('Returning paginated feedbacks', {
-      feedbackCount: result.feedbacks.length,
+      feedbackCount: result.items.length,
       page: result.pagination.page,
       total: result.pagination.total
     });

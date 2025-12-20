@@ -8,12 +8,17 @@ import { withCache } from '@/lib/middleware/nextCache';
 const logger = createLogger('ItemsDeletedAPI');
 
 /**
- * GET /api/items/deleted - Get soft-deleted items with offset pagination
+ * GET /api/items/deleted - Get soft-deleted items with cursor or offset pagination
  * Uses Redis caching with version control for proper invalidation
+ * Supports both cursor-based (recommended) and offset-based pagination
  */
 async function getDeletedItemsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    
+    // Check if cursor-based pagination is requested
+    const cursorParam = searchParams.get('cursor');
+    const hasCursor = cursorParam !== null;
     
     // Convert URLSearchParams to object for parsePaginationParams
     const query = {
@@ -24,18 +29,38 @@ async function getDeletedItemsHandler(request: NextRequest) {
     const { page, limit, search } = parsePaginationParams(query);
     
     logger.debug('GET /api/items/deleted request', { 
+      paginationType: hasCursor ? 'cursor' : 'offset',
       page,
       limit,
+      cursor: hasCursor ? 'present' : 'none',
       hasSearchParam: !!search
     });
     
-    // Use offset-based pagination (matches frontend expectations)
-    const result = await Item.findDeletedPaginated({ page, limit, search });
+    let result;
+    
+    if (cursorParam) {
+      // Use cursor-based pagination (recommended for scalability)
+      // Cast to any to bypass TypeScript's strict parameter checking for JS model
+      result = await (Item.findDeletedCursor as any)({ 
+        limit, 
+        cursor: cursorParam, 
+        search 
+      }) as { items: unknown[]; pagination: { limit: number; nextCursor: string | null; hasMore: boolean } };
+    } else {
+      // Use offset-based pagination (legacy, backward compatible)
+      result = await Item.findDeletedPaginated({ page, limit, search });
+    }
     
     logger.debug('Returning paginated deleted items', {
       itemCount: result.items.length,
-      page: result.pagination.page,
-      total: result.pagination.total
+      paginationType: hasCursor ? 'cursor' : 'offset',
+      ...(hasCursor ? {
+        hasMore: result.pagination.hasMore,
+        nextCursor: result.pagination.nextCursor ? 'present' : 'null'
+      } : {
+        page: result.pagination.page,
+        total: result.pagination.total
+      })
     });
     
     // No Cache-Control header - rely on Redis caching with version control
@@ -49,5 +74,6 @@ async function getDeletedItemsHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with Redis caching (5 minutes TTL, invalidated on updates)
-export const GET = withCache(getDeletedItemsHandler, 300);
+// Export GET handler with Redis caching and stale-while-revalidate
+// 5 minutes fresh, serve stale for 10 minutes while revalidating
+export const GET = withCache(getDeletedItemsHandler, 300, { staleWhileRevalidate: 600 });
