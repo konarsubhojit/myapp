@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -16,6 +17,8 @@ export default function FeedbackError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  
   useEffect(() => {
     console.error('Feedback page error:', error);
   }, [error]);
@@ -44,7 +47,7 @@ export default function FeedbackError({
         <Button variant="contained" onClick={reset}>
           Try again
         </Button>
-        <Button variant="outlined" href="/dashboard">
+        <Button variant="outlined" onClick={() => router.push('/dashboard')}>
           Back to Dashboard
         </Button>
       </Box>

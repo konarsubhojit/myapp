@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
@@ -18,6 +19,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Application error:', error);
@@ -58,7 +61,7 @@ export default function Error({
           </Button>
           <Button
             variant="outlined"
-            onClick={() => window.location.href = '/'}
+            onClick={() => router.push('/')}
             aria-label="Go to home page"
           >
             Go to Home

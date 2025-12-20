@@ -155,8 +155,9 @@ export function withCache(
         if (staleData) {
           logger.debug('Serving stale data while revalidating', { key: cacheKey, version });
           
-          // Revalidate in background (don't await)
-          revalidateInBackground(handler, request, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
+          // Revalidate in background (don't await). Clone the request to avoid reusing the same stream.
+          const backgroundRequest = request.clone();
+          revalidateInBackground(handler, backgroundRequest, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
           
           return NextResponse.json(JSON.parse(staleData), {
             headers: {
@@ -183,7 +184,9 @@ export function withCache(
           if (validateResponseForCaching(data)) {
             const dataStr = JSON.stringify(data);
             
-            // Cache the fresh data
+            // Cache the fresh data. Note: We await both writes to ensure consistency
+            // before serving the response. This adds ~5-10ms latency but prevents
+            // race conditions between fresh and stale cache keys.
             await Promise.all([
               redis.setEx(cacheKey, ttl, dataStr),
               // If stale-while-revalidate is enabled, also store in stale key with longer TTL
@@ -213,12 +216,21 @@ export function withCache(
             : `public, max-age=${ttl}`,
         },
       });
-    } catch (error: any) {
-      logger.error('Cache wrapper error', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Cache wrapper error', { error: errorMessage });
       // Continue without caching on error
       return handler(request);
     }
   };
+}
+
+/**
+ * Redis client interface for caching operations
+ */
+interface CacheRedisClient {
+  get(key: string): Promise<string | null>;
+  setEx(key: string, ttl: number, value: string): Promise<unknown>;
 }
 
 /**
@@ -227,7 +239,7 @@ export function withCache(
 async function revalidateInBackground(
   handler: (request: NextRequest) => Promise<NextResponse>,
   request: NextRequest,
-  redis: any,
+  redis: CacheRedisClient,
   cacheKey: string,
   staleKey: string,
   ttl: number,
@@ -254,7 +266,9 @@ async function revalidateInBackground(
         logger.debug('Background revalidation completed', { key: cacheKey });
       }
     }
-  } catch (err: any) {
-    logger.error('Background revalidation failed', { key: cacheKey, error: err.message });
+  } catch (err: unknown) {
+    const errorMessage =
+      err instanceof Error ? err.message : typeof err === 'string' ? err : 'Unknown error';
+    logger.error('Background revalidation failed', { key: cacheKey, error: errorMessage });
   }
 }

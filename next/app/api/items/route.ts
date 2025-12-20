@@ -67,12 +67,12 @@ async function getItemsHandler(request: NextRequest) {
     
     if (cursorParam) {
       // Use cursor-based pagination (recommended for scalability)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      result = await Item.findCursor({ 
+      // Cast to any to bypass TypeScript's strict parameter checking for JS model
+      result = await (Item.findCursor as any)({ 
         limit, 
-        cursor: cursorParam as any, 
+        cursor: cursorParam, 
         search 
-      });
+      }) as { items: unknown[]; pagination: { limit: number; nextCursor: string | null; hasMore: boolean } };
     } else {
       // Use offset-based pagination (legacy, backward compatible)
       result = await Item.findPaginated({ page, limit, search });
