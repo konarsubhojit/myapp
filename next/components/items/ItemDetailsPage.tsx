@@ -11,7 +11,10 @@ import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
+import Chip from '@mui/material/Chip';
+import Grid from '@mui/material/Grid2';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -523,6 +526,54 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
                     </Box>
                   )}
                 </Stack>
+              </Box>
+              <Divider />
+            </>
+          )}
+
+          <Divider />
+
+          {/* Design Variants Display (View Mode) */}
+          {existingDesigns.length > 0 && (
+            <>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  Design Variants
+                </Typography>
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                  {existingDesigns.map((design) => (
+                    <Grid size={{ xs: 6, sm: 4, md: 3 }} key={design.id}>
+                      <Card variant="outlined">
+                        <CardMedia
+                          component="img"
+                          loading="lazy"
+                          height="120"
+                          image={design.imageUrl}
+                          alt={design.designName}
+                          sx={{ objectFit: 'cover' }}
+                        />
+                        <Box sx={{ p: 1 }}>
+                          <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="space-between">
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                flex: 1
+                              }}
+                            >
+                              {design.designName}
+                            </Typography>
+                            {design.isPrimary && (
+                              <Chip label="Primary" size="small" color="primary" sx={{ height: 20, fontSize: '0.65rem' }} />
+                            )}
+                          </Stack>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
               </Box>
               <Divider />
             </>

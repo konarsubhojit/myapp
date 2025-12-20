@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
 import type { Item, ItemId } from '@/types';
@@ -91,9 +91,10 @@ function ItemCard({
             size="small" 
             color="primary"
             onClick={() => onEdit(item)}
-            aria-label={`Edit ${item.name}`}
+            aria-label={`View ${item.name}`}
+            title="View item details"
           >
-            <EditIcon fontSize="small" />
+            <VisibilityIcon fontSize="small" />
           </IconButton>
         )}
         {onDelete && (
