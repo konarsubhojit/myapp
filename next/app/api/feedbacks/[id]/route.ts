@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Feedback from '@/lib/models/Feedback';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { MAX_RESPONSE_LENGTH } from '@/lib/constants/feedbackConstants';
 
 const logger = createLogger('FeedbackByIdAPI');
@@ -29,11 +26,11 @@ export async function GET(
     logger.debug('Feedback retrieved', { feedbackId: id });
     
     return NextResponse.json(feedback);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/feedbacks/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch feedback' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch feedback' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -88,11 +85,11 @@ export async function PUT(
     logger.info('Feedback updated', { feedbackId: id });
     
     return NextResponse.json(updatedFeedback);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('PUT /api/feedbacks/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to update feedback' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to update feedback' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -117,11 +114,8 @@ export async function DELETE(
     }
     
     // Delete using raw database access since model doesn't have delete method
-    // @ts-ignore
     const { getDatabase } = await import('@/lib/db/connection');
-    // @ts-ignore
     const { feedbacks } = await import('@/lib/db/schema');
-    // @ts-ignore
     const { eq } = await import('drizzle-orm');
     
     const db = getDatabase();
@@ -130,11 +124,11 @@ export async function DELETE(
     logger.info('Feedback deleted', { feedbackId: id });
     
     return NextResponse.json({ message: 'Feedback deleted' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('DELETE /api/feedbacks/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to delete feedback' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to delete feedback' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

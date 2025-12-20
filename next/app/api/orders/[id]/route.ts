@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { invalidateOrderCache } from '@/lib/middleware/cache';
-// @ts-ignore
-import {
-  VALID_ORDER_STATUSES,
-  VALID_PAYMENT_STATUSES,
-  VALID_CONFIRMATION_STATUSES,
-  VALID_DELIVERY_STATUSES,
-} from '@/lib/constants/orderConstants';
 
 const logger = createLogger('OrderByIdAPI');
 
@@ -38,11 +28,11 @@ export async function GET(
     
     // No Cache-Control header - rely on Redis caching with version control
     return NextResponse.json(order);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/orders/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch order' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch order' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -142,11 +132,11 @@ export async function PUT(
     logger.info('Order updated', { orderId: id });
     
     return NextResponse.json(updatedOrder);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('PUT /api/orders/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to update order' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to update order' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

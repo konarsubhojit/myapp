@@ -18,8 +18,8 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever'
 import { restoreItem, permanentlyDeleteItem } from '@/lib/api/client'
 import { useCurrency } from '@/contexts/CurrencyContext'
 import { useNotification } from '@/contexts/NotificationContext'
-import { useDeletedItems } from '@/hooks/useDeletedItems'
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import { useDeletedItems } from '@/hooks'
+import { useInfiniteScroll } from '@/hooks'
 import ItemCardSkeleton from '../common/ItemCardSkeleton'
 import type { Item, ItemId } from '@/types'
 
@@ -168,6 +168,7 @@ function ManageDeletedItems({ onItemsChange }: ManageDeletedItemsProps): ReactEl
                   {item.imageUrl && (
                     <Box
                       component="img"
+          loading="lazy"
                       src={item.imageUrl}
                       alt={item.name}
                       sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}

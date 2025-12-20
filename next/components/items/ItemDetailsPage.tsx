@@ -18,8 +18,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import ImageIcon from '@mui/icons-material/Image';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { useItemDetails, type ItemEditForm } from '@/hooks/useItemDetails';
-import { useImageProcessing } from '@/hooks/useImageProcessing';
+import { useItemDetails, type ItemEditForm } from '@/hooks';
+import { useImageProcessing } from '@/hooks';
 import ImageUploadField from '../common/ImageUploadField';
 import DesignManager, { type DesignImage } from './DesignManager';
 import type { ItemId, ItemDesign } from '@/types';
@@ -418,6 +418,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
               </Typography>
               <CardMedia
                 component="img"
+          loading="lazy"
                 image={item.imageUrl}
                 alt={item.name}
                 sx={{ 

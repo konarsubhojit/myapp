@@ -77,6 +77,7 @@ function DesignPicker({
                   <Box sx={{ position: 'relative' }}>
                     <CardMedia
                       component="img"
+          loading="lazy"
                       height="120"
                       image={design.imageUrl}
                       alt={design.designName}

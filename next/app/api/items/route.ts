@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { put } from '@vercel/blob';
-// @ts-ignore - Model files are not fully typed yet
 import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { parsePaginationParams } from '@/lib/utils/pagination';
-// @ts-ignore
 import { withCache } from '@/lib/middleware/nextCache';
-// @ts-ignore
 import { invalidateItemCache } from '@/lib/middleware/cache';
-// @ts-ignore
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemsAPI');
@@ -73,11 +67,13 @@ async function getItemsHandler(request: NextRequest) {
     
     // No Cache-Control header - rely on Redis caching with version control
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch items';
+    const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
     logger.error('GET /api/items error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch items' },
-      { status: error.statusCode || 500 }
+      { message: errorMessage },
+      { status: errorStatusCode }
     );
   }
 }
@@ -137,10 +133,11 @@ export async function POST(request: NextRequest) {
       try {
         imageUrl = await uploadImage(image);
         logger.info('Image uploaded to blob storage', { url: imageUrl });
-      } catch (uploadError: any) {
+      } catch (uploadError: unknown) {
+        const uploadErrorMessage = uploadError instanceof Error ? uploadError.message : 'Image upload failed';
         logger.error('Image upload failed', uploadError);
         return NextResponse.json(
-          { message: uploadError.message },
+          { message: uploadErrorMessage },
           { status: 400 }
         );
       }
@@ -165,11 +162,13 @@ export async function POST(request: NextRequest) {
     logger.info('Item created', { itemId: item.id });
     
     return NextResponse.json(item, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create item';
+    const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
     logger.error('POST /api/items error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to create item' },
-      { status: error.statusCode || 500 }
+      { message: errorMessage },
+      { status: errorStatusCode }
     );
   }
 }

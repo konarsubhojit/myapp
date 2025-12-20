@@ -17,7 +17,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CloseIcon from '@mui/icons-material/Close';
 import WarningIcon from '@mui/icons-material/Warning';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
-import { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, OrderWithPriority } from '../hooks';
+import { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, OrderWithPriority } from '@/hooks';
 import { useNotification } from '@/contexts/NotificationContext';
 import type { OrderId } from '@/types';
 

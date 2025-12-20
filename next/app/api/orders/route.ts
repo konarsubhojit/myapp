@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
-import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { withCache } from '@/lib/middleware/nextCache';
-// @ts-ignore
 import { invalidateOrderCache } from '@/lib/middleware/cache';
-// @ts-ignore
 import { PAGINATION } from '@/lib/constants/paginationConstants';
-// @ts-ignore
-import {
-  VALID_ORDER_STATUSES,
-  VALID_PAYMENT_STATUSES,
-  VALID_CONFIRMATION_STATUSES,
-  VALID_DELIVERY_STATUSES,
-  MAX_CUSTOMER_NOTES_LENGTH,
-  PRIORITY_MIN,
-  PRIORITY_MAX,
-} from '@/lib/constants/orderConstants';
 
 const logger = createLogger('OrdersAPI');
 
@@ -32,14 +15,15 @@ const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
  */
 function parseCursorParams(searchParams: URLSearchParams) {
   const parsedLimit = Number.parseInt(searchParams.get('limit') || '', 10);
+  const cursorValue = searchParams.get('cursor');
   
   return {
     limit: ALLOWED_LIMITS.has(parsedLimit) ? parsedLimit : PAGINATION.DEFAULT_LIMIT,
-    cursor: searchParams.get('cursor') || null as string | null
+    cursor: cursorValue || null
   };
 }
 
-function validateRequiredFields(orderFrom: any, customerName: any, customerId: any, items: any) {
+function validateRequiredFields(orderFrom: unknown, customerName: unknown, customerId: unknown, items: unknown) {
   if (!orderFrom || !customerName || !customerId) {
     return { valid: false, error: 'Order source, customer name, and customer ID are required' };
   }
@@ -49,12 +33,12 @@ function validateRequiredFields(orderFrom: any, customerName: any, customerId: a
   return { valid: true };
 }
 
-function validateDeliveryDate(expectedDeliveryDate: any) {
+function validateDeliveryDate(expectedDeliveryDate: unknown): { valid: boolean; parsedDate?: Date | null; error?: string } {
   if (!expectedDeliveryDate) {
     return { valid: true, parsedDate: null };
   }
   
-  const parsedDeliveryDate = new Date(expectedDeliveryDate);
+  const parsedDeliveryDate = new Date(expectedDeliveryDate as string | number | Date);
   if (Number.isNaN(parsedDeliveryDate.getTime())) {
     return { valid: false, error: 'Invalid expected delivery date' };
   }
@@ -87,8 +71,8 @@ async function getOrdersHandler(request: NextRequest) {
     });
     
     // Use cursor-based pagination for stable infinite scroll
-    // @ts-ignore - cursor type mismatch between URLSearchParams and model
-    const result = await Order.findCursorPaginated({ limit, cursor });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await Order.findCursorPaginated({ limit, cursor: cursor as any });
     
     logger.debug('Returning cursor-paginated orders', {
       orderCount: result.orders.length,
@@ -101,11 +85,13 @@ async function getOrdersHandler(request: NextRequest) {
       items: result.orders,
       page: result.pagination
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch orders';
+    const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
     logger.error('GET /api/orders error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch orders' },
-      { status: error.statusCode || 500 }
+      { message: errorMessage },
+      { status: errorStatusCode }
     );
   }
 }
@@ -196,7 +182,32 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const orderData: any = {
+    const orderData: {
+      orderFrom: string;
+      customerName: string;
+      customerId: string;
+      address: string;
+      totalPrice: number;
+      items: Array<{
+        itemId: number;
+        name: string;
+        price: number;
+        quantity: number;
+        customizationRequest: string;
+      }>;
+      status: string;
+      paymentStatus: string;
+      paidAmount: number;
+      confirmationStatus: string;
+      customerNotes: string;
+      priority: number;
+      orderDate: Date;
+      expectedDeliveryDate: Date | null;
+      deliveryStatus: string;
+      trackingId: string;
+      deliveryPartner: string;
+      actualDeliveryDate: Date | null;
+    } = {
       orderFrom,
       customerName: customerName.trim(),
       customerId: customerId.trim(),
@@ -210,7 +221,7 @@ export async function POST(request: NextRequest) {
       customerNotes: customerNotes || '',
       priority: priority !== undefined ? Number.parseInt(priority, 10) : 0,
       orderDate: orderDate ? new Date(orderDate) : new Date(),
-      expectedDeliveryDate: deliveryDateValidation.parsedDate,
+      expectedDeliveryDate: deliveryDateValidation.parsedDate ?? null,
       deliveryStatus: deliveryStatus || 'not_shipped',
       trackingId: trackingId || '',
       deliveryPartner: deliveryPartner || '',
@@ -229,11 +240,13 @@ export async function POST(request: NextRequest) {
     logger.info('Order created', { orderId: newOrder._id, orderIdStr: newOrder.orderId });
     
     return NextResponse.json(newOrder, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create order';
+    const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
     logger.error('POST /api/orders error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to create order' },
-      { status: error.statusCode || 500 }
+      { message: errorMessage },
+      { status: errorStatusCode }
     );
   }
 }

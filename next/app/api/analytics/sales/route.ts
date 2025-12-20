@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { calculateSalesAnalytics } from '@/lib/services/analyticsService';
 
 const logger = createLogger('AnalyticsAPI');
@@ -41,11 +38,13 @@ export async function GET(request: NextRequest) {
 
     // No Cache-Control header - analytics data is dynamic
     return NextResponse.json(analyticsData);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch analytics';
+    const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
     logger.error('GET /api/analytics/sales error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch analytics' },
-      { status: error.statusCode || 500 }
+      { message: errorMessage },
+      { status: errorStatusCode }
     );
   }
 }

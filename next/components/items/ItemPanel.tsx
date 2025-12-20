@@ -30,12 +30,12 @@ import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import { createItem, deleteItem, updateItem, restoreItem, permanentlyDeleteItem } from '@/lib/api/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { useUrlSync } from '@/hooks/useUrlSync';
-import { useItemForm } from '@/hooks/useItemForm';
-import { useImageProcessing } from '@/hooks/useImageProcessing';
-import { useItemsData } from '@/hooks/useItemsData';
-import { useDeletedItems } from '@/hooks/useDeletedItems';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useUrlSync } from '@/hooks';
+import { useItemForm } from '@/hooks';
+import { useImageProcessing } from '@/hooks';
+import { useItemsData } from '@/hooks';
+import { useDeletedItems } from '@/hooks';
+import { useInfiniteScroll } from '@/hooks';
 import ImageUploadField from '../common/ImageUploadField';
 import ItemCard from '../common/ItemCard';
 import ItemCardSkeleton from '../common/ItemCardSkeleton';
@@ -776,6 +776,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                       {item.imageUrl && (
                         <Box
                           component="img"
+          loading="lazy"
                           src={item.imageUrl}
                           alt={item.name}
                           sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}

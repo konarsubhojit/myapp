@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { put, del } from '@vercel/blob';
-// @ts-ignore
 import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { invalidateItemCache } from '@/lib/middleware/cache';
-// @ts-ignore
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemByIdAPI');
@@ -143,11 +139,11 @@ export async function PUT(
     logger.info('Item updated', { itemId: updatedItem._id, name: updatedItem.name });
     
     return NextResponse.json(updatedItem);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('PUT /api/items/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to update item' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to update item' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -179,11 +175,11 @@ export async function DELETE(
     logger.info('Item soft deleted', { itemId: id });
     
     return NextResponse.json({ message: 'Item deleted' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('DELETE /api/items/[id] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to delete item' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to delete item' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

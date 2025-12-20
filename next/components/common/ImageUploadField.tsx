@@ -55,6 +55,7 @@ function ImageUploadField({
           <Box sx={{ position: 'relative', display: 'inline-block' }}>
             <Box
               component="img"
+          loading="lazy"
               src={imagePreview}
               alt="Preview"
               sx={{ 
