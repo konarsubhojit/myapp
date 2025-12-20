@@ -207,21 +207,6 @@ export interface CursorPageInfo {
 
 export interface CursorPaginatedResult<T> {
   items: T[];
-  page: CursorPageInfo;
-}
-
-export interface PaginatedOrdersResult {
-  orders: Order[];
-  pagination: PaginationInfo;
-}
-
-export interface PaginatedFeedbacksResult {
-  feedbacks: Feedback[];
-  pagination: PaginationInfo;
-}
-
-export interface CursorPaginatedOrdersResult {
-  orders: Order[];
   pagination: CursorPageInfo;
 }
 

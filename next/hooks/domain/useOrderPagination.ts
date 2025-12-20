@@ -50,8 +50,8 @@ export const useOrderPagination = (): UseOrderPaginationResult => {
         setOrders(ordersData);
       }
       
-      setNextCursor(result.page.nextCursor);
-      setHasMore(result.page.hasMore);
+      setNextCursor(result.pagination.nextCursor);
+      setHasMore(result.pagination.hasMore);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch orders');
       if (!appendMode) {

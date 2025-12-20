@@ -80,10 +80,10 @@ async function getOrdersHandler(request: NextRequest) {
       nextCursor: result.pagination.nextCursor ? 'present' : 'null'
     });
     
-    // Transform to match frontend expectations: {items: [], page: {}}
+    // Standardized response format: {items: [], pagination: {}}
     return NextResponse.json({
       items: result.orders,
-      page: result.pagination
+      pagination: result.pagination
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch orders';
