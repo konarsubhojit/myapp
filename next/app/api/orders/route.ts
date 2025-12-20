@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
       totalPrice += itemPrice * quantity;
       validatedItems.push({
-        itemId: Number.parseInt(item.itemId, 10),
+        item: Number.parseInt(item.itemId, 10),
         name: item.name,
         price: itemPrice,
         quantity: quantity,
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       address: string;
       totalPrice: number;
       items: Array<{
-        itemId: number;
+        item: number;
         name: string;
         price: number;
         quantity: number;
