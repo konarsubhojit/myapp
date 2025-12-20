@@ -250,10 +250,10 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
         customerId: customerId.trim(),
         address: address.trim(),
         items: orderItems.map(item => ({
-          itemId: item.itemId as unknown as ItemId,
+          itemId: Number.parseInt(item.itemId, 10),
           designId: item.designId,
           quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-          customizationRequest: item.customizationRequest
+          customizationRequest: item.customizationRequest || ''
         })),
         orderDate: orderDate || undefined,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
