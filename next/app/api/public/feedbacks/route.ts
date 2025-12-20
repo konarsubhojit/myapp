@@ -9,6 +9,10 @@ import {
   MAX_COMMENT_LENGTH
 } from '@/lib/constants/feedbackConstants';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('PublicFeedbacksAPI');
 
 function validateRating(rating: any, fieldName: string = 'rating') {

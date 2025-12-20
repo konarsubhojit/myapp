@@ -5,6 +5,10 @@ import { createLogger } from '@/lib/utils/logger';
 import { invalidateItemCache } from '@/lib/middleware/cache';
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('ItemByIdAPI');
 
 async function uploadImage(image: string) {

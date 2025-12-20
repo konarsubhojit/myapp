@@ -2,18 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import Order from '@/lib/models/Order';
 import { createLogger } from '@/lib/utils/logger';
 import { calculateSalesAnalytics } from '@/lib/services/analyticsService';
-import { withCache } from '@/lib/middleware/nextCache';
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
 
 const logger = createLogger('AnalyticsAPI');
+
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/analytics/sales - Get pre-computed sales analytics data
  * Query params:
  *   - statusFilter: 'completed' (default) or 'all'
- * Wrapped with Redis caching (3 days TTL)
+ * Uses Redis caching with 24 hour TTL
  */
-async function getSalesAnalyticsHandler(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    // Try to use Redis cache
+    const redis = getRedisIfReady() || await getRedisClient();
+    
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('statusFilter') || 'completed';
     
@@ -26,6 +33,20 @@ async function getSalesAnalyticsHandler(request: NextRequest) {
     }
 
     logger.info('Fetching sales analytics', { statusFilter });
+    
+    // Generate cache key
+    const cacheKey = redis ? `analytics:sales:${statusFilter}` : null;
+    
+    // Try cache if available
+    if (cacheKey && redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return NextResponse.json(JSON.parse(cached), {
+          headers: { 'X-Cache': 'HIT' }
+        });
+      }
+    }
 
     // Fetch all orders
     const orders = await Order.find();
@@ -37,8 +58,15 @@ async function getSalesAnalyticsHandler(request: NextRequest) {
       statusFilter,
       rangeCount: Object.keys(analyticsData.analytics).length 
     });
+    
+    // Cache the result
+    if (cacheKey && redis) {
+      await redis.setEx(cacheKey, 86400, JSON.stringify(analyticsData)); // 24 hour cache
+    }
 
-    return NextResponse.json(analyticsData);
+    return NextResponse.json(analyticsData, {
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch analytics';
     const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
@@ -49,7 +77,3 @@ async function getSalesAnalyticsHandler(request: NextRequest) {
     );
   }
 }
-
-// Export GET handler with Redis caching and stale-while-revalidate
-// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
-export const GET = withCache(getSalesAnalyticsHandler, 259200, { staleWhileRevalidate: 172800 });

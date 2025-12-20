@@ -3,37 +3,32 @@ import { QueryClient } from '@tanstack/react-query';
 /**
  * Singleton QueryClient instance for the application
  * Centralized configuration ensures consistent caching behavior
- * Optimized for performance with stale-while-revalidate strategy
+ * Optimized for real-time UI updates with minimal caching
  * 
- * Performance Trade-offs:
- * - refetchOnWindowFocus: Disabled to reduce API calls, but users may see stale data
- *   when returning to the app. For critical data (order status, inventory), consider
- *   enabling per-query overrides or reducing staleTime.
- * - refetchOnMount: Disabled in favor of staleTime. Components remounting won't
- *   trigger refetches within the 5-minute stale window.
- * - staleTime: 5 minutes. Data is considered fresh for this duration. Increase for
- *   less critical data, decrease for real-time requirements.
+ * Configuration Strategy:
+ * - Redis handles server-side caching with version control
+ * - React Query focuses on client-side state management
+ * - Mutations trigger immediate cache invalidation for real-time updates
+ * - No aggressive client-side caching to ensure data freshness
  * 
- * Per-Query Overrides:
- * For critical queries that need fresh data, override these defaults:
+ * For specific queries that can tolerate stale data, override with:
  * ```typescript
  * useQuery({
- *   queryKey: ['critical-data'],
- *   queryFn: fetchCriticalData,
- *   staleTime: 30_000, // 30 seconds for more frequent updates
- *   refetchOnWindowFocus: true, // Enable for critical data
+ *   queryKey: ['less-critical-data'],
+ *   queryFn: fetchData,
+ *   staleTime: 5 * 60_000, // 5 minutes for non-critical data
  * });
  * ```
  */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60_000, // 5 minutes fresh (increased from 2 minutes)
-      gcTime: 15 * 60_000, // Keep in cache for 15 minutes
+      staleTime: 0, // Always consider data stale to enable refetching
+      gcTime: 5 * 60_000, // Keep in cache for 5 minutes for navigation
       retry: 1,
-      refetchOnWindowFocus: false, // Disabled for better performance (see trade-offs above)
+      refetchOnWindowFocus: true, // Refetch on window focus for fresh data
       refetchOnReconnect: true,
-      refetchOnMount: false, // Disabled - use staleTime instead (see trade-offs above)
+      refetchOnMount: true, // Always refetch on component mount
     },
     mutations: {
       retry: 0,

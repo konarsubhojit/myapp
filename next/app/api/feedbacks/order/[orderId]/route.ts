@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import Feedback from '@/lib/models/Feedback';
 import { createLogger } from '@/lib/utils/logger';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('FeedbackByOrderAPI');
 
 /**
