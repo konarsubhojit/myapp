@@ -258,6 +258,7 @@ export function generateCacheKey(req: Request, version: number | null = null): s
  * Returns the cached data if available, null if timeout or error
  */
 async function waitForPendingRequest(cacheKey: string, redis: RedisClientType): Promise<unknown> {
+  void redis;
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       logger.debug('Lock wait timeout', { key: cacheKey });
