@@ -1,11 +1,13 @@
-// @ts-nocheck
+import { RedisClientType } from 'redis';
+import { Request, Response, NextFunction } from 'express';
 import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('CacheMiddleware');
 
 // Default cache TTL (Time To Live) in seconds
-const DEFAULT_TTL = 300; // 5 minutes
+// Using 3 days (259200s) for small project with infrequent updates
+const DEFAULT_TTL = 259200; // 3 days
 
 // Cache version keys - separate versioning for different resource types
 export const CACHE_VERSION_KEYS = {
@@ -13,10 +15,10 @@ export const CACHE_VERSION_KEYS = {
   ORDERS: 'cache:v:orders',
   FEEDBACKS: 'cache:v:feedbacks',
   GLOBAL: 'cache:v:global', // Fallback for non-resource-specific caches
-};
+} as const;
 
 // Map URL patterns to cache version keys
-const CACHE_VERSION_MAP = {
+const CACHE_VERSION_MAP: Record<string, string> = {
   '/api/items': CACHE_VERSION_KEYS.ITEMS,
   '/api/orders': CACHE_VERSION_KEYS.ORDERS,
   '/api/feedbacks': CACHE_VERSION_KEYS.FEEDBACKS,
@@ -25,34 +27,32 @@ const CACHE_VERSION_MAP = {
 // Legacy export for backward compatibility
 export const CACHE_VERSION_KEY = CACHE_VERSION_KEYS.GLOBAL;
 
+// Types for version memoization
+interface VersionMemo {
+  version: number;
+  fetchedAt: number;
+}
+
 // In-memory memoization for version lookup to reduce Redis calls in burst traffic
-// Note: Node.js is single-threaded, so concurrent requests are handled sequentially
-// in the event loop, making this safe for per-instance caching in serverless.
-//
-// IMPORTANT: In multi-instance serverless deployments (e.g., Vercel), each instance has its
-// own in-memory version cache. During the memoization window, different instances may use
-// different cache versions. This can result in stale data being served after cache invalidation.
-// This is a deliberate performance vs. consistency trade-off to reduce Redis GET calls.
-// Reduce VERSION_MEMO_TTL_MS for stronger consistency or set to 0 to disable memoization.
-const localVersions = new Map(); // Map<versionKey, { version: number, fetchedAt: number }>
+const localVersions = new Map<string, VersionMemo>();
+
 // Memoization TTL for cache version (in ms). Reduce this to minimize stale data risk.
 // Trade-off: Lower values increase Redis load but improve consistency.
 export const VERSION_MEMO_TTL_MS = 200; // 200ms memoization (minimizes staleness window)
 
 // In-memory locks for preventing cache stampede
 // Maps cache key to a list of pending resolvers
-const pendingRequests = new Map();
+type PendingResolver = (data: unknown) => void;
+const pendingRequests = new Map<string, PendingResolver[]>();
 
 // Lock timeout to prevent deadlocks (in milliseconds)
 const LOCK_TIMEOUT = 30000; // 30 seconds
 
 /**
  * Check if response is an error response
- * @param {*} body - Response body to check
- * @returns {boolean} True if response is an error
  */
-function isErrorResponse(body) {
-  if (typeof body !== 'object' || Array.isArray(body)) {
+function isErrorResponse(body: unknown): boolean {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return false;
   }
   
@@ -69,10 +69,8 @@ function isErrorResponse(body) {
 
 /**
  * Validate paginated response structure
- * @param {Object} body - Response body to validate
- * @returns {boolean} True if paginated response is valid
  */
-function validatePaginatedResponse(body) {
+function validatePaginatedResponse(body: Record<string, unknown>): boolean {
   // Ensure items/orders/feedbacks array exists and pagination metadata is present
   const dataKey = body.items !== undefined ? 'items' : 
                   body.orders !== undefined ? 'orders' : 
@@ -82,22 +80,20 @@ function validatePaginatedResponse(body) {
     logger.debug('Paginated response validation failed', { 
       hasDataKey: !!dataKey,
       dataKey,
-      isArray: body[dataKey] ? Array.isArray(body[dataKey]) : false,
+      isArray: dataKey ? Array.isArray(body[dataKey]) : false,
       hasPagination: !!body.pagination 
     });
     return false;
   }
   
-  logger.debug('Paginated response validated successfully', { dataKey, itemCount: body[dataKey].length });
+  logger.debug('Paginated response validated successfully', { dataKey, itemCount: (body[dataKey] as unknown[]).length });
   return true;
 }
 
 /**
  * Validate response data before caching to prevent caching invalid/empty data
- * @param {*} body - Response body to validate
- * @returns {boolean} True if response should be cached
  */
-function validateResponseForCaching(body) {
+function validateResponseForCaching(body: unknown): boolean {
   // Don't cache null or undefined responses
   if (body === null || body === undefined) {
     return false;
@@ -110,7 +106,7 @@ function validateResponseForCaching(body) {
   
   // For paginated responses, validate structure
   if (body && typeof body === 'object' && 'pagination' in body) {
-    return validatePaginatedResponse(body);
+    return validatePaginatedResponse(body as Record<string, unknown>);
   }
   
   // For array responses, ensure it's a valid array
@@ -125,12 +121,8 @@ function validateResponseForCaching(body) {
 /**
  * Get the cache version from Redis with in-memory memoization
  * This reduces Redis lookups in burst traffic on warm lambdas
- * @param {Object} redis - Redis client
- * @param {string} versionKey - Cache version key (e.g., CACHE_VERSION_KEYS.ITEMS)
- * @returns {Promise<number>} Current version number (defaults to 1 if not set)
- * @exported for testing purposes
  */
-export async function getCacheVersion(redis: any, versionKey: string = CACHE_VERSION_KEYS.GLOBAL) {
+export async function getCacheVersion(redis: RedisClientType, versionKey: string = CACHE_VERSION_KEYS.GLOBAL): Promise<number> {
   const now = Date.now();
   
   // Return memoized version if still valid
@@ -163,8 +155,8 @@ export async function getCacheVersion(redis: any, versionKey: string = CACHE_VER
     
     logger.debug('Fetched cache version from Redis', { versionKey, version: parsedVersion });
     return parsedVersion;
-  } catch (error: any) {
-    logger.error('Failed to get cache version', { versionKey, error: error.message });
+  } catch (error: unknown) {
+    logger.error('Failed to get cache version', { versionKey, error: error instanceof Error ? error.message : 'Unknown error' });
     // Return memoized version or default to 1 on error
     return cached ? cached.version : 1;
   }
@@ -174,17 +166,15 @@ export async function getCacheVersion(redis: any, versionKey: string = CACHE_VER
  * Legacy function for backward compatibility
  * @deprecated Use getCacheVersion(redis, versionKey) instead
  */
-export async function getGlobalCacheVersion(redis: any) {
+export async function getGlobalCacheVersion(redis: RedisClientType): Promise<number> {
   return getCacheVersion(redis, CACHE_VERSION_KEYS.GLOBAL);
 }
 
 /**
  * Bump (increment) a cache version to invalidate cached entries for that resource type
  * This is more efficient than SCAN-based invalidation for serverless environments
- * @param {string} versionKey - Cache version key to bump (e.g., CACHE_VERSION_KEYS.ITEMS)
- * @returns {Promise<number|null>} New version number, or null if Redis unavailable
  */
-export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.GLOBAL) {
+export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.GLOBAL): Promise<number | null> {
   try {
     const redis = getRedisIfReady();
     
@@ -200,8 +190,8 @@ export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.G
     
     logger.info('Cache version bumped', { versionKey, newVersion });
     return newVersion;
-  } catch (error: any) {
-    logger.error('Failed to bump cache version', { versionKey, error: error.message });
+  } catch (error: unknown) {
+    logger.error('Failed to bump cache version', { versionKey, error: error instanceof Error ? error.message : 'Unknown error' });
     return null;
   }
 }
@@ -210,24 +200,22 @@ export async function bumpCacheVersion(versionKey: string = CACHE_VERSION_KEYS.G
  * Legacy function for backward compatibility
  * @deprecated Use bumpCacheVersion(versionKey) instead
  */
-export async function bumpGlobalCacheVersion() {
+export async function bumpGlobalCacheVersion(): Promise<number | null> {
   return bumpCacheVersion(CACHE_VERSION_KEYS.GLOBAL);
 }
 
 /**
  * Reset the in-memory version cache and pending requests (useful for testing)
  */
-export function resetVersionMemo() {
+export function resetVersionMemo(): void {
   localVersions.clear();
   pendingRequests.clear();
 }
 
 /**
  * Determine which cache version key to use based on the request URL
- * @param {string} url - Request URL (baseUrl + path)
- * @returns {string} Cache version key to use
  */
-function getCacheVersionKeyForUrl(url) {
+function getCacheVersionKeyForUrl(url: string): string {
   // Check if URL starts with any of the mapped patterns
   for (const [pattern, versionKey] of Object.entries(CACHE_VERSION_MAP)) {
     if (url.startsWith(pattern)) {
@@ -242,11 +230,8 @@ function getCacheVersionKeyForUrl(url) {
 /**
  * Generate a versioned cache key from request path, method, and query parameters
  * Format: v{VERSION}:{METHOD}:{FULL_PATH}?{SORTED_QUERY}
- * @param {Object} req - Express request object
- * @param {number} version - Cache version number
- * @returns {string} Versioned cache key
  */
-export function generateCacheKey(req, version = null) {
+export function generateCacheKey(req: Request, version: number | null = null): string {
   // Use baseUrl + path to get the full path including mounted router base
   // baseUrl contains the mount point (e.g., '/api/items')
   // path contains the route path relative to the router (e.g., '/', '/:id')
@@ -254,7 +239,7 @@ export function generateCacheKey(req, version = null) {
   const method = req.method || 'GET';
   const queryString = Object.keys(req.query)
     .sort()
-    .map(key => `${key}=${req.query[key]}`)
+    .map(key => `${key}=${req.query[key] as string}`)
     .join('&');
   
   const pathWithQuery = queryString ? `${fullPath}?${queryString}` : fullPath;
@@ -272,7 +257,8 @@ export function generateCacheKey(req, version = null) {
  * Wait for a pending cache request to complete
  * Returns the cached data if available, null if timeout or error
  */
-async function waitForPendingRequest(cacheKey: string, redis: any) {
+async function waitForPendingRequest(cacheKey: string, redis: RedisClientType): Promise<unknown> {
+  void redis;
   return new Promise((resolve) => {
     const timeout = setTimeout(() => {
       logger.debug('Lock wait timeout', { key: cacheKey });
@@ -285,17 +271,20 @@ async function waitForPendingRequest(cacheKey: string, redis: any) {
       return;
     }
     
-    pendingRequests.get(cacheKey).push((data) => {
-      clearTimeout(timeout);
-      resolve(data);
-    });
+    const waiters = pendingRequests.get(cacheKey);
+    if (waiters) {
+      waiters.push((data: unknown) => {
+        clearTimeout(timeout);
+        resolve(data);
+      });
+    }
   });
 }
 
 /**
  * Notify all waiting requests that cache has been populated
  */
-function notifyPendingRequests(cacheKey, data) {
+function notifyPendingRequests(cacheKey: string, data: unknown): void {
   const waiters = pendingRequests.get(cacheKey);
   if (waiters) {
     pendingRequests.delete(cacheKey);
@@ -307,18 +296,16 @@ function notifyPendingRequests(cacheKey, data) {
  * Cache middleware for GET requests with stampede protection
  * Uses request coalescing to prevent multiple identical requests from hitting the database
  * Now uses global versioned cache keys for efficient invalidation
- * @param {number} ttl - Time to live in seconds (default: 300)
- * @returns {Function} Express middleware
  */
-export function cacheMiddleware(ttl = DEFAULT_TTL) {
-  return async (req, res, next) => {
+export function cacheMiddleware(ttl: number = DEFAULT_TTL) {
+  return async (req: Request, res: Response, next: NextFunction) => {
     // Only cache GET requests
     if (req.method !== 'GET') {
       return next();
     }
 
     // Declare cacheKey outside try block for cleanup in catch
-    let cacheKey = null;
+    let cacheKey: string | null = null;
 
     try {
       // Prefer ready client for serverless optimization
@@ -383,7 +370,7 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       
       // Cleanup function to ensure pending requests are notified (only once)
       const cleanupPendingRequest = () => {
-        if (!cleanedUp && !responseSent && pendingRequests.has(cacheKey)) {
+        if (!cleanedUp && !responseSent && cacheKey && pendingRequests.has(cacheKey)) {
           cleanedUp = true;
           notifyPendingRequests(cacheKey, null);
         }
@@ -394,19 +381,19 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       res.on('close', cleanupPendingRequest);
       
       // Override res.json to cache the response
-      res.json = function(body) {
+      res.json = function(body: unknown) {
         responseSent = true;
         
         // Validate response before caching to prevent caching invalid/empty data
         const shouldCache = validateResponseForCaching(body);
         
-        if (shouldCache) {
+        if (shouldCache && cacheKey) {
           // Cache the response asynchronously (don't wait)
           redis.setEx(cacheKey, ttl, JSON.stringify(body))
             .then(() => {
               logger.debug('Response cached', { key: cacheKey, ttl });
             })
-            .catch(err => {
+            .catch((err: Error) => {
               logger.error('Failed to cache response', { key: cacheKey, error: err.message });
             });
           
@@ -415,7 +402,9 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
         } else {
           logger.debug('Response not cached due to validation failure', { key: cacheKey });
           // Still notify pending requests to unblock them (they'll re-fetch)
-          notifyPendingRequests(cacheKey, null);
+          if (cacheKey) {
+            notifyPendingRequests(cacheKey, null);
+          }
         }
         
         // Call original res.json
@@ -423,10 +412,10 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
       };
       
       next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Cache middleware error', error);
       // Cleanup pending requests on error
-      if (pendingRequests.has(cacheKey)) {
+      if (cacheKey && pendingRequests.has(cacheKey)) {
         notifyPendingRequests(cacheKey, null);
       }
       // Continue without caching on error
@@ -438,9 +427,8 @@ export function cacheMiddleware(ttl = DEFAULT_TTL) {
 /**
  * Invalidate cache for a specific pattern using SCAN for better performance
  * @deprecated Prefer using bumpGlobalCacheVersion() for invalidation in serverless environments
- * @param {string} pattern - Cache key pattern (supports wildcards with *)
  */
-export async function invalidateCache(pattern: string) {
+export async function invalidateCache(pattern: string): Promise<void> {
   try {
     const redis = await getRedisClient();
     
@@ -450,18 +438,18 @@ export async function invalidateCache(pattern: string) {
     }
 
     // Use SCAN instead of KEYS for better performance in production
-    const keys = [];
-    let cursor = 0;
+    const keys: string[] = [];
+    let scanCursor = '0';
     
     do {
-      const result = await redis.scan(cursor, {
+      const result = await redis.scan(scanCursor, {
         MATCH: pattern,
         COUNT: 100
       });
       
-      cursor = result.cursor;
+      scanCursor = result.cursor.toString();
       keys.push(...result.keys);
-    } while (cursor !== 0);
+    } while (scanCursor !== '0');
     
     if (keys.length === 0) {
       logger.debug('No cache keys found for pattern', { pattern });
@@ -471,8 +459,8 @@ export async function invalidateCache(pattern: string) {
     // Delete all matching keys
     await redis.del(keys);
     logger.info('Cache invalidated (SCAN)', { pattern, keysDeleted: keys.length });
-  } catch (error: any) {
-    logger.error('Failed to invalidate cache', { pattern, error: error.message });
+  } catch (error: unknown) {
+    logger.error('Failed to invalidate cache', { pattern, error: error instanceof Error ? error.message : 'Unknown error' });
   }
 }
 
@@ -480,7 +468,7 @@ export async function invalidateCache(pattern: string) {
  * Invalidate all item-related caches by bumping item version
  * This only invalidates item caches, not orders or feedbacks
  */
-export async function invalidateItemCache() {
+export async function invalidateItemCache(): Promise<void> {
   logger.debug('Invalidating item cache via version bump');
   await bumpCacheVersion(CACHE_VERSION_KEYS.ITEMS);
 }
@@ -489,7 +477,7 @@ export async function invalidateItemCache() {
  * Invalidate all order-related caches by bumping order version
  * This only invalidates order caches, not items or feedbacks
  */
-export async function invalidateOrderCache() {
+export async function invalidateOrderCache(): Promise<void> {
   logger.debug('Invalidating order cache via version bump');
   await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
@@ -498,7 +486,7 @@ export async function invalidateOrderCache() {
  * Invalidate all feedback-related caches by bumping feedback version
  * This only invalidates feedback caches, not items or orders
  */
-export async function invalidateFeedbackCache() {
+export async function invalidateFeedbackCache(): Promise<void> {
   logger.debug('Invalidating feedback cache via version bump');
   await bumpCacheVersion(CACHE_VERSION_KEYS.FEEDBACKS);
 }
@@ -507,7 +495,7 @@ export async function invalidateFeedbackCache() {
  * Invalidate paginated order history caches by bumping order version
  * This only invalidates order caches, not all caches
  */
-export async function invalidatePaginatedOrderCache() {
+export async function invalidatePaginatedOrderCache(): Promise<void> {
   logger.debug('Invalidating order cache via version bump (called from invalidatePaginatedOrderCache)');
   await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
@@ -516,7 +504,7 @@ export async function invalidatePaginatedOrderCache() {
  * Invalidate priority orders cache by bumping order version
  * This only invalidates order caches, not all caches
  */
-export async function invalidatePriorityOrderCache() {
+export async function invalidatePriorityOrderCache(): Promise<void> {
   logger.debug('Invalidating order cache via version bump (called from invalidatePriorityOrderCache)');
   await bumpCacheVersion(CACHE_VERSION_KEYS.ORDERS);
 }
@@ -526,7 +514,7 @@ export async function invalidatePriorityOrderCache() {
  * This flushes all Redis data - use with caution in production
  * For normal cache invalidation, prefer bumpCacheVersion(versionKey)
  */
-export async function clearAllCache() {
+export async function clearAllCache(): Promise<void> {
   try {
     const redis = await getRedisClient();
     
@@ -545,7 +533,7 @@ export async function clearAllCache() {
     }
     
     logger.info('All caches cleared and versions reset');
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Failed to clear all caches', error);
   }
 }

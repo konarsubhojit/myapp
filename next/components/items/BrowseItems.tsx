@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, type ReactElement } from 'react'
+import { useState, useCallback, type ReactElement } from 'react'
+import { useRouter } from 'next/navigation'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -18,30 +19,18 @@ import { useItemsData } from '@/hooks'
 import { useInfiniteScroll } from '@/hooks'
 import ItemCard from '../common/ItemCard'
 import ItemCardSkeleton from '../common/ItemCardSkeleton'
-import ItemDetailsPage from './ItemDetailsPage'
 import type { Item, ItemId } from '@/types'
 
 interface BrowseItemsProps {
   onItemsChange: () => void
   onCopyItem?: (item: Item) => void
-  initialSelectedItemId?: ItemId | null
-  onItemDetailsClose?: () => void
 }
 
-function BrowseItems({ onItemsChange, onCopyItem, initialSelectedItemId = null, onItemDetailsClose }: BrowseItemsProps): ReactElement {
+function BrowseItems({ onItemsChange, onCopyItem }: BrowseItemsProps): ReactElement {
+  const router = useRouter()
   const { formatPrice } = useCurrency()
   const { showSuccess, showError } = useNotification()
   const [error, setError] = useState('')
-
-  // Selected item state for showing details page
-  const [selectedItemId, setSelectedItemId] = useState<ItemId | null>(initialSelectedItemId)
-
-  // Update selectedItemId when initialSelectedItemId changes
-  useEffect(() => {
-    if (initialSelectedItemId) {
-      setSelectedItemId(initialSelectedItemId)
-    }
-  }, [initialSelectedItemId])
 
   // Use items data hook with infinite scroll
   const {
@@ -88,32 +77,9 @@ function BrowseItems({ onItemsChange, onCopyItem, initialSelectedItemId = null, 
   }, [onCopyItem])
 
   const handleEdit = useCallback((item: Item) => {
-    // Navigate to item details page instead of opening modal
-    setSelectedItemId(item._id)
-  }, [])
-
-  const handleCloseDetails = () => {
-    setSelectedItemId(null)
-    if (onItemDetailsClose) {
-      onItemDetailsClose()
-    }
-  }
-
-  const handleItemUpdated = () => {
-    onItemsChange()
-    fetchItems()
-  }
-
-  // Show item details page when an item is selected
-  if (selectedItemId) {
-    return (
-      <ItemDetailsPage
-        itemId={selectedItemId}
-        onBack={handleCloseDetails}
-        onItemUpdated={handleItemUpdated}
-      />
-    )
-  }
+    // Navigate to dedicated item details/edit page
+    router.push(`/items/${item._id}`)
+  }, [router])
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 } }}>

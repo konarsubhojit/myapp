@@ -103,9 +103,9 @@ async function getItemsHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with Redis caching and stale-while-revalidate
-// 5 minutes fresh, serve stale for 10 minutes while revalidating
-export const GET = withCache(getItemsHandler, 300, { staleWhileRevalidate: 600 });
+// Export GET handler with caching and stale-while-revalidate
+// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
+export const GET = withCache(getItemsHandler, 259200, { staleWhileRevalidate: 172800 });
 
 /**
  * POST /api/items - Create a new item

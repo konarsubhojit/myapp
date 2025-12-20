@@ -97,8 +97,8 @@ async function getOrdersHandler(request: NextRequest) {
 }
 
 // Export GET handler with caching and stale-while-revalidate
-// 5 minutes fresh, serve stale for 10 minutes while revalidating
-export const GET = withCache(getOrdersHandler, 300, { staleWhileRevalidate: 600 });
+// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
+export const GET = withCache(getOrdersHandler, 259200, { staleWhileRevalidate: 172800 });
 
 /**
  * POST /api/orders - Create a new order
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
 
       totalPrice += itemPrice * quantity;
       validatedItems.push({
-        itemId: Number.parseInt(item.itemId, 10),
+        item: Number.parseInt(item.itemId, 10),
         name: item.name,
         price: itemPrice,
         quantity: quantity,
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       address: string;
       totalPrice: number;
       items: Array<{
-        itemId: number;
+        item: number;
         name: string;
         price: number;
         quantity: number;

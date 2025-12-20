@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
 import { createLogger } from '@/lib/utils/logger';
@@ -7,7 +6,8 @@ import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 const logger = createLogger('NextCacheMiddleware');
 
 // Default cache TTL (Time To Live) in seconds
-const DEFAULT_TTL = 300; // 5 minutes
+// Using 3 days (259200s) for small project with infrequent updates
+const DEFAULT_TTL = 259200; // 3 days
 
 // Map URL patterns to cache version keys
 const CACHE_VERSION_MAP: Record<string, string> = {
@@ -155,9 +155,11 @@ export function withCache(
         if (staleData) {
           logger.debug('Serving stale data while revalidating', { key: cacheKey, version });
           
-          // Revalidate in background (don't await). Clone the request to avoid reusing the same stream.
-          const backgroundRequest = request.clone();
-          revalidateInBackground(handler, backgroundRequest, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
+          // Revalidate in background (don't await).
+          // Safe to pass the original request here because this cache wrapper only applies to GET
+          // requests (checked earlier) and we do not consume the request body before reuse, so there
+          // is no request-stream reuse problem.
+          void revalidateInBackground(handler, request, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
           
           return NextResponse.json(JSON.parse(staleData), {
             headers: {

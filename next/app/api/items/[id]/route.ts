@@ -59,6 +59,36 @@ async function deleteOldImage(oldImageUrl: string | null) {
 }
 
 /**
+ * GET /api/items/[id] - Get a single item by ID
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    
+    const item = await Item.findById(id);
+    if (!item) {
+      return NextResponse.json(
+        { message: 'Item not found' },
+        { status: 404 }
+      );
+    }
+    
+    logger.debug('GET /api/items/[id] success', { itemId: id });
+    
+    return NextResponse.json(item);
+  } catch (error: unknown) {
+    logger.error('GET /api/items/[id] error', error);
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : 'Failed to fetch item' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
+    );
+  }
+}
+
+/**
  * PUT /api/items/[id] - Update an item
  */
 export async function PUT(

@@ -33,5 +33,5 @@ async function getPriorityOrdersHandler(request: NextRequest) {
   }
 }
 
-// Export GET handler with caching (5 minutes TTL)
-export const GET = withCache(getPriorityOrdersHandler, 300);
+// Export GET handler with caching (3 days TTL)
+export const GET = withCache(getPriorityOrdersHandler, 259200);

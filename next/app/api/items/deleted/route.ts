@@ -75,5 +75,5 @@ async function getDeletedItemsHandler(request: NextRequest) {
 }
 
 // Export GET handler with Redis caching and stale-while-revalidate
-// 5 minutes fresh, serve stale for 10 minutes while revalidating
-export const GET = withCache(getDeletedItemsHandler, 300, { staleWhileRevalidate: 600 });
+// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
+export const GET = withCache(getDeletedItemsHandler, 259200, { staleWhileRevalidate: 172800 });
