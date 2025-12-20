@@ -156,9 +156,9 @@ export function withCache(
         if (staleData) {
           logger.debug('Serving stale data while revalidating', { key: cacheKey, version });
           
-          // Revalidate in background (don't await). Clone the request to avoid reusing the same stream.
-          const backgroundRequest = request.clone();
-          revalidateInBackground(handler, backgroundRequest, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
+          // Revalidate in background (don't await)
+          // We pass the original request since cloning causes type issues
+          void revalidateInBackground(handler, request, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
           
           return NextResponse.json(JSON.parse(staleData), {
             headers: {

@@ -88,10 +88,12 @@ export async function closeRedisClient(): Promise<void> {
     } catch (error: unknown) {
       logger.error('Error closing Redis connection', error);
       // Force disconnect on error
-      try {
-        await redisClient.disconnect();
-      } catch (disconnectError) {
-        logger.error('Error disconnecting Redis', disconnectError);
+      if (redisClient) {
+        try {
+          await redisClient.disconnect();
+        } catch (disconnectError) {
+          logger.error('Error disconnecting Redis', disconnectError);
+        }
       }
       redisClient = null;
     }

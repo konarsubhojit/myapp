@@ -1,10 +1,75 @@
-// @ts-nocheck
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('AnalyticsService');
 
+interface TimeRange {
+  key: string;
+  label: string;
+  days: number;
+}
+
+interface ItemCount {
+  quantity: number;
+  revenue: number;
+}
+
+interface ItemData {
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+interface CustomerData {
+  customerId: string;
+  customerName: string;
+  orderCount: number;
+  totalSpent: number;
+  items: Record<string, number>;
+}
+
+interface SourceData {
+  count: number;
+  revenue: number;
+}
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Order {
+  items?: OrderItem[];
+  customerId: string;
+  customerName: string;
+  totalPrice: number;
+  orderFrom?: string;
+  status?: string;
+  orderDate?: Date | string;
+  createdAt?: Date | string;
+}
+
+interface RangeAnalytics {
+  totalSales: number;
+  orderCount: number;
+  topItems: ItemData[];
+  topItemsByRevenue: ItemData[];
+  sourceBreakdown: Record<string, SourceData>;
+  topCustomersByOrders: CustomerData[];
+  topCustomersByRevenue: CustomerData[];
+  highestOrderingCustomer: CustomerData | null;
+  averageOrderValue: number;
+  uniqueCustomers: number;
+}
+
+interface AnalyticsResponse {
+  analytics: Record<string, RangeAnalytics>;
+  timeRanges: TimeRange[];
+  generatedAt: string;
+}
+
 // Time ranges configuration
-const TIME_RANGES = [
+const TIME_RANGES: TimeRange[] = [
   { key: 'week', label: 'Last Week', days: 7 },
   { key: 'month', label: 'Last Month', days: 30 },
   { key: 'quarter', label: 'Last Quarter', days: 90 },
@@ -17,8 +82,8 @@ const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 /**
  * Aggregates item counts and revenue from filtered orders
  */
-function aggregateItemCounts(filteredOrders) {
-  const itemCounts = {};
+function aggregateItemCounts(filteredOrders: Order[]): Record<string, ItemCount> {
+  const itemCounts: Record<string, ItemCount> = {};
   
   filteredOrders.forEach(order => {
     if (order.items && order.items.length > 0) {
@@ -38,8 +103,8 @@ function aggregateItemCounts(filteredOrders) {
 /**
  * Aggregates customer order data including total spent and items purchased
  */
-function aggregateCustomerData(filteredOrders) {
-  const customerCounts = {};
+function aggregateCustomerData(filteredOrders: Order[]): Record<string, CustomerData> {
+  const customerCounts: Record<string, CustomerData> = {};
   
   filteredOrders.forEach(order => {
     const customerId = order.customerId;
@@ -76,8 +141,8 @@ function aggregateCustomerData(filteredOrders) {
 /**
  * Aggregates order count and revenue by source
  */
-function aggregateSourceBreakdown(filteredOrders) {
-  const sourceBreakdown = {};
+function aggregateSourceBreakdown(filteredOrders: Order[]): Record<string, SourceData> {
+  const sourceBreakdown: Record<string, SourceData> = {};
   
   filteredOrders.forEach(order => {
     const orderSource = order.orderFrom || 'unknown';
@@ -94,10 +159,10 @@ function aggregateSourceBreakdown(filteredOrders) {
 /**
  * Filter orders by time range
  */
-function filterOrdersByTimeRange(orders, cutoffDate) {
+function filterOrdersByTimeRange(orders: Order[], cutoffDate: Date): Order[] {
   return orders.filter(order => {
     const dateToUse = order.orderDate || order.createdAt;
-    const orderDate = new Date(dateToUse);
+    const orderDate = new Date(dateToUse as string | Date);
     return orderDate >= cutoffDate;
   });
 }
@@ -105,7 +170,7 @@ function filterOrdersByTimeRange(orders, cutoffDate) {
 /**
  * Filter orders by status
  */
-function filterOrdersByStatus(orders, statusFilter) {
+function filterOrdersByStatus(orders: Order[], statusFilter: string): Order[] {
   if (statusFilter === 'all') {
     return orders;
   }
@@ -119,7 +184,7 @@ function filterOrdersByStatus(orders, statusFilter) {
 /**
  * Calculate total sales and order count
  */
-function calculateSalesTotals(orders) {
+function calculateSalesTotals(orders: Order[]): { totalSales: number; orderCount: number; averageOrderValue: number } {
   const totalSales = orders.reduce((sum, order) => sum + order.totalPrice, 0);
   const orderCount = orders.length;
   const averageOrderValue = orderCount > 0 ? totalSales / orderCount : 0;
@@ -130,8 +195,8 @@ function calculateSalesTotals(orders) {
 /**
  * Process item data to get top items by quantity and revenue
  */
-function processItemData(itemCounts) {
-  const itemsArray = Object.entries(itemCounts).map(([name, data]) => ({
+function processItemData(itemCounts: Record<string, ItemCount>): { topItems: ItemData[]; topItemsByRevenue: ItemData[] } {
+  const itemsArray: ItemData[] = Object.entries(itemCounts).map(([name, data]) => ({
     name,
     quantity: data.quantity,
     revenue: data.revenue
@@ -146,7 +211,12 @@ function processItemData(itemCounts) {
 /**
  * Process customer data to get top customers
  */
-function processCustomerData(customerCounts) {
+function processCustomerData(customerCounts: Record<string, CustomerData>): {
+  topCustomersByOrders: CustomerData[];
+  topCustomersByRevenue: CustomerData[];
+  highestOrderingCustomer: CustomerData | null;
+  uniqueCustomers: number;
+} {
   const customersArray = Object.values(customerCounts);
   
   const topCustomersByOrders = [...customersArray].sort((a, b) => b.orderCount - a.orderCount).slice(0, 5);
@@ -164,7 +234,7 @@ function processCustomerData(customerCounts) {
 /**
  * Compute analytics for a specific time range and status filter
  */
-function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
+function computeRangeAnalytics(orders: Order[], rangeDays: number, statusFilter: string, now: Date): RangeAnalytics {
   const cutoffDate = new Date(now.getTime() - rangeDays * MILLISECONDS_PER_DAY);
   
   const timeFilteredOrders = filterOrdersByTimeRange(orders, cutoffDate);
@@ -196,13 +266,10 @@ function computeRangeAnalytics(orders, rangeDays, statusFilter, now) {
 
 /**
  * Calculate sales analytics for all time ranges
- * @param {Array} orders - Array of order objects
- * @param {string} statusFilter - Filter by order status ('completed' or 'all')
- * @returns {Object} Analytics data for all time ranges
  */
-export function calculateSalesAnalytics(orders, statusFilter = 'completed') {
+export function calculateSalesAnalytics(orders: Order[], statusFilter: string = 'completed'): AnalyticsResponse {
   const now = new Date();
-  const analytics = {};
+  const analytics: Record<string, RangeAnalytics> = {};
 
   logger.info('Calculating sales analytics', { 
     totalOrders: orders.length, 

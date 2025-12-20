@@ -80,7 +80,7 @@ function validatePaginatedResponse(body: Record<string, unknown>): boolean {
     logger.debug('Paginated response validation failed', { 
       hasDataKey: !!dataKey,
       dataKey,
-      isArray: body[dataKey] ? Array.isArray(body[dataKey]) : false,
+      isArray: dataKey ? Array.isArray(body[dataKey]) : false,
       hasPagination: !!body.pagination 
     });
     return false;
@@ -438,17 +438,17 @@ export async function invalidateCache(pattern: string): Promise<void> {
 
     // Use SCAN instead of KEYS for better performance in production
     const keys: string[] = [];
-    let cursor = 0;
+    let scanCursor = '0';
     
     do {
-      const result = await redis.scan(cursor, {
+      const result = await redis.scan(scanCursor, {
         MATCH: pattern,
         COUNT: 100
       });
       
-      cursor = result.cursor;
+      scanCursor = result.cursor.toString();
       keys.push(...result.keys);
-    } while (cursor !== 0);
+    } while (scanCursor !== '0');
     
     if (keys.length === 0) {
       logger.debug('No cache keys found for pattern', { pattern });
