@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 // @ts-ignore
 import Feedback from '@/lib/models/Feedback';
 // @ts-ignore
@@ -12,6 +13,8 @@ import {
   MAX_COMMENT_LENGTH,
   MAX_RESPONSE_LENGTH
 } from '@/lib/constants/feedbackConstants';
+// @ts-ignore
+import { invalidateFeedbackCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('FeedbacksAPI');
 
@@ -132,6 +135,13 @@ export async function POST(request: NextRequest) {
     };
 
     const newFeedback = await Feedback.create(feedbackData);
+    
+    // Invalidate feedback cache after creation
+    await invalidateFeedbackCache();
+    
+    // Revalidate Next.js cache for feedbacks pages
+    revalidatePath('/api/feedbacks');
+    revalidatePath('/feedback');
     
     logger.info('Feedback created', { feedbackId: newFeedback.id, orderId: newFeedback.orderId });
     
