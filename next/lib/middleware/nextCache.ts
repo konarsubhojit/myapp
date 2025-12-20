@@ -155,8 +155,10 @@ export function withCache(
         if (staleData) {
           logger.debug('Serving stale data while revalidating', { key: cacheKey, version });
           
-          // Revalidate in background (don't await)
-          // We pass the original request since cloning causes type issues
+          // Revalidate in background (don't await).
+          // Safe to pass the original request here because this cache wrapper only applies to GET
+          // requests (checked earlier) and we do not consume the request body before reuse, so there
+          // is no request-stream reuse problem.
           void revalidateInBackground(handler, request, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
           
           return NextResponse.json(JSON.parse(staleData), {
