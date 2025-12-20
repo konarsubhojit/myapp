@@ -489,6 +489,115 @@ describe('Orders Routes', () => {
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('message', 'Database error');
     });
+
+    it('should create order with designId and customizationRequest', async () => {
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [
+          { 
+            itemId: 1, 
+            designId: 5,
+            quantity: 3,
+            customizationRequest: 'Please add embroidery on collar'
+          }
+        ],
+      };
+
+      const mockCreatedOrder = {
+        _id: 1,
+        orderId: 'ORD654321',
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        totalPrice: 150.0,
+        items: [{ 
+          item: 1, 
+          designId: 5,
+          name: 'Test Item', 
+          price: 50.0, 
+          quantity: 3,
+          customizationRequest: 'Please add embroidery on collar'
+        }],
+      };
+
+      Order.create.mockResolvedValue(mockCreatedOrder);
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('orderId', 'ORD654321');
+      expect(response.body.totalPrice).toBe(150.0);
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items[0]).toMatchObject({
+        designId: 5,
+        quantity: 3,
+        customizationRequest: 'Please add embroidery on collar'
+      });
+      
+      // Verify that Order.create was called with correct data including totalPrice
+      expect(Order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalPrice: 150.0,
+          items: expect.arrayContaining([
+            expect.objectContaining({
+              item: 1,
+              designId: 5,
+              name: 'Test Item',
+              price: 50.0,
+              quantity: 3,
+              customizationRequest: 'Please add embroidery on collar'
+            })
+          ])
+        })
+      );
+    });
+
+    it('should calculate total price correctly for multiple items', async () => {
+      // Setup multiple items in the mock
+      const itemsMap = new Map();
+      itemsMap.set(1, { _id: 1, name: 'Item 1', price: 50.0 });
+      itemsMap.set(2, { _id: 2, name: 'Item 2', price: 75.0 });
+      Item.findByIds.mockResolvedValue(itemsMap);
+
+      const orderData = {
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        items: [
+          { itemId: 1, quantity: 2 },  // 50 * 2 = 100
+          { itemId: 2, quantity: 3 }   // 75 * 3 = 225
+        ],                              // Total: 325
+      };
+
+      const mockCreatedOrder = {
+        _id: 1,
+        orderId: 'ORD654321',
+        orderFrom: 'Website',
+        customerName: 'Jane Doe',
+        customerId: 'CUST001',
+        totalPrice: 325.0,
+        items: [
+          { item: 1, name: 'Item 1', price: 50.0, quantity: 2 },
+          { item: 2, name: 'Item 2', price: 75.0, quantity: 3 }
+        ],
+      };
+
+      Order.create.mockResolvedValue(mockCreatedOrder);
+
+      const response = await request(app).post('/api/orders').send(orderData);
+
+      expect(response.status).toBe(201);
+      expect(response.body.totalPrice).toBe(325.0);
+      
+      // Verify that Order.create was called with correct calculated total
+      expect(Order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          totalPrice: 325.0
+        })
+      );
+    });
   });
 
   describe('GET /api/orders/:id', () => {
