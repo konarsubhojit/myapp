@@ -34,12 +34,17 @@ async function uploadImage(image: string) {
 }
 
 /**
- * GET /api/items - Get all items with offset pagination
+ * GET /api/items - Get all items with cursor or offset pagination
  * Uses Redis caching with version control for proper invalidation
+ * Supports both cursor-based (recommended) and offset-based pagination
  */
 async function getItemsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    
+    // Check if cursor-based pagination is requested
+    const cursorParam = searchParams.get('cursor');
+    const hasCursor = cursorParam !== null;
     
     // Convert URLSearchParams to object for parsePaginationParams
     const query = {
@@ -50,19 +55,39 @@ async function getItemsHandler(request: NextRequest) {
     const { page, limit, search } = parsePaginationParams(query);
     
     logger.debug('GET /api/items request', { 
+      paginationType: hasCursor ? 'cursor' : 'offset',
       page,
       limit,
+      cursor: hasCursor ? 'present' : 'none',
       hasSearchParam: !!search,
       searchLength: search.length
     });
     
-    // Use offset-based pagination (matches frontend expectations)
-    const result = await Item.findPaginated({ page, limit, search });
+    let result;
+    
+    if (cursorParam) {
+      // Use cursor-based pagination (recommended for scalability)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result = await Item.findCursor({ 
+        limit, 
+        cursor: cursorParam as any, 
+        search 
+      });
+    } else {
+      // Use offset-based pagination (legacy, backward compatible)
+      result = await Item.findPaginated({ page, limit, search });
+    }
     
     logger.debug('Returning paginated items', { 
       itemCount: result.items.length,
-      page: result.pagination.page,
-      total: result.pagination.total
+      paginationType: hasCursor ? 'cursor' : 'offset',
+      ...(hasCursor ? {
+        hasMore: result.pagination.hasMore,
+        nextCursor: result.pagination.nextCursor ? 'present' : 'null'
+      } : {
+        page: result.pagination.page,
+        total: result.pagination.total
+      })
     });
     
     // No Cache-Control header - rely on Redis caching with version control
