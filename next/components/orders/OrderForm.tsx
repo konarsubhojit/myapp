@@ -249,12 +249,20 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
         customerName: customerName.trim(),
         customerId: customerId.trim(),
         address: address.trim(),
-        items: orderItems.map(item => ({
-          itemId: Number.parseInt(item.itemId, 10),
-          designId: item.designId,
-          quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-          customizationRequest: item.customizationRequest || ''
-        })),
+        items: orderItems.map(item => {
+          const selectedItem = items.find(i => String(i._id) === String(item.itemId));
+          if (!selectedItem) {
+            throw new Error(`Item with ID ${item.itemId} not found`);
+          }
+          return {
+            itemId: Number.parseInt(item.itemId, 10),
+            name: selectedItem.name,
+            price: selectedItem.price,
+            designId: item.designId,
+            quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+            customizationRequest: item.customizationRequest || ''
+          };
+        }),
         orderDate: orderDate || undefined,
         expectedDeliveryDate: expectedDeliveryDate || undefined,
         paymentStatus,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import Order from '@/lib/models/Order';
+import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
 import { withCache } from '@/lib/middleware/nextCache';
 import { invalidateOrderCache } from '@/lib/middleware/cache';
@@ -144,28 +145,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate items and calculate total
-    let totalPrice = 0;
-    const validatedItems = [];
-
+    // Validate items structure
+    const parsedItems = [];
     for (const item of items) {
-      if (!item.itemId || !item.name || item.quantity === undefined || item.price === undefined) {
+      if (!item.itemId || item.quantity === undefined) {
         return NextResponse.json(
-          { message: 'Each item must have itemId, name, quantity, and price' },
+          { message: 'Each item must have itemId and quantity' },
           { status: 400 }
         );
       }
 
-      const itemPrice = Number.parseFloat(item.price);
       const quantity = Number.parseInt(item.quantity, 10);
-
-      if (Number.isNaN(itemPrice) || itemPrice < 0) {
-        return NextResponse.json(
-          { message: 'Item price must be a valid non-negative number' },
-          { status: 400 }
-        );
-      }
-
       if (Number.isNaN(quantity) || quantity <= 0) {
         return NextResponse.json(
           { message: 'Item quantity must be a positive integer' },
@@ -173,14 +163,41 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      totalPrice += itemPrice * quantity;
-      validatedItems.push({
-        item: Number.parseInt(item.itemId, 10),
-        name: item.name,
-        price: itemPrice,
+      parsedItems.push({
+        itemId: item.itemId,
+        designId: item.designId,
         quantity: quantity,
-        customizationRequest: item.customizationRequest || ''
+        customizationRequest: item.customizationRequest
       });
+    }
+
+    // Fetch item details from database
+    const itemIds = parsedItems.map(i => i.itemId);
+    const itemsMap = await Item.findByIds(itemIds);
+    
+    // Validate items and calculate total
+    let totalPrice = 0;
+    const validatedItems = [];
+
+    for (const parsedItem of parsedItems) {
+      const item = itemsMap.get(Number.parseInt(parsedItem.itemId, 10));
+      if (!item) {
+        return NextResponse.json(
+          { message: `Item with id ${parsedItem.itemId} not found` },
+          { status: 400 }
+        );
+      }
+
+      validatedItems.push({
+        item: item._id,
+        designId: parsedItem.designId || null,
+        name: item.name,
+        price: item.price,
+        quantity: parsedItem.quantity,
+        customizationRequest: parsedItem.customizationRequest?.trim() || ''
+      });
+
+      totalPrice += item.price * parsedItem.quantity;
     }
 
     const orderData: {

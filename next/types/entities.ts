@@ -121,6 +121,8 @@ export interface UpdateItemData {
 
 export interface CreateOrderItemData {
   itemId: ItemId | number;
+  name: string;
+  price: number;
   designId?: number;
   quantity: number;
   customizationRequest?: string;
