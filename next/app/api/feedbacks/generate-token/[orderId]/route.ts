@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Feedback from '@/lib/models/Feedback';
-// @ts-ignore
 import FeedbackToken from '@/lib/models/FeedbackToken';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('GenerateFeedbackTokenAPI');
@@ -54,11 +50,11 @@ export async function POST(
       token: tokenData.token,
       expiresAt: tokenData.expiresAt
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/feedbacks/generate-token/[orderId] error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to generate feedback token' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to generate feedback token' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

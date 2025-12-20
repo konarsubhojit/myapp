@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Feedback from '@/lib/models/Feedback';
-// @ts-ignore
 import FeedbackToken from '@/lib/models/FeedbackToken';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import {
   MIN_RATING,
   MAX_RATING,
@@ -130,11 +125,11 @@ export async function POST(request: NextRequest) {
     logger.info('Public feedback created', { feedbackId: newFeedback.id, orderId: tokenData.orderId });
     
     return NextResponse.json(newFeedback, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/public/feedbacks error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to submit feedback' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to submit feedback' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

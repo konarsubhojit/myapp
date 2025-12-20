@@ -46,11 +46,11 @@ export async function DELETE(
     logger.info('Design deleted', { designId: numericDesignId });
     
     return NextResponse.json({ message: 'Design deleted successfully' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('DELETE /api/items/:id/designs/:designId error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to delete design' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to delete design' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -107,11 +107,11 @@ export async function PUT(
       { message: 'No valid update fields provided' },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('PUT /api/items/:id/designs/:designId error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to update design' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to update design' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

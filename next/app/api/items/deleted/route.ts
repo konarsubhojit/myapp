@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
-// @ts-ignore
 import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { parsePaginationParams } from '@/lib/utils/pagination';
-// @ts-ignore
 import { withCache } from '@/lib/middleware/nextCache';
 
 const logger = createLogger('ItemsDeletedAPI');
@@ -44,11 +40,11 @@ async function getDeletedItemsHandler(request: NextRequest) {
     
     // No Cache-Control header - rely on Redis caching with version control
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/items/deleted error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch deleted items' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch deleted items' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

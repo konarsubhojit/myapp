@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { withCache } from '@/lib/middleware/nextCache';
 
 const logger = createLogger('PriorityOrdersAPI');
@@ -27,11 +24,11 @@ async function getPriorityOrdersHandler(request: NextRequest) {
     
     // No Cache-Control header - rely on Redis caching with version control
     return NextResponse.json(ordersArray);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/orders/priority error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch priority orders' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch priority orders' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

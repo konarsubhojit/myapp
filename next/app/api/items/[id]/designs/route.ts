@@ -50,11 +50,11 @@ export async function GET(
     const designs = await ItemDesign.findByItemId(itemId);
     
     return NextResponse.json(designs);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/items/:id/designs error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch designs' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch designs' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -117,11 +117,11 @@ export async function POST(
     logger.info('Design created', { designId: design.id, itemId });
     
     return NextResponse.json(design, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/items/:id/designs error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to create design' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to create design' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

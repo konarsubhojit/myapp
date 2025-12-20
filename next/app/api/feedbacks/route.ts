@@ -63,11 +63,11 @@ export async function GET(request: NextRequest) {
     
     // No Cache-Control header - rely on Redis caching with version control
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('GET /api/feedbacks error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to fetch feedbacks' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to fetch feedbacks' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
@@ -136,11 +136,11 @@ export async function POST(request: NextRequest) {
     logger.info('Feedback created', { feedbackId: newFeedback.id, orderId: newFeedback.orderId });
     
     return NextResponse.json(newFeedback, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/feedbacks error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to create feedback' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to create feedback' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

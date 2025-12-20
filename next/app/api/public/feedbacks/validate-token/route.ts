@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Feedback from '@/lib/models/Feedback';
-// @ts-ignore
 import FeedbackToken from '@/lib/models/FeedbackToken';
-// @ts-ignore
 import Order from '@/lib/models/Order';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
 
 const logger = createLogger('ValidateTokenAPI');
@@ -54,11 +50,11 @@ export async function POST(request: NextRequest) {
       },
       hasExistingFeedback: !!existingFeedback
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/public/feedbacks/validate-token error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to validate token' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to validate token' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

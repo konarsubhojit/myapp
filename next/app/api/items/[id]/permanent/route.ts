@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { del } from '@vercel/blob';
-// @ts-ignore
 import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { invalidateItemCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemPermanentAPI');
@@ -55,11 +52,11 @@ export async function DELETE(
     logger.info('Item image permanently removed', { itemId: id });
     
     return NextResponse.json({ message: 'Item image permanently removed' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('DELETE /api/items/[id]/permanent error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to permanently remove item image' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to permanently remove item image' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }

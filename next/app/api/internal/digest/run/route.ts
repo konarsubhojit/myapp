@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { runDailyDigest } from '@/lib/services/digestService';
 
 const logger = createLogger('DigestAPI');
@@ -82,14 +80,14 @@ export async function POST(request: NextRequest) {
       message: 'Digest completed successfully',
       ...result
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Digest run failed', error);
     
     // Return 500 so Vercel Cron can detect failure
     return NextResponse.json(
       {
         message: 'Digest failed',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

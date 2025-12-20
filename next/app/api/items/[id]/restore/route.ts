@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
 import Item from '@/lib/models/Item';
-// @ts-ignore
 import { createLogger } from '@/lib/utils/logger';
-// @ts-ignore
 import { invalidateItemCache } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemRestoreAPI');
@@ -31,11 +28,11 @@ export async function POST(
     logger.info('Item restored', { itemId: id });
     
     return NextResponse.json(item);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('POST /api/items/[id]/restore error', error);
     return NextResponse.json(
-      { message: error.message || 'Failed to restore item' },
-      { status: error.statusCode || 500 }
+      { message: error instanceof Error ? error.message : 'Failed to restore item' },
+      { status: (error as { statusCode?: number }).statusCode || 500 }
     );
   }
 }
