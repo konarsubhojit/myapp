@@ -80,20 +80,26 @@ function validateResponseForCaching(data: any): boolean {
 /**
  * Cache wrapper for Next.js API route handlers with Redis
  * Only caches GET requests
+ * Supports stale-while-revalidate pattern for better performance
  * 
  * @param handler - The original route handler function
  * @param ttl - Time to live in seconds (default: 300)
+ * @param options - Additional caching options
+ * @param options.staleWhileRevalidate - Time in seconds to serve stale data while revalidating (default: 0)
  * @returns Wrapped handler with caching
  * 
  * @example
- * export const GET = withCache(async (request: NextRequest) => {
- *   const data = await fetchData();
- *   return NextResponse.json(data);
- * }, 600); // Cache for 10 minutes
+ * // Basic caching (5 minutes fresh)
+ * export const GET = withCache(handler, 300);
+ * 
+ * @example
+ * // Stale-while-revalidate (5 minutes fresh, serve stale for 10 minutes while revalidating)
+ * export const GET = withCache(handler, 300, { staleWhileRevalidate: 600 });
  */
 export function withCache(
   handler: (request: NextRequest) => Promise<NextResponse>,
-  ttl: number = DEFAULT_TTL
+  ttl: number = DEFAULT_TTL,
+  options: { staleWhileRevalidate?: number } = {}
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
     // Only cache GET requests
@@ -125,6 +131,7 @@ export function withCache(
       
       // Generate versioned cache key
       const cacheKey = generateCacheKey(request, version);
+      const staleKey = `${cacheKey}:stale`;
       
       // Try to get cached data
       const cachedData = await redis.get(cacheKey);
@@ -134,8 +141,30 @@ export function withCache(
         return NextResponse.json(JSON.parse(cachedData), {
           headers: {
             'X-Cache': 'HIT',
+            'Cache-Control': options.staleWhileRevalidate 
+              ? `public, max-age=${ttl}, stale-while-revalidate=${options.staleWhileRevalidate}`
+              : `public, max-age=${ttl}`,
           },
         });
+      }
+
+      // Check for stale data if stale-while-revalidate is enabled
+      if (options.staleWhileRevalidate) {
+        const staleData = await redis.get(staleKey);
+        
+        if (staleData) {
+          logger.debug('Serving stale data while revalidating', { key: cacheKey, version });
+          
+          // Revalidate in background (don't await)
+          revalidateInBackground(handler, request, redis, cacheKey, staleKey, ttl, options.staleWhileRevalidate);
+          
+          return NextResponse.json(JSON.parse(staleData), {
+            headers: {
+              'X-Cache': 'STALE',
+              'Cache-Control': `public, max-age=0, stale-while-revalidate=${options.staleWhileRevalidate}`,
+            },
+          });
+        }
       }
 
       logger.debug('Cache miss', { key: cacheKey, version });
@@ -152,14 +181,18 @@ export function withCache(
           
           // Validate response before caching
           if (validateResponseForCaching(data)) {
-            // Cache the response asynchronously (don't wait)
-            redis.setEx(cacheKey, ttl, JSON.stringify(data))
-              .then(() => {
-                logger.debug('Response cached', { key: cacheKey, ttl });
-              })
-              .catch((err: any) => {
-                logger.error('Failed to cache response', { key: cacheKey, error: err.message });
-              });
+            const dataStr = JSON.stringify(data);
+            
+            // Cache the fresh data
+            await Promise.all([
+              redis.setEx(cacheKey, ttl, dataStr),
+              // If stale-while-revalidate is enabled, also store in stale key with longer TTL
+              options.staleWhileRevalidate 
+                ? redis.setEx(staleKey, ttl + options.staleWhileRevalidate, dataStr)
+                : Promise.resolve()
+            ]);
+            
+            logger.debug('Response cached', { key: cacheKey, ttl, hasStale: !!options.staleWhileRevalidate });
           } else {
             logger.debug('Response not cached due to validation failure', { key: cacheKey });
           }
@@ -168,13 +201,16 @@ export function withCache(
         }
       }
       
-      // Add cache status header
+      // Add cache status header and Cache-Control
       return new NextResponse(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers: {
           ...Object.fromEntries(response.headers.entries()),
           'X-Cache': 'MISS',
+          'Cache-Control': options.staleWhileRevalidate 
+            ? `public, max-age=${ttl}, stale-while-revalidate=${options.staleWhileRevalidate}`
+            : `public, max-age=${ttl}`,
         },
       });
     } catch (error: any) {
@@ -183,4 +219,42 @@ export function withCache(
       return handler(request);
     }
   };
+}
+
+/**
+ * Revalidate cache in background while serving stale data
+ */
+async function revalidateInBackground(
+  handler: (request: NextRequest) => Promise<NextResponse>,
+  request: NextRequest,
+  redis: any,
+  cacheKey: string,
+  staleKey: string,
+  ttl: number,
+  staleWhileRevalidate: number
+): Promise<void> {
+  try {
+    // Execute the handler to get fresh data
+    const response = await handler(request);
+    
+    // Only cache successful JSON responses
+    if (response.status === 200 && response.headers.get('content-type')?.includes('application/json')) {
+      const data = await response.json();
+      
+      // Validate response before caching
+      if (validateResponseForCaching(data)) {
+        const dataStr = JSON.stringify(data);
+        
+        // Update both fresh and stale caches
+        await Promise.all([
+          redis.setEx(cacheKey, ttl, dataStr),
+          redis.setEx(staleKey, ttl + staleWhileRevalidate, dataStr)
+        ]);
+        
+        logger.debug('Background revalidation completed', { key: cacheKey });
+      }
+    }
+  } catch (err: any) {
+    logger.error('Background revalidation failed', { key: cacheKey, error: err.message });
+  }
 }
