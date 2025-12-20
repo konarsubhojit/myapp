@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RedisClientType } from 'redis';
 import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
 import { createLogger } from '@/lib/utils/logger';
 import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
