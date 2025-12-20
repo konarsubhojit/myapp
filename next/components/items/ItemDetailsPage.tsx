@@ -418,6 +418,7 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
               </Typography>
               <CardMedia
                 component="img"
+          loading="lazy"
                 image={item.imageUrl}
                 alt={item.name}
                 sx={{ 

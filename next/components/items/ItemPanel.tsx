@@ -776,6 +776,7 @@ function ItemPanel({ onItemsChange }: ItemPanelProps) {
                       {item.imageUrl && (
                         <Box
                           component="img"
+          loading="lazy"
                           src={item.imageUrl}
                           alt={item.name}
                           sx={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 1 }}

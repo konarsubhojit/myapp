@@ -601,6 +601,7 @@ function OrderForm({ items, onOrderCreated, duplicateOrderId }: OrderFormProps) 
                           {selectedItem.imageUrl && (
                             <Box
                               component="img"
+          loading="lazy"
                               src={selectedItem.imageUrl}
                               alt={selectedItem.name}
                               sx={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 1 }}

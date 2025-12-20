@@ -193,6 +193,7 @@ function DesignManager({
                 <Box sx={{ position: 'relative' }}>
                   <CardMedia
                     component="img"
+          loading="lazy"
                     height="200"
                     image={design.imageUrl}
                     alt={design.designName}
@@ -247,6 +248,7 @@ function DesignManager({
                 <Box sx={{ position: 'relative' }}>
                   <CardMedia
                     component="img"
+          loading="lazy"
                     height="200"
                     image={design.imageData}
                     alt={design.name}

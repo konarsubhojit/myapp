@@ -42,6 +42,7 @@ function ItemCard({
           height="140"
           image={item.imageUrl}
           alt={item.name}
+          loading="lazy"
           sx={{ objectFit: 'cover' }}
         />
       ) : (

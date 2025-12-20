@@ -154,6 +154,7 @@ function MultipleDesignUpload({
                 <Box sx={{ position: 'relative' }}>
                   <CardMedia
                     component="img"
+          loading="lazy"
                     height="200"
                     image={design.imageData}
                     alt={design.name}
