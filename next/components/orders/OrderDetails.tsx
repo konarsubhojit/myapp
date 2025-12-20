@@ -10,7 +10,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import LinkIcon from '@mui/icons-material/Link';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { useOrderDetails } from '@/hooks/useOrderDetails';
+import { useOrderDetails } from '@/hooks';
 import { getPriorityStatus } from '@/lib/utils/priorityUtils';
 import OrderDialogTitle from '../common/OrderDialogTitle';
 import OrderDialogContent from '../common/OrderDialogContent';

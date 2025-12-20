@@ -1,21 +1,13 @@
 'use client';
 
-export { useImageProcessing } from './useImageProcessing';
-export { useItemForm } from './useItemForm';
-export { useUrlSync } from './useUrlSync';
-export { useItemsData } from './useItemsData';
-export { useDeletedItems } from './useDeletedItems';
-export { useOrderDetails } from './useOrderDetails';
-export { useOrderFilters } from './useOrderFilters';
-export { useOrderPagination } from './useOrderPagination';
-export { useSalesAnalytics, TIME_RANGES } from './useSalesAnalytics';
-export { useSalesAnalyticsOptimized } from './useSalesAnalyticsOptimized';
-export type { ItemData, CustomerData, SourceData, RangeAnalytics } from './useSalesAnalytics';
-export { usePriorityOrders, getDaysUntilDelivery, getNotificationMessage, getUrgencyLevel } from './usePriorityOrders';
-export type { OrderWithPriority } from './usePriorityOrders';
-export { useInfiniteScroll } from './useInfiniteScroll';
-export { useItemDetails } from './useItemDetails';
-
-// React Query hooks
+// Re-export all hooks for easy importing
 export * from './queries';
 export * from './mutations';
+export * from './utils';
+export * from './domain';
+
+// Re-export specific items with named exports for backwards compatibility
+export { TIME_RANGES } from './domain/useSalesAnalytics';
+export type { ItemData, CustomerData, SourceData, RangeAnalytics } from './domain/useSalesAnalytics';
+export type { OrderWithPriority } from './domain/usePriorityOrders';
+

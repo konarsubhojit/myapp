@@ -31,7 +31,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useSalesAnalyticsOptimized, ItemData, CustomerData, SourceData, RangeAnalytics } from '../hooks';
+import { useSalesAnalyticsOptimized, ItemData, CustomerData, SourceData, RangeAnalytics } from '@/hooks';
 import StatCard from '../common/StatCard';
 import ProgressBarWithLabel from '../common/ProgressBarWithLabel';
 
