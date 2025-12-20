@@ -141,9 +141,9 @@ export function withCache(
         return NextResponse.json(JSON.parse(cachedData), {
           headers: {
             'X-Cache': 'HIT',
-            'Cache-Control': options.staleWhileRevalidate 
-              ? `public, max-age=${ttl}, stale-while-revalidate=${options.staleWhileRevalidate}`
-              : `public, max-age=${ttl}`,
+            // Use short cache control to ensure clients revalidate frequently
+            // This prevents browser/CDN from caching stale data
+            'Cache-Control': 'private, no-cache, must-revalidate',
           },
         });
       }
@@ -164,7 +164,8 @@ export function withCache(
           return NextResponse.json(JSON.parse(staleData), {
             headers: {
               'X-Cache': 'STALE',
-              'Cache-Control': `public, max-age=0, stale-while-revalidate=${options.staleWhileRevalidate}`,
+              // Use short cache control to ensure clients revalidate frequently
+              'Cache-Control': 'private, no-cache, must-revalidate',
             },
           });
         }
@@ -206,16 +207,16 @@ export function withCache(
         }
       }
       
-      // Add cache status header and Cache-Control
+      // Add cache status header with short cache control
       return new NextResponse(response.body, {
         status: response.status,
         statusText: response.statusText,
         headers: {
           ...Object.fromEntries(response.headers.entries()),
           'X-Cache': 'MISS',
-          'Cache-Control': options.staleWhileRevalidate 
-            ? `public, max-age=${ttl}, stale-while-revalidate=${options.staleWhileRevalidate}`
-            : `public, max-age=${ttl}`,
+          // Use short cache control to ensure clients revalidate frequently
+          // This prevents browser/CDN from caching stale data
+          'Cache-Control': 'private, no-cache, must-revalidate',
         },
       });
     } catch (error: unknown) {
