@@ -3,17 +3,25 @@ import { del } from '@vercel/blob';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
 import { parsePaginationParams } from '@/lib/utils/pagination';
-import { withCache } from '@/lib/middleware/nextCache';
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
+import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 
 const logger = createLogger('ItemsDeletedAPI');
+
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 /**
  * GET /api/items/deleted - Get soft-deleted items with cursor or offset pagination
  * Uses Redis caching with version control for proper invalidation
  * Supports both cursor-based (recommended) and offset-based pagination
  */
-async function getDeletedItemsHandler(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    // Try to use Redis cache
+    const redis = getRedisIfReady() || await getRedisClient();
+    
     const { searchParams } = new URL(request.url);
     
     // Check if cursor-based pagination is requested
@@ -35,6 +43,22 @@ async function getDeletedItemsHandler(request: NextRequest) {
       cursor: hasCursor ? 'present' : 'none',
       hasSearchParam: !!search
     });
+    
+    // Generate cache key
+    const cacheKey = redis ? 
+      `v${await getCacheVersion(redis, CACHE_VERSION_KEYS.ITEMS)}:GET:${request.url}` : 
+      null;
+    
+    // Try cache if available
+    if (cacheKey && redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return NextResponse.json(JSON.parse(cached), {
+          headers: { 'X-Cache': 'HIT' }
+        });
+      }
+    }
     
     let result;
     
@@ -63,8 +87,14 @@ async function getDeletedItemsHandler(request: NextRequest) {
       })
     });
     
-    // No Cache-Control header - rely on Redis caching with version control
-    return NextResponse.json(result);
+    // Cache the result
+    if (cacheKey && redis && result.items.length > 0) {
+      await redis.setEx(cacheKey, 86400, JSON.stringify(result)); // 24 hour cache
+    }
+    
+    return NextResponse.json(result, {
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error: unknown) {
     logger.error('GET /api/items/deleted error', error);
     return NextResponse.json(
@@ -73,7 +103,3 @@ async function getDeletedItemsHandler(request: NextRequest) {
     );
   }
 }
-
-// Export GET handler with Redis caching and stale-while-revalidate
-// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
-export const GET = withCache(getDeletedItemsHandler, 259200, { staleWhileRevalidate: 172800 });

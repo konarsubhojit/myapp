@@ -3,11 +3,16 @@ import { put } from '@vercel/blob';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
 import { parsePaginationParams } from '@/lib/utils/pagination';
-import { withCache } from '@/lib/middleware/nextCache';
 import { invalidateItemCache } from '@/lib/middleware/cache';
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
+import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 import { IMAGE_CONFIG } from '@/lib/constants/imageConstants';
 
 const logger = createLogger('ItemsAPI');
+
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 async function uploadImage(image: string) {
   const matches = image.match(/^data:image\/(\w+);base64,(.+)$/);
@@ -37,15 +42,15 @@ async function uploadImage(image: string) {
  * Uses Redis caching with version control for proper invalidation
  * Supports both cursor-based (recommended) and offset-based pagination
  */
-async function getItemsHandler(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    // Try to use Redis cache
+    const redis = getRedisIfReady() || await getRedisClient();
     
-    // Check if cursor-based pagination is requested
+    const { searchParams } = new URL(request.url);
     const cursorParam = searchParams.get('cursor');
     const hasCursor = cursorParam !== null;
     
-    // Convert URLSearchParams to object for parsePaginationParams
     const query = {
       page: searchParams.get('page') || '',
       limit: searchParams.get('limit') || '',
@@ -62,18 +67,31 @@ async function getItemsHandler(request: NextRequest) {
       searchLength: search.length
     });
     
+    // Generate cache key
+    const cacheKey = redis ? 
+      `v${await getCacheVersion(redis, CACHE_VERSION_KEYS.ITEMS)}:GET:${request.url}` : 
+      null;
+    
+    // Try cache if available
+    if (cacheKey && redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return NextResponse.json(JSON.parse(cached), {
+          headers: { 'X-Cache': 'HIT' }
+        });
+      }
+    }
+    
     let result;
     
     if (cursorParam) {
-      // Use cursor-based pagination (recommended for scalability)
-      // Cast to any to bypass TypeScript's strict parameter checking for JS model
       result = await (Item.findCursor as any)({ 
         limit, 
         cursor: cursorParam, 
         search 
       }) as { items: unknown[]; pagination: { limit: number; nextCursor: string | null; hasMore: boolean } };
     } else {
-      // Use offset-based pagination (legacy, backward compatible)
       result = await Item.findPaginated({ page, limit, search });
     }
     
@@ -89,8 +107,14 @@ async function getItemsHandler(request: NextRequest) {
       })
     });
     
-    // No Cache-Control header - rely on Redis caching with version control
-    return NextResponse.json(result);
+    // Cache the result
+    if (cacheKey && redis && result.items.length > 0) {
+      await redis.setEx(cacheKey, 86400, JSON.stringify(result)); // 24 hour cache
+    }
+    
+    return NextResponse.json(result, {
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch items';
     const errorStatusCode = (error as { statusCode?: number }).statusCode || 500;
@@ -101,10 +125,6 @@ async function getItemsHandler(request: NextRequest) {
     );
   }
 }
-
-// Export GET handler with caching and stale-while-revalidate
-// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
-export const GET = withCache(getItemsHandler, 259200, { staleWhileRevalidate: 172800 });
 
 /**
  * POST /api/items - Create a new item

@@ -15,6 +15,10 @@ import {
 // @ts-ignore
 import { invalidateFeedbackCache } from '@/lib/middleware/cache';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('FeedbacksAPI');
 
 function validateRating(rating: any, fieldName: string = 'rating') {

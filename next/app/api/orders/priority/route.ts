@@ -1,17 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Order from '@/lib/models/Order';
 import { createLogger } from '@/lib/utils/logger';
-import { withCache } from '@/lib/middleware/nextCache';
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
+import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 
 const logger = createLogger('PriorityOrdersAPI');
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/orders/priority - Get priority orders based on delivery dates
- * Wrapped with Redis caching (5 minutes TTL)
+ * Uses Redis caching with 24 hour TTL
  */
-async function getPriorityOrdersHandler(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    // Try to use Redis cache
+    const redis = getRedisIfReady() || await getRedisClient();
+    
     logger.debug('GET /api/orders/priority request');
+    
+    // Generate cache key
+    const cacheKey = redis ? 
+      `v${await getCacheVersion(redis, CACHE_VERSION_KEYS.ORDERS)}:GET:${request.url}` : 
+      null;
+    
+    // Try cache if available
+    if (cacheKey && redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return NextResponse.json(JSON.parse(cached), {
+          headers: { 'X-Cache': 'HIT' }
+        });
+      }
+    }
     
     const orders = await Order.findPriorityOrders();
     
@@ -22,8 +46,14 @@ async function getPriorityOrdersHandler(request: NextRequest) {
       orderCount: ordersArray.length
     });
     
-    // No Cache-Control header - rely on Redis caching with version control
-    return NextResponse.json(ordersArray);
+    // Cache the result
+    if (cacheKey && redis && ordersArray.length > 0) {
+      await redis.setEx(cacheKey, 86400, JSON.stringify(ordersArray)); // 24 hour cache
+    }
+    
+    return NextResponse.json(ordersArray, {
+      headers: { 'X-Cache': 'MISS' }
+    });
   } catch (error: unknown) {
     logger.error('GET /api/orders/priority error', error);
     return NextResponse.json(
@@ -32,6 +62,3 @@ async function getPriorityOrdersHandler(request: NextRequest) {
     );
   }
 }
-
-// Export GET handler with caching (3 days TTL)
-export const GET = withCache(getPriorityOrdersHandler, 259200);

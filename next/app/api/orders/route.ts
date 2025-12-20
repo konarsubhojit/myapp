@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import Order from '@/lib/models/Order';
 import Item from '@/lib/models/Item';
 import { createLogger } from '@/lib/utils/logger';
-import { withCache } from '@/lib/middleware/nextCache';
 import { invalidateOrderCache } from '@/lib/middleware/cache';
+import { getRedisClient, getRedisIfReady } from '@/lib/db/redisClient';
+import { getCacheVersion, CACHE_VERSION_KEYS } from '@/lib/middleware/cache';
 import { PAGINATION } from '@/lib/constants/paginationConstants';
 
 const logger = createLogger('OrdersAPI');
+
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const ALLOWED_LIMITS = new Set(PAGINATION.ALLOWED_LIMITS);
 
@@ -57,10 +62,13 @@ function validateDeliveryDate(expectedDeliveryDate: unknown): { valid: boolean; 
 
 /**
  * GET /api/orders - List orders with cursor pagination
- * Wrapped with Redis caching (5 minutes TTL)
+ * Uses Redis caching with version control for proper invalidation
  */
-async function getOrdersHandler(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    // Try to use Redis cache
+    const redis = getRedisIfReady() || await getRedisClient();
+    
     const { searchParams } = new URL(request.url);
     const { limit, cursor } = parseCursorParams(searchParams);
     
@@ -69,6 +77,22 @@ async function getOrdersHandler(request: NextRequest) {
       hasLimitParam: searchParams.has('limit'),
       limitValue: searchParams.get('limit')
     });
+    
+    // Generate cache key
+    const cacheKey = redis ? 
+      `v${await getCacheVersion(redis, CACHE_VERSION_KEYS.ORDERS)}:GET:${request.url}` : 
+      null;
+    
+    // Try cache if available
+    if (cacheKey && redis) {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit', { key: cacheKey });
+        return NextResponse.json(JSON.parse(cached), {
+          headers: { 'X-Cache': 'HIT' }
+        });
+      }
+    }
     
     // Use cursor-based pagination for stable infinite scroll
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,9 +105,18 @@ async function getOrdersHandler(request: NextRequest) {
     });
     
     // Standardized response format: {items: [], pagination: {}}
-    return NextResponse.json({
+    const response = {
       items: result.orders,
       pagination: result.pagination
+    };
+    
+    // Cache the result
+    if (cacheKey && redis && result.orders.length > 0) {
+      await redis.setEx(cacheKey, 86400, JSON.stringify(response)); // 24 hour cache
+    }
+    
+    return NextResponse.json(response, {
+      headers: { 'X-Cache': 'MISS' }
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch orders';
@@ -95,10 +128,6 @@ async function getOrdersHandler(request: NextRequest) {
     );
   }
 }
-
-// Export GET handler with caching and stale-while-revalidate
-// 3 days fresh (259200s), serve stale for 2 days (172800s) while revalidating
-export const GET = withCache(getOrdersHandler, 259200, { staleWhileRevalidate: 172800 });
 
 /**
  * POST /api/orders - Create a new order

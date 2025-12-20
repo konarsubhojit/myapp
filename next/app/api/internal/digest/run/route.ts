@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createLogger } from '@/lib/utils/logger';
 import { runDailyDigest } from '@/lib/services/digestService';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('DigestAPI');
 
 /**

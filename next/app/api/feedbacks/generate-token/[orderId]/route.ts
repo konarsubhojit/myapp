@@ -4,6 +4,10 @@ import FeedbackToken from '@/lib/models/FeedbackToken';
 import Order from '@/lib/models/Order';
 import { createLogger } from '@/lib/utils/logger';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('GenerateFeedbackTokenAPI');
 
 /**

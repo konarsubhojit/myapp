@@ -4,6 +4,10 @@ import { createLogger } from '@/lib/utils/logger';
 import { MAX_RESPONSE_LENGTH } from '@/lib/constants/feedbackConstants';
 import { invalidateFeedbackCache } from '@/lib/middleware/cache';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('FeedbackByIdAPI');
 
 /**

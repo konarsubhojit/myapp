@@ -3,6 +3,10 @@ import Order from '@/lib/models/Order';
 import { createLogger } from '@/lib/utils/logger';
 import { invalidateOrderCache } from '@/lib/middleware/cache';
 
+// Disable Next.js caching - use only Redis
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const logger = createLogger('OrderByIdAPI');
 
 /**
