@@ -60,7 +60,6 @@ export default function DashboardContent() {
   const handleOrderCreated = useCallback((): void => {
     setOrderHistoryKey(prev => prev + 1);
     setDuplicateOrderId(null);
-    // Refresh server-side data after order creation
     router.refresh();
   }, [router]);
 
@@ -106,7 +105,6 @@ export default function DashboardContent() {
   }, []);
 
   const handleItemsChange = useCallback((): void => {
-    // Refresh server-side data after item changes
     router.refresh();
   }, [router]);
 

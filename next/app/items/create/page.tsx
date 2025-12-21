@@ -20,7 +20,6 @@ function CreateItemContent() {
   }, [copyFromId, data?.items]);
 
   const handleItemCreated = useCallback((): void => {
-    // Refresh server-side data after item creation
     router.refresh();
     router.push('/items/browse');
   }, [router]);

@@ -9,7 +9,6 @@ export default function DeletedItemsPage() {
   const router = useRouter();
 
   const handleItemsChange = useCallback((): void => {
-    // Refresh server-side data after item restoration or deletion
     router.refresh();
   }, [router]);
 

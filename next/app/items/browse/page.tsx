@@ -14,7 +14,6 @@ export default function BrowseItemsPage() {
   }, [router]);
 
   const handleItemsChange = useCallback((): void => {
-    // Refresh server-side data after item changes
     router.refresh();
   }, [router]);
 

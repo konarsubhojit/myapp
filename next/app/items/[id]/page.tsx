@@ -32,7 +32,6 @@ export default function ItemByIdPage({ params }: PageProps) {
   };
 
   const handleItemUpdated = () => {
-    // Refresh server-side data after item update
     router.refresh();
   };
 
