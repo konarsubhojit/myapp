@@ -20,6 +20,7 @@ function CreateItemContent() {
   }, [copyFromId, data?.items]);
 
   const handleItemCreated = useCallback((): void => {
+    router.refresh();
     router.push('/items/browse');
   }, [router]);
 

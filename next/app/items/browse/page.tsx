@@ -14,8 +14,8 @@ export default function BrowseItemsPage() {
   }, [router]);
 
   const handleItemsChange = useCallback((): void => {
-    // Items are fetched internally by the component
-  }, []);
+    router.refresh();
+  }, [router]);
 
   return (
     <AuthenticatedLayout>
