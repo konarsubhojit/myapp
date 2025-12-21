@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   AppBar,
@@ -40,6 +41,7 @@ import { useItems } from '@/hooks';
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0';
 
 export default function DashboardContent() {
+  const router = useRouter();
   const { data: session } = useSession();
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
@@ -58,7 +60,9 @@ export default function DashboardContent() {
   const handleOrderCreated = useCallback((): void => {
     setOrderHistoryKey(prev => prev + 1);
     setDuplicateOrderId(null);
-  }, []);
+    // Refresh server-side data after order creation
+    router.refresh();
+  }, [router]);
 
   const handleDuplicateOrder = useCallback((orderId: string): void => {
     setDuplicateOrderId(orderId);
@@ -102,9 +106,9 @@ export default function DashboardContent() {
   }, []);
 
   const handleItemsChange = useCallback((): void => {
-    // Items are automatically refetched via React Query
-    // No manual refetch needed
-  }, []);
+    // Refresh server-side data after item changes
+    router.refresh();
+  }, [router]);
 
   if (itemsLoading) {
     return (

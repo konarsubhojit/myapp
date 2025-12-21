@@ -32,8 +32,8 @@ export default function ItemByIdPage({ params }: PageProps) {
   };
 
   const handleItemUpdated = () => {
-    // Optionally refresh or show success message
-    // The ItemDetailsPage component handles success notifications
+    // Refresh server-side data after item update
+    router.refresh();
   };
 
   if (!itemId) {

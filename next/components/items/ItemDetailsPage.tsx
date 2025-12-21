@@ -126,6 +126,8 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
       
       setExistingDesigns(prev => prev.filter(d => d.id !== designId));
       showSuccess('Design deleted successfully');
+      // Trigger parent refresh to update server-side data
+      onItemUpdated();
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Failed to delete design');
     }
@@ -148,6 +150,8 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
         isPrimary: d.id === designId
       })));
       showSuccess('Primary design updated');
+      // Trigger parent refresh to update server-side data
+      onItemUpdated();
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Failed to update primary design');
     }
@@ -196,6 +200,8 @@ function ItemDetailsPage({ itemId, onBack, onItemUpdated }: ItemDetailsPageProps
         }
         
         showSuccess(`Item updated with ${newDesigns.length} new design${newDesigns.length > 1 ? 's' : ''}`);
+        // Trigger parent refresh to update server-side data
+        onItemUpdated();
       }
       
       // Clear the new design and image state after save
