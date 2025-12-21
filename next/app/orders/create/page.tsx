@@ -16,6 +16,7 @@ function CreateOrderContent() {
   const duplicateOrderId = searchParams.get('duplicateOrderId');
 
   const handleOrderCreated = useCallback((): void => {
+    router.refresh();
     router.push('/orders/history');
   }, [router]);
 
