@@ -27,6 +27,7 @@ import PriorityNotificationPanel from './features/orders/PriorityNotificationPan
 import FeedbackPanel from './features/feedback/FeedbackPanel'
 import Login from './features/auth/Login'
 import ForbiddenPage from './features/auth/ForbiddenPage'
+import AdminPage from './features/admin/AdminPage'
 import { CurrencyProvider } from './features/orders/CurrencyContext'
 import { NotificationProvider } from './lib/NotificationContext'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
@@ -351,6 +352,10 @@ function AppContent(): ReactElement {
           
           {currentRoute === NAVIGATION_ROUTES.CUSTOMER_FEEDBACK && (
             <FeedbackPanel />
+          )}
+
+          {currentRoute === NAVIGATION_ROUTES.ADMIN_PANEL && (
+            <AdminPage />
           )}
         </Box>
       </Box>

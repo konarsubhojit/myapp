@@ -6,6 +6,7 @@ import AddCircleIcon from '@mui/icons-material/AddCircle'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import FeedbackIcon from '@mui/icons-material/Feedback'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 export interface NavigationRoute {
   id: string
@@ -43,6 +44,9 @@ export const NAVIGATION_ROUTES = {
   // Analytics
   SALES_REPORT: 'sales-report',
   CUSTOMER_FEEDBACK: 'customer-feedback',
+  
+  // Admin
+  ADMIN_PANEL: 'admin-panel',
 } as const
 
 export const NAVIGATION_GROUPS: NavigationGroup[] = [
@@ -103,6 +107,18 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
         label: 'Customer Feedback',
         icon: <FeedbackIcon />,
         group: 'analytics',
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    routes: [
+      {
+        id: NAVIGATION_ROUTES.ADMIN_PANEL,
+        label: 'Admin Panel',
+        icon: <AdminPanelSettingsIcon />,
+        group: 'admin',
       },
     ],
   },
