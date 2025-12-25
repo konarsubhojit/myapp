@@ -1,4 +1,4 @@
-import { db } from '../db/connection.js';
+import { getDatabase } from '../db/connection.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { createLogger } from '../utils/logger.js';
@@ -16,6 +16,7 @@ const logger = createLogger('UserModel');
  */
 export async function findByGoogleId(googleId) {
   try {
+    const db = getDatabase();
     const result = await db
       .select()
       .from(users)
@@ -36,6 +37,7 @@ export async function findByGoogleId(googleId) {
  */
 export async function findByEmail(email) {
   try {
+    const db = getDatabase();
     const result = await db
       .select()
       .from(users)
@@ -61,6 +63,7 @@ export async function findByEmail(email) {
  */
 export async function createUser(userData) {
   try {
+    const db = getDatabase();
     const result = await db
       .insert(users)
       .values({
@@ -88,6 +91,7 @@ export async function createUser(userData) {
  */
 export async function updateLastLogin(userId) {
   try {
+    const db = getDatabase();
     const result = await db
       .update(users)
       .set({
@@ -148,6 +152,7 @@ export async function findOrCreateUser(googleData) {
  */
 export async function isAdmin(userId) {
   try {
+    const db = getDatabase();
     const result = await db
       .select({ role: users.role })
       .from(users)
@@ -169,6 +174,7 @@ export async function isAdmin(userId) {
  */
 export async function updateUserRole(userId, role) {
   try {
+    const db = getDatabase();
     const result = await db
       .update(users)
       .set({
