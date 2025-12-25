@@ -14,13 +14,14 @@
  */
 
 import 'dotenv/config';
-import { db } from '../db/connection.js';
+import { getDatabase } from '../db/connection.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 async function createAdminUser(googleId, email, name, picture = null) {
   try {
     console.log('Connecting to database...');
+    const db = getDatabase();
     
     // Check if user already exists
     const existingUser = await db

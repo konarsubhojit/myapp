@@ -183,7 +183,12 @@ CREATE TABLE users (
 
    To find your Google ID:
    - Sign in to the app with Google OAuth
-   - Decode your JWT token at https://jwt.io to find the `sub` field
+   - Copy your JWT token and decode it **locally** (never paste live tokens into third-party websites)
+   - Use this Node.js command to decode locally:
+     ```bash
+     JWT="PASTE-YOUR-JWT-HERE" node -e "const t=process.env.JWT.split('.')[1];console.log(JSON.parse(Buffer.from(t,'base64url').toString()));"
+     ```
+     The `sub` field in the decoded payload is your Google ID.
    - Or use a placeholder and update later:
      ```bash
      node scripts/createAdminUser.js "PLACEHOLDER-123" "admin@example.com" "Admin User"
