@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getPriorityStatus } from '../utils/priorityUtils';
+import { getPriorityStatus } from '../features/orders/priorityUtils';
 
 describe('Priority Utils', () => {
   describe('getPriorityStatus', () => {

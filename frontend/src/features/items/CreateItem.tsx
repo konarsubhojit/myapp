@@ -1,0 +1,264 @@
+import { useState, useEffect, type ChangeEvent, type FormEvent, type ReactElement } from 'react'
+import Box from '@mui/material/Box'
+import Paper from '@mui/material/Paper'
+import Typography from '@mui/material/Typography'
+import TextField from '@mui/material/TextField'
+import Button from '@mui/material/Button'
+import Grid from '@mui/material/Grid2'
+import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
+import Collapse from '@mui/material/Collapse'
+import Divider from '@mui/material/Divider'
+import AddIcon from '@mui/icons-material/Add'
+import { createItem, createItemDesign } from '../../services/api'
+import { useNotification } from '../../lib/NotificationContext'
+import { useItemForm } from './useItemForm'
+import { useImageProcessing } from '../../lib/hooks/useImageProcessing'
+import ImageUploadField from '../../components/ui/ImageUploadField'
+import MultipleDesignUpload, { type DesignImage } from '../../components/ui/MultipleDesignUpload'
+import type { Item } from '../../types'
+
+interface CreateItemProps {
+  onItemCreated: () => void
+  copiedItem?: Item | null
+  onCancelCopy?: () => void
+}
+
+function CreateItem({ onItemCreated, copiedItem, onCancelCopy }: CreateItemProps): ReactElement {
+  const { showSuccess, showError } = useNotification()
+  const [loading, setLoading] = useState(false)
+  const [designs, setDesigns] = useState<DesignImage[]>([])
+  const [designProcessing, setDesignProcessing] = useState(false)
+
+  // Use item form hook
+  const {
+    name,
+    price,
+    fabric,
+    specialFeatures,
+    copiedFrom,
+    error: formError,
+    setName,
+    setPrice,
+    setFabric,
+    setSpecialFeatures,
+    setError: setFormError,
+    validateForm,
+    getFormData,
+    resetForm,
+    setFormFromItem,
+  } = useItemForm()
+
+  // Set form from copied item when it changes
+  useEffect(() => {
+    if (copiedItem) {
+      setFormFromItem(copiedItem)
+    }
+  }, [copiedItem, setFormFromItem])
+
+  // Use image processing hook
+  const {
+    image,
+    imagePreview,
+    imageProcessing,
+    imageError,
+    handleImageChange: handleImageChangeRaw,
+    clearImage,
+    resetImage,
+  } = useImageProcessing(showSuccess)
+
+  const error = formError || imageError
+
+  const setError = (err: string) => {
+    setFormError(err)
+  }
+
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await handleImageChangeRaw(file)
+    }
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError('')
+
+    const validation = validateForm()
+    if (!validation.valid) {
+      setError(validation.error || 'Validation failed')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const formData = getFormData(validation.priceNum!, image)
+      const newItem = await createItem(formData)
+      
+      // Upload designs if any
+      const designErrors: string[] = []
+      if (designs.length > 0) {
+        for (const design of designs) {
+          try {
+            await createItemDesign(newItem._id, {
+              designName: design.name,
+              image: design.imageData,
+              isPrimary: design.isPrimary,
+              displayOrder: 0
+            })
+          } catch (designError) {
+            console.error('Failed to upload design:', designError)
+            designErrors.push(design.name)
+          }
+        }
+      }
+      
+      const itemName = name.trim()
+      resetForm()
+      resetImage()
+      setDesigns([])
+      const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
+      if (fileInput) fileInput.value = ''
+      onItemCreated()
+      
+      if (designErrors.length > 0) {
+        showError(`Item "${itemName}" created, but ${designErrors.length} design(s) failed to upload: ${designErrors.join(', ')}`)
+      } else {
+        showSuccess(`Item "${itemName}" has been added successfully.`)
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create item'
+      setError(errorMessage)
+      showError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelCopy = () => {
+    resetForm()
+    resetImage()
+    setDesigns([])
+    const fileInput = document.getElementById('itemImage') as HTMLInputElement | null
+    if (fileInput) fileInput.value = ''
+    if (onCancelCopy) {
+      onCancelCopy()
+    }
+  }
+
+  return (
+    <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+      <Typography variant="h5" component="h2" gutterBottom fontWeight={600}>
+        Create Item
+      </Typography>
+
+      {/* Copy mode notice */}
+      <Collapse in={!!copiedFrom}>
+        <Alert
+          severity="info"
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleCancelCopy}>
+              Cancel
+            </Button>
+          }
+        >
+          <strong>📋 Creating variant of &quot;{copiedFrom}&quot;</strong> —
+          Modify the fabric or features to create a new item variant.
+        </Alert>
+      </Collapse>
+
+      <Box component="form" onSubmit={handleSubmit}>
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              id="itemName"
+              label="Item Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter item name"
+              fullWidth
+              required
+              aria-required="true"
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              id="itemPrice"
+              label="Price"
+              type="number"
+              inputProps={{ step: '0.01', min: '0' }}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="Enter price"
+              fullWidth
+              required
+              aria-required="true"
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              id="itemFabric"
+              label="Fabric"
+              value={fabric}
+              onChange={(e) => setFabric(e.target.value)}
+              placeholder="e.g., Cotton, Silk, Polyester"
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              id="itemSpecialFeatures"
+              label="Special Features"
+              value={specialFeatures}
+              onChange={(e) => setSpecialFeatures(e.target.value)}
+              placeholder="e.g., Handmade, Embroidered"
+              fullWidth
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <ImageUploadField
+              id="itemImage"
+              imagePreview={imagePreview}
+              imageProcessing={imageProcessing}
+              onImageChange={handleImageChange}
+              onClearImage={clearImage}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <Divider sx={{ my: 2 }} />
+            <MultipleDesignUpload
+              designs={designs}
+              onDesignsChange={setDesigns}
+              onProcessing={setDesignProcessing}
+            />
+          </Grid>
+        </Grid>
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
+
+        <Button
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={loading || designProcessing}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+          sx={{ mt: 3 }}
+        >
+          {loading ? 'Adding...' : 'Add Item'}
+        </Button>
+      </Box>
+    </Paper>
+  )
+}
+
+export default CreateItem
