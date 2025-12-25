@@ -9,9 +9,11 @@ const CURRENCIES: Currency[] = [
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen', locale: 'ja-JP' },
 ];
 
+// Get default currency from environment variable or fallback to INR
+const DEFAULT_CURRENCY_CODE = import.meta.env.VITE_DEFAULT_CURRENCY || 'INR';
+
 interface CurrencyContextType {
   currency: Currency;
-  setCurrency: (currency: Currency) => void;
   currencies: Currency[];
   formatPrice: (amount: number) => string;
 }
@@ -31,11 +33,12 @@ interface CurrencyProviderProps {
 }
 
 export function CurrencyProvider({ children }: CurrencyProviderProps): ReactElement {
-  const defaultCurrency = CURRENCIES[0];
+  // Find currency from environment variable or fallback to first currency
+  const defaultCurrency = CURRENCIES.find(c => c.code === DEFAULT_CURRENCY_CODE) || CURRENCIES[0];
   if (!defaultCurrency) {
     throw new Error('No currencies available');
   }
-  const [currency, setCurrency] = useState<Currency>(defaultCurrency);
+  const [currency] = useState<Currency>(defaultCurrency);
 
   const formatPrice = useCallback((amount: number): string => {
     return new Intl.NumberFormat(currency.locale, {
@@ -48,10 +51,9 @@ export function CurrencyProvider({ children }: CurrencyProviderProps): ReactElem
 
   const contextValue = useMemo((): CurrencyContextType => ({
     currency,
-    setCurrency,
     currencies: CURRENCIES,
     formatPrice
-  }), [currency, setCurrency, formatPrice]);
+  }), [currency, formatPrice]);
 
   return (
     <CurrencyContext.Provider value={contextValue}>

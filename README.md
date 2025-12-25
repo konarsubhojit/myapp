@@ -195,7 +195,7 @@ To configure Google OAuth authentication:
      cd backend
      node scripts/createAdminUser.js "YOUR-GOOGLE-ID" "your-email@example.com" "Your Name"
      ```
-   - See [docs/OAUTH_MIGRATION.md](./docs/OAUTH_MIGRATION.md) for detailed instructions
+   - See [backend documentation](./docs/backend.md#admin-user-setup--role-based-access) for detailed instructions
 
 **Troubleshooting**: If you encounter "stuck at transform URL" errors during login, verify that:
 - The redirect URI is correctly configured in Google Cloud Console
@@ -229,10 +229,8 @@ To enable error tracking with Rollbar:
 ## Documentation
 
 - [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
-- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, database details, and Daily Digest system
-- [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
-- [Frontend Architecture](./docs/FRONTEND_ARCHITECTURE.md) - New feature-based folder structure and organization patterns
-- [OAuth Migration Guide](./docs/OAUTH_MIGRATION.md) - Backend OAuth implementation and admin user setup
+- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, auth, database, and admin setup
+- [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, and folder structure
 - [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
 
 ## Development

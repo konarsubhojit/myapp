@@ -36,6 +36,34 @@ The frontend is a **React 19** single-page application built with **Vite** and *
 5. **Service Layer**: API abstraction with centralized auth
 6. **Guest Mode**: View-only mode without backend calls
 7. **Responsive Design**: Mobile-first with Material-UI breakpoints
+8. **Feature-Based Organization**: Code grouped by domain for scalability
+
+### Folder Structure
+
+The frontend follows a **feature-based architecture** for better maintainability and scalability:
+
+```
+src/
+├── features/              # Feature-based modules
+│   ├── auth/             # Authentication (Login, ForbiddenPage, AuthContext)
+│   ├── orders/           # Order management (forms, history, hooks, utils)
+│   ├── items/            # Item management (CRUD, hooks, queries)
+│   ├── analytics/        # Analytics & reports
+│   └── feedback/         # Feedback system
+├── components/
+│   ├── layout/           # NavigationDrawer, TopNavigationBar
+│   └── ui/               # Reusable UI components (ItemCard, OrderFiltersSection, etc.)
+├── lib/                  # Shared hooks, NotificationContext, constants
+├── services/             # API client with authentication
+├── types/                # TypeScript type definitions
+└── config/               # Configuration files
+```
+
+**Key Benefits:**
+- Clear separation of concerns by domain
+- Related code co-located in feature folders
+- Shared components easily identified in `components/`
+- Scalable structure for adding new features
 
 ---
 
