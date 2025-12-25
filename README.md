@@ -67,17 +67,27 @@ npm run frontend
 
 ```
 ├── backend/          # Node.js/Express API
-│   ├── models/       # Data models
+│   ├── models/       # Data models with Drizzle ORM
 │   ├── routes/       # API endpoints
-│   ├── db/           # Database schema
+│   ├── db/           # Database schema and migrations
+│   ├── middleware/   # Auth and cache middleware
+│   ├── scripts/      # Admin setup and utility scripts
 │   └── __tests__/    # Backend tests
 ├── frontend/         # React/Vite application
 │   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── hooks/       # Custom hooks
-│   │   ├── contexts/    # Context providers
-│   │   ├── services/    # API client
-│   │   └── test/        # Frontend tests
+│   │   ├── features/     # Feature-based modules
+│   │   │   ├── auth/     # Authentication
+│   │   │   ├── orders/   # Order management
+│   │   │   ├── items/    # Item management
+│   │   │   ├── analytics/# Analytics & reports
+│   │   │   └── feedback/ # Feedback system
+│   │   ├── components/   # Shared components
+│   │   │   ├── layout/   # Layout components
+│   │   │   └── ui/       # Reusable UI components
+│   │   ├── lib/          # Shared utilities & contexts
+│   │   ├── services/     # API client
+│   │   ├── types/        # TypeScript types
+│   │   └── test/         # Frontend tests
 │   └── ...
 ├── next/            # Next.js 15 version (NEW!)
 │   ├── app/         # Next.js App Router
@@ -178,12 +188,22 @@ To configure Google OAuth authentication:
    - Copy the "Client ID" 
    - Add it to both `backend/.env` (as `GOOGLE_CLIENT_ID`) and `frontend/.env` (as `VITE_GOOGLE_CLIENT_ID`)
 
+6. **Initial Admin User Setup**:
+   - After deploying the backend, run the database migration
+   - Create your first admin user using the setup script:
+     ```bash
+     cd backend
+     node scripts/createAdminUser.js "YOUR-GOOGLE-ID" "your-email@example.com" "Your Name"
+     ```
+   - See [backend documentation](./docs/backend.md#admin-user-setup--role-based-access) for detailed instructions
+
 **Troubleshooting**: If you encounter "stuck at transform URL" errors during login, verify that:
 - The redirect URI is correctly configured in Google Cloud Console
 - The URL matches exactly (http vs https, www vs non-www)
 - Third-party cookies are not blocked in your browser
+- You have created an admin user in the database
 
-For detailed setup instructions, see [docs/google-oauth-setup.md](./docs/google-oauth-setup.md)
+For detailed setup instructions, see [docs/google-oauth-setup.md](./docs/google-oauth-setup.md) and [docs/OAUTH_MIGRATION.md](./docs/OAUTH_MIGRATION.md)
 
 ### Rollbar Error Tracking (Optional)
 
@@ -209,8 +229,8 @@ To enable error tracking with Rollbar:
 ## Documentation
 
 - [Documentation Index](./docs/README.md) - Documentation hub with links to all docs
-- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, request lifecycle, auth, caching, database details, and Daily Digest system
-- [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, TanStack Query, and flows
+- [Backend Technical Documentation](./docs/backend.md) - Backend architecture, auth, database, and admin setup
+- [Frontend Technical Documentation](./docs/frontend.md) - React frontend architecture, components, and folder structure
 - [Customer Feedback App Documentation](./docs/customer-feedback-app.md) - Standalone feedback app technical details
 
 ## Development

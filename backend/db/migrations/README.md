@@ -2,160 +2,96 @@
 
 This directory contains SQL migration scripts for the Order Management System database.
 
-## Current Migration
+## Migration Files
 
-### 001_init_schema.sql
+### Core Schema
+- **000_complete_schema.sql** - Complete database schema (all-in-one for reference)
+- **001_init_schema.sql** - Initial schema setup (items, orders, order_items, feedbacks, feedback_tokens)
 
-**Complete database schema initialization** - This is the primary migration file that creates the entire database schema from scratch.
+### Feature Additions
+- **002_digest_reminder_tables.sql** - Daily digest and reminder system tables
+- **003_add_pagination_indexes.sql** - Performance indexes for pagination
+- **004_add_cursor_pagination_index.sql** - Composite index for orders cursor pagination
+- **005_items_cursor_indexes.sql** - Composite indexes for items cursor pagination
+- **0006_add_item_designs.sql** - Item designs feature (multiple designs per item)
+- **0007_add_users_table.sql** - User authentication and role-based access control
 
-#### What it includes:
+## How to Run Migrations
 
-1. **Enums**
-   - `order_from` - Order source channels (instagram, facebook, whatsapp, call, offline)
-   - `order_status` - Order processing states (pending, processing, completed, cancelled)
+### Initial Setup (New Database)
 
-2. **Tables**
-   - `items` - Product catalog with soft delete support
-   - `orders` - Core order management with delivery tracking
-   - `order_items` - Junction table for order-item relationships
-   - `feedbacks` - Customer feedback system with multi-dimensional ratings
-   - `feedback_tokens` - Secure token-based feedback access
-
-3. **Performance Optimizations**
-   - **13 strategically placed indexes** for optimal query performance
-   - Cascading deletes for referential integrity
-   - Check constraints for data validation
-   - Unique constraints for data integrity
-
-4. **Documentation**
-   - Comprehensive comments on all tables and columns
-   - Performance notes and optimization details
-
-## How to Run the Migration
-
-### Manual Execution
-
-If using a PostgreSQL client (psql, pgAdmin, DBeaver, etc.):
+For a fresh database, run migrations in order:
 
 ```bash
-# Using psql
+# Set your database URL
+export NEON_DATABASE_URL="postgresql://user:pass@host/db"
+
+# Run migrations in sequence
 psql $NEON_DATABASE_URL -f backend/db/migrations/001_init_schema.sql
-
-# Or connect first, then run
-psql $NEON_DATABASE_URL
-\i backend/db/migrations/001_init_schema.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/002_digest_reminder_tables.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/003_add_pagination_indexes.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/004_add_cursor_pagination_index.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/005_items_cursor_indexes.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/0006_add_item_designs.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/0007_add_users_table.sql
 ```
 
-### Using Drizzle Kit (if installed)
+Or use the complete schema for a fresh start:
+```bash
+psql $NEON_DATABASE_URL -f backend/db/migrations/000_complete_schema.sql
+# Then run only the latest migrations (0006, 0007)
+psql $NEON_DATABASE_URL -f backend/db/migrations/0006_add_item_designs.sql
+psql $NEON_DATABASE_URL -f backend/db/migrations/0007_add_users_table.sql
+```
+
+### Existing Database
+
+If updating an existing database, run only the new migrations you haven't applied yet.
+
+## Admin User Setup
+
+After running migration 0007, create an admin user:
 
 ```bash
-# Install drizzle-kit if not already installed
-npm install -D drizzle-kit
-
-# Generate and run migrations
-npx drizzle-kit push:pg
+cd backend
+node scripts/createAdminUser.js "YOUR-GOOGLE-ID" "your-email@example.com" "Your Name"
 ```
 
-### Using Node.js
-
-You can also execute the migration programmatically:
-
-```javascript
-import { readFileSync } from 'fs';
-import { getDatabase } from './backend/db/connection.js';
-
-const db = await getDatabase();
-const migration = readFileSync('./backend/db/migrations/001_init_schema.sql', 'utf-8');
-await db.execute(migration);
-```
+See backend documentation for details on finding your Google ID.
 
 ## Schema Alignment
 
-The migration script is synchronized with the Drizzle ORM schema defined in `backend/db/schema.js`. Both files define the same structure:
-
-- Same table names and columns
-- Same indexes (named according to schema definition)
-- Same constraints and relationships
-- Same enums and data types
-
-## Performance Indexes
-
-The migration includes 13 performance-optimized indexes:
-
-### Items Table (2 indexes)
-- `items_name_idx` - Fast product name searches
-- `items_deleted_at_idx` - Efficient soft-delete filtering
-
-### Orders Table (5 indexes)
-- `orders_order_id_idx` - Quick order ID lookups
-- `orders_customer_id_idx` - Customer-based filtering
-- `orders_delivery_date_idx` - Date range queries
-- `orders_priority_idx` - Priority-based sorting
-- `orders_status_idx` - Status filtering
-
-### Feedbacks Table (4 indexes)
-- `idx_feedbacks_order_id` - Order feedback retrieval
-- `idx_feedbacks_rating` - Rating-based analysis
-- `idx_feedbacks_created_at` - Chronological sorting (DESC)
-- `idx_feedbacks_is_public` - Public/private filtering
-
-### Feedback Tokens Table (2 indexes)
-- `idx_feedback_tokens_order_id` - Token lookup by order
-- `idx_feedback_tokens_token` - Fast token validation
-
-## Migration History
-
-This is a consolidated migration that replaces the previous incremental migrations:
-
-- ~~001_add_delivery_tracking_fields.sql~~ (removed)
-- ~~001_add_feedback_system.sql~~ (removed)
-
-All features from the old migrations are now included in the single `001_init_schema.sql` file.
+All migrations are synchronized with the Drizzle ORM schema in `backend/db/schema.js`.
 
 ## Best Practices
 
 1. **Backup first**: Always backup your database before running migrations
-2. **Test locally**: Test migrations on a local/staging database first
-3. **Check constraints**: Review check constraints and foreign keys
-4. **Monitor performance**: Use `EXPLAIN ANALYZE` to verify index usage
-5. **Version control**: Keep migration files in version control
+2. **Test locally**: Test on local/staging database first
+3. **Run in sequence**: Migrations must be run in numerical order
+4. **Check logs**: Review migration output for errors
+5. **Verify schema**: Check that tables and indexes were created correctly
 
 ## Troubleshooting
 
-### If migration fails midway:
+### Common Issues
 
-The migration uses `IF NOT EXISTS` clauses, so it's safe to re-run. However, if you need to start fresh:
+1. **Enum already exists**: Skip enum creation or drop existing enums
+2. **Permission denied**: Ensure database user has CREATE permissions
+3. **Connection timeout**: Verify NEON_DATABASE_URL is correct
+4. **Constraint violation**: Check existing data before running migration
+
+### Clean Slate
+
+To start fresh (WARNING: Deletes all data):
 
 ```sql
--- Drop all tables (WARNING: This deletes all data!)
-DROP TABLE IF EXISTS feedback_tokens CASCADE;
-DROP TABLE IF EXISTS feedbacks CASCADE;
-DROP TABLE IF EXISTS order_items CASCADE;
-DROP TABLE IF EXISTS orders CASCADE;
-DROP TABLE IF EXISTS items CASCADE;
-DROP TYPE IF EXISTS order_status;
-DROP TYPE IF EXISTS order_from;
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO your_user;
 ```
-
-### Common issues:
-
-1. **Enum already exists**: If enums exist, drop them first or skip enum creation
-2. **Permission denied**: Ensure your database user has CREATE permissions
-3. **Connection timeout**: Check your `NEON_DATABASE_URL` environment variable
-
-## Future Migrations
-
-When adding new migrations:
-
-1. Use sequential numbering: `002_description.sql`, `003_description.sql`, etc.
-2. Include rollback instructions in comments
-3. Test both up and down migrations
-4. Update this README with new migration details
-5. Keep migrations idempotent (safe to re-run)
 
 ## References
 
 - Schema definition: `backend/db/schema.js`
 - Database connection: `backend/db/connection.js`
-- Drizzle ORM docs: https://orm.drizzle.team/
-- PostgreSQL docs: https://www.postgresql.org/docs/
+- Backend docs: `docs/backend.md`

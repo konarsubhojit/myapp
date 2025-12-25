@@ -263,11 +263,12 @@ export interface TokenValidationResponse {
 
 // User types
 export interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   name: string;
   picture?: string;
   provider: string;
+  role?: string;
   isGuest?: boolean;
 }
 

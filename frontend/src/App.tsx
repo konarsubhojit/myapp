@@ -15,23 +15,25 @@ import MenuIcon from '@mui/icons-material/Menu'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import './App.css'
-import NavigationDrawer, { DRAWER_WIDTH } from './components/NavigationDrawer'
-import TopNavigationBar from './components/TopNavigationBar'
-import CreateItem from './components/CreateItem'
-import BrowseItems from './components/BrowseItems'
-import ManageDeletedItems from './components/ManageDeletedItems'
-import OrderForm from './components/OrderForm'
-import OrderHistory from './components/OrderHistory'
-import SalesReport from './components/SalesReport'
-import PriorityNotificationPanel from './components/PriorityNotificationPanel'
-import FeedbackPanel from './components/FeedbackPanel'
-import Login from './components/Login'
-import { CurrencyProvider } from './contexts/CurrencyContext'
-import { NotificationProvider } from './contexts/NotificationContext'
-import { AuthProvider, useAuth } from './contexts/AuthContext'
+import NavigationDrawer from './components/layout/NavigationDrawer'
+import TopNavigationBar from './components/layout/TopNavigationBar'
+import CreateItem from './features/items/CreateItem'
+import BrowseItems from './features/items/BrowseItems'
+import ManageDeletedItems from './features/items/ManageDeletedItems'
+import OrderForm from './features/orders/OrderForm'
+import OrderHistory from './features/orders/OrderHistory'
+import SalesReport from './features/analytics/SalesReport'
+import PriorityNotificationPanel from './features/orders/PriorityNotificationPanel'
+import FeedbackPanel from './features/feedback/FeedbackPanel'
+import Login from './features/auth/Login'
+import ForbiddenPage from './features/auth/ForbiddenPage'
+import AdminPage from './features/admin/AdminPage'
+import { CurrencyProvider } from './features/orders/CurrencyContext'
+import { NotificationProvider } from './lib/NotificationContext'
+import { AuthProvider, useAuth } from './features/auth/AuthContext'
 import { getItems } from './services/api'
 import { APP_VERSION } from './config/version'
-import { NAVIGATION_ROUTES } from './constants/navigation.tsx'
+import { NAVIGATION_ROUTES } from './components/layout/navigation'
 import type { Item, OrderId } from './types'
 
 interface LoadingScreenProps {
@@ -61,7 +63,7 @@ function LoadingScreen({ message }: LoadingScreenProps): ReactElement {
 }
 
 function AppContent(): ReactElement {
-  const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
+  const { isAuthenticated, loading: authLoading, user, logout, guestMode, isForbidden } = useAuth()
   const [items, setItems] = useState<Item[]>([])
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const [currentRoute, setCurrentRoute] = useState<string>(NAVIGATION_ROUTES.CREATE_ORDER)
@@ -142,6 +144,11 @@ function AppContent(): ReactElement {
   // Show loading while checking auth
   if (authLoading) {
     return <LoadingScreen message="Checking authentication..." />
+  }
+
+  // Show 403 Forbidden page if user doesn't have admin access
+  if (isForbidden) {
+    return <ForbiddenPage onRetry={logout} />
   }
 
   // Show login if not authenticated
@@ -345,6 +352,10 @@ function AppContent(): ReactElement {
           
           {currentRoute === NAVIGATION_ROUTES.CUSTOMER_FEEDBACK && (
             <FeedbackPanel />
+          )}
+
+          {currentRoute === NAVIGATION_ROUTES.ADMIN_PANEL && (
+            <AdminPage />
           )}
         </Box>
       </Box>

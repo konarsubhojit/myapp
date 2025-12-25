@@ -585,3 +585,107 @@ export const getSalesAnalytics = async (statusFilter: 'completed' | 'all' = 'com
   if (!response.ok) throw new Error('Failed to fetch sales analytics');
   return response.json();
 };
+
+// ============================================================================
+// User Management API (Admin only)
+// ============================================================================
+
+export interface User {
+  id: number;
+  googleId: string;
+  email: string;
+  name: string;
+  picture?: string;
+  role: 'admin' | 'user';
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  adminUsers: number;
+  regularUsers: number;
+}
+
+/**
+ * Get all users (admin only)
+ */
+export async function getUsers(): Promise<User[]> {
+  if (isGuestModeFn && isGuestModeFn()) {
+    return [];
+  }
+
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/users`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (response.status === 401 && onUnauthorizedCallback) {
+    onUnauthorizedCallback();
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to fetch users' }));
+    throw new Error(errorData.message || 'Failed to fetch users');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update user role (admin only)
+ */
+export async function updateUserRole(userId: number, role: 'admin' | 'user'): Promise<User> {
+  if (isGuestModeFn && isGuestModeFn()) {
+    throw new Error('Cannot update users in guest mode');
+  }
+
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ role }),
+  });
+
+  if (response.status === 401 && onUnauthorizedCallback) {
+    onUnauthorizedCallback();
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to update user role' }));
+    throw new Error(errorData.message || 'Failed to update user role');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get user statistics (admin only)
+ */
+export async function getUserStats(): Promise<UserStats> {
+  if (isGuestModeFn && isGuestModeFn()) {
+    return { totalUsers: 0, adminUsers: 0, regularUsers: 0 };
+  }
+
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}/users/stats`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (response.status === 401 && onUnauthorizedCallback) {
+    onUnauthorizedCallback();
+    throw new Error('Unauthorized');
+  }
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Failed to fetch user stats' }));
+    throw new Error(errorData.message || 'Failed to fetch user stats');
+  }
+
+  return response.json();
+}

@@ -2,6 +2,23 @@ import { pgTable, serial, text, numeric, timestamp, integer, pgEnum, index, date
 
 export const orderFromEnum = pgEnum('order_from', ['instagram', 'facebook', 'whatsapp', 'call', 'offline']);
 export const orderStatusEnum = pgEnum('order_status', ['pending', 'processing', 'completed', 'cancelled']);
+export const userRoleEnum = pgEnum('user_role', ['admin', 'user']);
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  googleId: text('google_id').notNull().unique(),
+  email: text('email').notNull().unique(),
+  name: text('name').notNull(),
+  picture: text('picture'),
+  role: userRoleEnum('role').default('user').notNull(),
+  lastLogin: timestamp('last_login'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+}, (table) => ({
+  emailIdx: index('users_email_idx').on(table.email),
+  googleIdIdx: index('users_google_id_idx').on(table.googleId),
+  roleIdx: index('users_role_idx').on(table.role)
+}));
 
 export const items = pgTable('items', {
   id: serial('id').primaryKey(),

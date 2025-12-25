@@ -4,7 +4,7 @@ import {
   getOrderPriorityColor,
   formatOrderDate,
   formatOrderDeliveryDate,
-} from '../utils/orderUtils';
+} from '../features/orders/orderUtils';
 
 describe('orderUtils', () => {
   describe('getOrderStatusColor', () => {

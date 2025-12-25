@@ -38,9 +38,48 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
+-- User role enum: Controls application access
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM (
+        'admin',
+        'user'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
 -- ============================================================================
 -- TABLES
 -- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Users Table: Authentication and authorization for Google OAuth
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    google_id TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    picture TEXT,
+    role user_role NOT NULL DEFAULT 'user',
+    last_login TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Performance indexes for users table
+CREATE INDEX IF NOT EXISTS users_email_idx ON users(email);
+CREATE INDEX IF NOT EXISTS users_google_id_idx ON users(google_id);
+CREATE INDEX IF NOT EXISTS users_role_idx ON users(role);
+
+-- Add comments for documentation
+COMMENT ON TABLE users IS 'Stores user authentication and authorization information from Google OAuth';
+COMMENT ON COLUMN users.google_id IS 'Google unique identifier (sub claim from JWT)';
+COMMENT ON COLUMN users.email IS 'User email address';
+COMMENT ON COLUMN users.name IS 'User full name';
+COMMENT ON COLUMN users.picture IS 'URL to user profile picture';
+COMMENT ON COLUMN users.role IS 'User role for authorization - admin users can access the application';
+COMMENT ON COLUMN users.last_login IS 'Timestamp of last successful login';
 
 -- ----------------------------------------------------------------------------
 -- Items Table: Product catalog with soft delete support
@@ -341,6 +380,7 @@ ON CONFLICT DO NOTHING;
 -- including all tables, indexes, and constraints with performance optimizations.
 -- 
 -- Tables created/updated:
+-- - users (8 columns + authentication/authorization)
 -- - items (8 columns + soft delete)
 -- - item_designs (7 columns + design variants)
 -- - orders (19 columns + delivery tracking)
@@ -351,7 +391,7 @@ ON CONFLICT DO NOTHING;
 -- - order_reminder_state (6 columns)
 -- - digest_runs (5 columns)
 --
--- Indexes created: 20+ total for optimal query performance
+-- Indexes created: 23+ total for optimal query performance
 -- 
 -- This script is idempotent and can be run multiple times safely.
 -- ============================================================================

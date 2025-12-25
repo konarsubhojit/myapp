@@ -147,6 +147,69 @@ sequenceDiagram
 
 **Implementation:** `backend/middleware/auth.js`
 
+### Admin User Setup & Role-Based Access
+
+The system uses a **users table** with role-based access control. Only users with the `admin` role can access the application.
+
+**Database Schema:**
+```sql
+CREATE TYPE user_role AS ENUM ('admin', 'user');
+
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  google_id TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  picture TEXT,
+  role user_role NOT NULL DEFAULT 'user',
+  last_login TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Setup Steps:**
+
+1. **Run Database Migration:**
+   ```bash
+   psql $NEON_DATABASE_URL -f backend/db/migrations/0007_add_users_table.sql
+   ```
+
+2. **Create Initial Admin User:**
+   ```bash
+   cd backend
+   node scripts/createAdminUser.js "YOUR-GOOGLE-ID" "your-email@example.com" "Your Name"
+   ```
+
+   To find your Google ID:
+   - Sign in to the app with Google OAuth
+   - Copy your JWT token and decode it **locally** (never paste live tokens into third-party websites)
+   - Use this Node.js command to decode locally:
+     ```bash
+     JWT="PASTE-YOUR-JWT-HERE" node -e "const t=process.env.JWT.split('.')[1];console.log(JSON.parse(Buffer.from(t,'base64url').toString()));"
+     ```
+     The `sub` field in the decoded payload is your Google ID.
+   - Or use a placeholder and update later:
+     ```bash
+     node scripts/createAdminUser.js "PLACEHOLDER-123" "admin@example.com" "Admin User"
+     # Then update: UPDATE users SET google_id = 'ACTUAL-ID' WHERE email = 'admin@example.com';
+     ```
+
+**Authentication Flow:**
+1. User signs in with Google OAuth (frontend)
+2. Frontend sends JWT token to `POST /api/auth/google`
+3. Backend verifies token signature with Google's JWKS
+4. Backend finds/creates user in database
+5. Backend checks if user has `admin` role
+6. If admin: returns token and user data
+7. If not admin: returns 403 Forbidden error
+
+**Implementation Files:**
+- `backend/models/User.js` - User database operations
+- `backend/routes/auth.js` - Authentication endpoint
+- `backend/middleware/auth.js` - Token validation and role checking
+- `backend/scripts/createAdminUser.js` - Admin user setup utility
+
 ---
 
 ## Cache Flow

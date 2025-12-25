@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useItemForm } from '../hooks/useItemForm';
-import { useImageProcessing } from '../hooks/useImageProcessing';
+import { useItemForm } from '../features/items/useItemForm';
+import { useImageProcessing } from '../lib/hooks/useImageProcessing';
 
 describe('useItemForm', () => {
   it('should initialize with empty values', () => {
