@@ -3,6 +3,8 @@ import { setAccessTokenGetter, setOnUnauthorizedCallback, setGuestModeChecker } 
 import { clearQueryCache } from '../queryClient';
 import type { AuthUser, GuestUser } from '../types';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 // Guest user constant
 const GUEST_USER: GuestUser = { name: 'Guest User', email: 'guest@localhost', isGuest: true };
 
@@ -16,12 +18,13 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   accessToken: string | null;
-  handleGoogleSuccess: (credentialResponse: GoogleCredentialResponse) => void;
+  handleGoogleSuccess: (credentialResponse: GoogleCredentialResponse) => Promise<void>;
   handleGoogleError: () => void;
   logout: () => void;
   getAccessToken: () => Promise<string | null>;
   guestMode: boolean;
   enableGuestMode: () => void;
+  isForbidden: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [googleUser, setGoogleUser] = useState<GoogleUserData | null>(null);
   const [guestMode, setGuestMode] = useState<boolean>(false);
+  const [isForbidden, setIsForbidden] = useState<boolean>(false);
 
   // Derive user from googleUser or guest mode
   const user = useMemo((): AuthUser | GuestUser | null => {
@@ -104,47 +108,62 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
     };
   }, []);
 
-  // Handle Google login success
-  const handleGoogleSuccess = useCallback((credentialResponse: GoogleCredentialResponse): void => {
-    console.log('[Auth] Google login successful');
-    const token = credentialResponse.credential;
-    setAccessToken(token);
+  // Handle Google login success - exchange token with backend
+  const handleGoogleSuccess = useCallback(async (credentialResponse: GoogleCredentialResponse): Promise<void> => {
+    console.log('[Auth] Google login successful, exchanging token with backend');
+    setLoading(true);
+    setError(null);
+    setIsForbidden(false);
     
-    // Decode the JWT to extract user info for display purposes
-    // Note: The token signature is already validated by Google's SDK before this callback
     try {
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        throw new Error('Invalid token format');
+      const token = credentialResponse.credential;
+      
+      // Exchange token with backend
+      const response = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ credential: token }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        // Handle 403 Forbidden (non-admin user)
+        if (response.status === 403 || data.code === 'NOT_ADMIN') {
+          console.error('[Auth] Access denied - user is not an admin');
+          setIsForbidden(true);
+          setError('Access denied. Admin privileges required.');
+          setLoading(false);
+          return;
+        }
+        
+        throw new Error(data.message || 'Authentication failed');
       }
-      // Decode base64url to base64, then decode to JSON
-      const base64Url = parts[1];
-      if (!base64Url) {
-        throw new Error('Invalid token format');
-      }
-      const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/');
-      const payload = JSON.parse(atob(base64)) as {
-        sub?: string;
-        email?: string;
-        name?: string;
-        picture?: string;
-      };
+      
+      // Set token and user data
+      setAccessToken(data.token);
       const userData: GoogleUserData = {
-        id: payload.sub ?? '',
-        email: payload.email ?? '',
-        name: payload.name ?? payload.email ?? '',
-        picture: payload.picture ?? undefined,
+        id: data.user.googleId,
+        email: data.user.email,
+        name: data.user.name,
+        picture: data.user.picture,
         provider: 'google',
+        role: data.user.role,
       };
       setGoogleUser(userData);
-      setError(null);
       
-      // Store in sessionStorage for persistence
+      // Store in sessionStorage
       sessionStorage.setItem('googleUser', JSON.stringify(userData));
-      sessionStorage.setItem('googleToken', token);
-    } catch (parseError) {
-      console.error('[Auth] Failed to parse Google token:', parseError);
-      setError('Failed to process Google login');
+      sessionStorage.setItem('googleToken', data.token);
+      
+      console.log('[Auth] Authentication successful');
+    } catch (error) {
+      console.error('[Auth] Backend authentication failed:', error);
+      setError(error instanceof Error ? error.message : 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -175,6 +194,7 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
     clearQueryCache();
     setGoogleUser(null);
     setGuestMode(false);
+    setIsForbidden(false);
     sessionStorage.removeItem('googleUser');
     sessionStorage.removeItem('googleToken');
     sessionStorage.removeItem('guestMode');
@@ -246,7 +266,8 @@ export function AuthProvider({ children }: AuthProviderProps): ReactElement {
     getAccessToken,
     guestMode,
     enableGuestMode,
-  }), [user, isAuthenticated, loading, error, accessToken, handleGoogleSuccess, handleGoogleError, logout, getAccessToken, guestMode, enableGuestMode]);
+    isForbidden,
+  }), [user, isAuthenticated, loading, error, accessToken, handleGoogleSuccess, handleGoogleError, logout, getAccessToken, guestMode, enableGuestMode, isForbidden]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

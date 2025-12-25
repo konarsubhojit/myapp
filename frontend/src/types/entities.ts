@@ -268,6 +268,7 @@ export interface AuthUser {
   name: string;
   picture?: string;
   provider: string;
+  role?: string;
   isGuest?: boolean;
 }
 

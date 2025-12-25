@@ -26,6 +26,7 @@ import SalesReport from './components/SalesReport'
 import PriorityNotificationPanel from './components/PriorityNotificationPanel'
 import FeedbackPanel from './components/FeedbackPanel'
 import Login from './components/Login'
+import ForbiddenPage from './components/ForbiddenPage'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -61,7 +62,7 @@ function LoadingScreen({ message }: LoadingScreenProps): ReactElement {
 }
 
 function AppContent(): ReactElement {
-  const { isAuthenticated, loading: authLoading, user, logout, guestMode } = useAuth()
+  const { isAuthenticated, loading: authLoading, user, logout, guestMode, isForbidden } = useAuth()
   const [items, setItems] = useState<Item[]>([])
   const [orderHistoryKey, setOrderHistoryKey] = useState<number>(0)
   const [currentRoute, setCurrentRoute] = useState<string>(NAVIGATION_ROUTES.CREATE_ORDER)
@@ -142,6 +143,11 @@ function AppContent(): ReactElement {
   // Show loading while checking auth
   if (authLoading) {
     return <LoadingScreen message="Checking authentication..." />
+  }
+
+  // Show 403 Forbidden page if user doesn't have admin access
+  if (isForbidden) {
+    return <ForbiddenPage onRetry={logout} />
   }
 
   // Show login if not authenticated

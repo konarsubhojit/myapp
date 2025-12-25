@@ -3,6 +3,7 @@ import jwksClient from 'jwks-rsa';
 import { createLogger } from '../utils/logger.js';
 import { HTTP_STATUS } from '../constants/httpConstants.js';
 import { GOOGLE_ISSUERS, JWKS_CONFIG } from '../constants/authConstants.js';
+import { findByGoogleId, isAdmin } from '../models/User.js';
 
 const logger = createLogger('AuthMiddleware');
 
@@ -76,9 +77,9 @@ async function validateGoogleToken(token) {
 }
 
 /**
- * Validate token and extract user info
+ * Validate token and extract user info from database
  * @param {string} token - JWT token
- * @returns {Promise<Object>} User info extracted from token
+ * @returns {Promise<Object>} User info from database
  */
 async function validateToken(token) {
   const decoded = jwt.decode(token, { complete: true });
@@ -90,10 +91,28 @@ async function validateToken(token) {
 
   if (isGoogleIssuer(issuer)) {
     const payload = await validateGoogleToken(token);
+    
+    // Find user in database by Google ID
+    const user = await findByGoogleId(payload.sub);
+    if (!user) {
+      throw new Error('User not found in database');
+    }
+    
+    // Check if user has admin role
+    const userIsAdmin = await isAdmin(user.id);
+    if (!userIsAdmin) {
+      const error = new Error('User does not have admin privileges');
+      error.code = 'NOT_ADMIN';
+      throw error;
+    }
+    
     return {
-      id: payload.sub,
-      email: payload.email,
-      name: payload.name,
+      id: user.id,
+      googleId: user.googleId,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      role: user.role,
       provider: 'google',
     };
   } else {
@@ -140,7 +159,19 @@ async function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     logger.error('Token validation failed', error);
-    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: 'Invalid or expired token' });
+    
+    // Handle non-admin users with 403 Forbidden
+    if (error.code === 'NOT_ADMIN') {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({ 
+        message: 'Access denied. Admin privileges required.',
+        code: 'NOT_ADMIN'
+      });
+    }
+    
+    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ 
+      message: 'Invalid or expired token',
+      code: 'INVALID_TOKEN'
+    });
   }
 }
 
