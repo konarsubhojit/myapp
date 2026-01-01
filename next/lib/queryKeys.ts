@@ -23,6 +23,7 @@ export interface PaginationParams {
 export const queryKeys = {
   // Items (cursor-based)
   items: () => ['items'] as const,
+  item: (id: number | string) => ['items', 'detail', String(id)] as const,
   itemsCursor: (params: ItemsCursorParams) => ['items', 'cursor', params] as const,
   deletedItems: (params: ItemsCursorParams) => ['items', 'deleted', params] as const,
 
