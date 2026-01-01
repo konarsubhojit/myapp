@@ -2,6 +2,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { createLogger } from '../utils/logger.js';
 import * as schema from './schema.js';
+import { getMockDatabase } from './mockDatabase.js';
 
 const logger = createLogger('PostgreSQL');
 
@@ -11,7 +12,16 @@ if (!cached) {
   cached = global.neonDb = { db: null };
 }
 
+export function isMockMode() {
+  return process.env.USE_MOCK_DB === 'true';
+}
+
 export function getDatabase() {
+  if (isMockMode()) {
+    logger.info('Using mock database (USE_MOCK_DB=true)');
+    return getMockDatabase();
+  }
+
   const uri = process.env.NEON_DATABASE_URL;
 
   if (cached.db) {
