@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import * as api from '@/lib/api/client';
+import { queryKeys } from '@/lib/queryKeys';
 import type { Item, CreateItemData, UpdateItemData, ItemId } from '@/types';
 
 /**
@@ -22,16 +23,29 @@ export function useCreateItem(): UseMutationResult<Item, Error, CreateItemData> 
 
 /**
  * Mutation hook for updating an item
- * Invalidates items and analytics caches on success
+ * Uses returned data to update cache directly, then invalidates list queries
  */
 export function useUpdateItem(): UseMutationResult<Item, Error, { id: ItemId; data: UpdateItemData }> {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ id, data }) => api.updateItem(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['items'] });
+    onSuccess: (updatedItem, { id }) => {
+      // Directly set the updated item data in cache to avoid refetch race condition
+      queryClient.setQueryData(queryKeys.item(id), updatedItem);
+      
+      // Invalidate list queries so they refetch
+      // But don't invalidate the single item query we just updated
+      queryClient.invalidateQueries({ 
+        queryKey: ['items'],
+        refetchType: 'none', // Don't refetch immediately, just mark as stale
+      });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      
+      // Trigger background refetch for lists after a short delay
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['items'], type: 'active' });
+      }, 100);
     },
   });
 }
@@ -54,16 +68,29 @@ export function useDeleteItem(): UseMutationResult<void, Error, ItemId> {
 
 /**
  * Mutation hook for restoring a soft-deleted item
- * Invalidates items and analytics caches on success
+ * Uses returned data to update cache directly, then invalidates list queries
  */
 export function useRestoreItem(): UseMutationResult<Item, Error, ItemId> {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id) => api.restoreItem(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['items'] });
+    onSuccess: (restoredItem, id) => {
+      // Directly set the restored item data in cache
+      queryClient.setQueryData(queryKeys.item(id), restoredItem);
+      
+      // Invalidate list queries so they refetch
+      // But don't invalidate the single item query we just updated
+      queryClient.invalidateQueries({ 
+        queryKey: ['items'],
+        refetchType: 'none', // Don't refetch immediately, just mark as stale
+      });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      
+      // Trigger background refetch for lists after a short delay
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['items'], type: 'active' });
+      }, 100);
     },
   });
 }
