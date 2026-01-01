@@ -68,7 +68,7 @@ export function useDeleteItem(): UseMutationResult<void, Error, ItemId> {
 
 /**
  * Mutation hook for restoring a soft-deleted item
- * Uses returned data to update cache directly
+ * Uses returned data to update cache directly, then invalidates list queries
  */
 export function useRestoreItem(): UseMutationResult<Item, Error, ItemId> {
   const queryClient = useQueryClient();
@@ -79,9 +79,18 @@ export function useRestoreItem(): UseMutationResult<Item, Error, ItemId> {
       // Directly set the restored item data in cache
       queryClient.setQueryData(queryKeys.item(id), restoredItem);
       
-      // Invalidate list queries
-      queryClient.invalidateQueries({ queryKey: ['items'] });
+      // Invalidate list queries so they refetch
+      // But don't invalidate the single item query we just updated
+      queryClient.invalidateQueries({ 
+        queryKey: ['items'],
+        refetchType: 'none', // Don't refetch immediately, just mark as stale
+      });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      
+      // Trigger background refetch for lists after a short delay
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['items'], type: 'active' });
+      }, 100);
     },
   });
 }
